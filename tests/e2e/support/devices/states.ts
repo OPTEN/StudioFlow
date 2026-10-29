@@ -34,7 +34,7 @@ export async function settled(page: Page): Promise<void> {
 
 /**
  * The phone: pairing form, expired invite, waiting screen with the check code, the live station (camera), a Regie message,
- * the technical check, dark mode, replaced by a second tab, blocked.
+ * the technical check, screen off (formerly dark mode), replaced by a second tab, blocked.
  */
 export async function visitPhoneStates(env: SenderStateEnv, visit: Visit, options: NewUiContextOptions = {}): Promise<PhoneSender> {
   const phone = await env.openPhone({ profile: 'pixel7', ...options });
@@ -74,7 +74,7 @@ export async function visitPhoneStates(env: SenderStateEnv, visit: Visit, option
   await env.api.sendDeviceCommand(env.production.id, device.id, { kind: 'message', slot: null, text: LONG_MESSAGE });
   await expect(phone.messageBanner()).toBeVisible();
   await visit('banner', page);
-  await phone.messageBanner().getByRole('button', { name: 'OK' }).click();
+  await phone.dismissMessage();
 
   await page.getByRole('button', { name: 'Tech check', exact: true }).click();
   await expect(page.getByRole('dialog', { name: 'Tech check' })).toBeVisible();
@@ -84,11 +84,11 @@ export async function visitPhoneStates(env: SenderStateEnv, visit: Visit, option
   await expect(page.getByRole('dialog', { name: 'Tech check' })).toBeHidden();
 
   await phone.darkToggle().click();
-  await expect(page.locator('.c-phone__dark')).toBeVisible();
+  await expect(phone.screenOffCover()).toBeVisible();
   await visit('dark', page);
-  await page.locator('main.c-phone').click({ position: { x: 10, y: 200 } });
+  await phone.screenOffCover().click({ position: { x: 10, y: 200 } }); // a tap shows the controls for a while
   await phone.darkToggle().click();
-  await expect(page.locator('.c-phone__dark')).toBeHidden();
+  await expect(phone.screenOffCover()).toBeHidden();
 
   // A second tab takes the session over: this tab is “Opened in another tab”.
   const second = await PhoneSender.inContext(phone.context, options.profile ?? 'pixel7');
@@ -141,7 +141,7 @@ export async function visitLaptopStates(env: SenderStateEnv, visit: Visit, optio
   await env.api.sendDeviceCommand(env.production.id, device.id, { kind: 'message', slot: null, text: LONG_MESSAGE });
   await expect(laptop.messageBanner()).toBeVisible();
   await visit('station-banner', page);
-  await laptop.messageBanner().getByRole('button', { name: 'OK' }).click();
+  await laptop.dismissMessage();
 
   for (let index = 0; index < 8; index++) {
     const allocated = await device.api.allocateSlot({ kind: 'screen' });

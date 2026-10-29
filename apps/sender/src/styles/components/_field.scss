@@ -1,7 +1,7 @@
 @use 'mixins' as *;
 @use 'tokens' as *;
 
-// Text field: ground fill, strong-seam border, blue on focus. 16 px text so iOS does not zoom on focus.
+// A labelled field: label above, control, hint and error below.
 .c-field {
   display: grid;
   gap: $SPACE_SM;
@@ -9,42 +9,81 @@
 }
 
 .c-field__label {
-  color: var(--muted);
-  font-size: 14px;
+  color: var(--text-2);
+  font-size: var(--fs-subhead);
   font-weight: 600;
 }
 
-.c-field__input {
+// Text field and select: ground fill, a 3:1 edge, blue on focus. 16 px text at least so iOS does not zoom on focus.
+.c-input,
+.c-select {
+  @include state-transition(border-color, box-shadow);
   background: var(--ground);
-  border: 1px solid var(--seam-strong);
-  border-radius: $RADIUS_MD;
-  caret-color: var(--blue);
+  border: 1px solid var(--control-edge);
+  border-radius: var(--radius-md);
   color: var(--text);
-  font: 400 16px/1.3 var(--font-ui);
-  min-height: 48px;
+  font: 400 max(16px, var(--fs-body)) / 1.3 var(--font-ui);
+  min-height: $TOUCH_TARGET;
   min-width: 0;
   padding: 0 $SPACE_LG;
   width: 100%;
 
   &:focus {
     border-color: var(--blue);
+    box-shadow: var(--shadow-focus);
     outline: none;
   }
 
   &[aria-invalid='true'] {
     border-color: var(--red);
   }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
 }
 
-.c-field__hint {
+// Select: the native list with a drawn chevron (the same glyph as the Regie's).
+.c-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='14' viewBox='0 0 10 14'%3E%3Cpath d='M2 5l3-3 3 3M2 9l3 3 3-3' fill='none' stroke='%23a1a1a8' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-position: right 12px center;
+  background-repeat: no-repeat;
+  cursor: pointer;
+  padding-right: 34px;
+}
+
+.c-hint {
   color: var(--muted);
-  font-size: 14px;
-  margin: 0;
+  font-size: var(--fs-footnote);
+  line-height: 1.4;
 }
 
-.c-field__error {
+.c-field-error {
   color: var(--red);
-  font-size: 14px;
+  font-size: var(--fs-footnote);
   font-weight: 600;
-  margin: 0;
+}
+
+// Checkbox with its label as one 44 px target.
+.c-check {
+  align-items: center;
+  border-radius: var(--radius-md);
+  color: var(--text);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: var(--fs-callout);
+  font-weight: 500;
+  gap: $SPACE_ROW;
+  min-height: $TOUCH_TARGET;
+  padding: 0 $SPACE_XS;
+
+  input {
+    accent-color: var(--blue-fill);
+    flex: none;
+    height: 20px;
+    margin: 0;
+    width: 20px;
+  }
 }

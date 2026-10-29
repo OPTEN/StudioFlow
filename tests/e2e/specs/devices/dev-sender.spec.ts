@@ -60,11 +60,12 @@ test.describe('DEV sender, orientation', () => {
           await expectNoOverflow(page, `${label} ${orientation}`);
           if (label === 'station') {
             for (const [name, selector] of [
-              ['start/stop', '.c-phone__toggle'],
-              ['front/back', '.c-phone__facing .c-segmented__options'],
-              ['resolution', '.c-phone__resolution .c-segmented__options'],
-              ['dark mode', '.c-phone__dark-toggle'],
-              ['technical check', '.c-phone__check'],
+              ['switch camera', '.c-phone__control--switch'],
+              ['quality', '.c-phone__control--quality'],
+              ['microphone', '.c-phone__control--mic'],
+              ['screen off', '.c-phone__control--screen-off'],
+              ['technical check', '.c-phone__control--check'],
+              ['stop', '.c-phone__control--stop'],
             ] as const) {
               const found = await reachable(page, selector);
               expect(found.inside, `${name} inside the ${orientation} viewport without scrolling`).toBe(true);
@@ -76,7 +77,7 @@ test.describe('DEV sender, orientation', () => {
             const need = overflow.scroll.height > overflow.viewport.height;
             notes.push(`form ${orientation}: document ${overflow.scroll.height} px high in ${overflow.viewport.height} px (${need ? 'scrolls' : 'fits'})`);
             // The kind switch and “Continue” are reachable, with a scroll where the page is higher than the viewport.
-            for (const selector of ['.c-segmented__options', 'button[type=submit]']) {
+            for (const selector of ['.c-choices__list', 'button[type=submit]']) {
               await page.locator(selector).first().scrollIntoViewIfNeeded();
               expect((await reachable(page, selector)).hit, `${selector} reachable (${orientation})`).toBe(true);
             }
@@ -110,7 +111,7 @@ test.describe('DEV sender, orientation', () => {
         const outline = await frame(page);
         expect(outline!.tally).toBe('program');
         expect(outline!.covers, `the tally frame covers ${size.width}x${size.height}`).toBe(true);
-        expect(outline!.shadow).toContain('rgb(248, 81, 73)');
+        expect(outline!.shadow).toContain('rgb(255, 105, 97)');
         await expectNoOverflow(page, `rotated to ${size.width}x${size.height}`);
         expect(await k1.phone.cameraState(), 'the camera keeps sending while the phone rotates').toBe('live');
       }
@@ -153,11 +154,12 @@ test.describe('DEV sender, orientation', () => {
             // a cross-origin sheet
           }
         }
-        const controls = document.querySelector('.c-phone__controls') as HTMLElement | null;
+        // The translucent rail holds the round controls; its bottom padding is the gutter plus the safe-area inset.
+        const rail = document.querySelector('.c-phone__rail') as HTMLElement | null;
         return {
           usesInset,
           rootVariable: getComputedStyle(document.documentElement).getPropertyValue('--safe-bottom').trim(),
-          controlsPaddingBottom: controls ? getComputedStyle(controls).paddingBottom : null,
+          controlsPaddingBottom: rail ? getComputedStyle(rail).paddingBottom : null,
           lastButtonBottomGap: (() => {
             const buttons = [...document.querySelectorAll('.c-phone__controls button, .c-phone__controls label')] as HTMLElement[];
             return buttons.length ? window.innerHeight - Math.max(...buttons.map((button) => button.getBoundingClientRect().bottom)) : null;
@@ -188,7 +190,7 @@ test.describe('DEV sender, orientation', () => {
       const page = await context.newPage();
       const invite = (await api.getPhoneInvite(production.id)).body;
       await page.goto('/join/');
-      await expect(page.getByRole('radio', { name: 'Phone (camera)' })).toBeChecked();
+      await expect(page.getByRole('radio', { name: 'Phone camera' })).toBeChecked();
       for (const [orientation, size] of [['portrait', { width: 810, height: 1080 }], ['landscape', { width: 1080, height: 810 }]] as const) {
         await page.setViewportSize(size);
         await sleep(250);
@@ -240,7 +242,7 @@ test.describe('DEV sender, 320 px and tap targets', () => {
         }
         if (label === 'form' || label === 'waiting' || label === 'redeem-expired') {
           // Buttons of the pairing pages are as wide as their column.
-          for (const button of await page.locator('main .c-button--block').all()) {
+          for (const button of await page.locator('main .c-btn--block').all()) {
             const box = (await button.boundingBox())!;
             const column = (await button.locator('xpath=..').boundingBox())!;
             expect(box.width, `${label}: full-width button “${(await button.textContent())?.trim()}”`).toBeGreaterThanOrEqual(column.width - 2);

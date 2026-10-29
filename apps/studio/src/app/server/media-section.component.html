@@ -1,72 +1,118 @@
 <form class="c-srv" novalidate (submit)="save($event)">
-  <p class="c-srv__intro">{{ t('regie.server.media.intro') }}</p>
-
-  <div class="c-srv__field">
-    <label class="c-srv__label" for="media-address">{{ t('regie.server.media.label') }}</label>
-    <input
-      id="media-address"
-      class="c-input c-srv__mono"
-      type="text"
-      inputmode="decimal"
-      autocomplete="off"
-      spellcheck="false"
-      maxlength="15"
-      [formControl]="address"
-      aria-describedby="media-address-hint media-address-error"
-      [class.is-invalid]="addressError()"
-      [attr.aria-invalid]="addressError() ? 'true' : null"
-    />
-    <p class="c-hint" id="media-address-hint">{{ t('regie.server.media.hint') }}</p>
-    @if (addressError(); as message) {
-      <p class="c-field-error" id="media-address-error" role="alert">{{ message }}</p>
-    }
-    @if (fromHost() || interfaces().length > 0) {
-      <div class="c-srv__suggestions">
-        @if (fromHost(); as host) {
-          <button class="c-btn c-btn--sm" type="button" (click)="use(host)">
-            {{ t('regie.server.media.suggest', { address: host }) }}
-          </button>
-          <span class="c-hint">{{ t('regie.server.media.suggestFromHost') }}</span>
-        }
-        @for (candidate of interfaces(); track candidate) {
-          <button class="c-btn c-btn--sm" type="button" (click)="use(candidate)">
-            {{ t('regie.server.media.suggest', { address: candidate }) }}
-          </button>
-        }
+  <section class="c-group" aria-labelledby="media-heading">
+    <h2 class="c-group__title" id="media-heading">{{ t('regie.server.media.heading') }}</h2>
+    <div class="c-group__body">
+      <div class="c-group__row c-group__row--stack">
+        <div class="c-srv__field">
+          <label class="c-srv__label" for="media-address">{{
+            t('regie.server.media.label')
+          }}</label>
+          <input
+            id="media-address"
+            class="c-input c-srv__code"
+            type="text"
+            inputmode="decimal"
+            autocomplete="off"
+            spellcheck="false"
+            maxlength="15"
+            placeholder="192.168.1.50"
+            [formControl]="address"
+            aria-describedby="media-address-error media-address-hint"
+            [class.is-invalid]="addressError()"
+            [attr.aria-invalid]="addressError() ? 'true' : null"
+          />
+          @if (addressError(); as message) {
+            <p class="c-field-error" id="media-address-error" role="alert">{{ message }}</p>
+          }
+          <p class="c-hint" id="media-address-hint">{{ t('regie.server.media.hint') }}</p>
+        </div>
       </div>
-    }
-  </div>
+      @if (suggestions().length > 0) {
+        <div class="c-group__row c-group__row--stack">
+          <span class="c-hint" id="media-suggestions">{{
+            t('regie.server.media.suggestions')
+          }}</span>
+          <div class="c-suggest" role="group" aria-labelledby="media-suggestions">
+            @for (suggestion of suggestions(); track suggestion.address) {
+              <button
+                class="c-suggest__item"
+                type="button"
+                [attr.aria-label]="suggestionName(suggestion)"
+                [attr.aria-pressed]="address.value.trim() === suggestion.address"
+                (click)="use(suggestion.address)"
+              >
+                <span class="c-suggest__address">{{ suggestion.address }}</span>
+                <span class="c-suggest__source">{{ suggestionSource(suggestion) }}</span>
+              </button>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  </section>
 
-  <p class="c-hint">{{ t('regie.server.media.testNote') }}</p>
-
-  <p
-    class="c-srv__result"
-    [class.c-srv__result--bad]="check() && check()?.kind !== 'ok'"
-    role="status"
-    aria-live="polite"
-  >
-    @if (testing()) {
-      <span class="c-lamp is-warn" aria-hidden="true"></span>
-      <span>{{ t('regie.server.media.testing') }}</span>
-    } @else if (checkText(); as text) {
-      <span class="c-lamp" [class.is-bad]="check()?.kind !== 'ok'" aria-hidden="true"></span>
-      <span>{{ text }}</span>
-    }
-  </p>
-
-  <p class="c-hint">{{ t('regie.server.media.changeNote') }}</p>
-
-  @if (errorText(); as text) {
-    <p class="c-srv__result c-srv__result--bad" role="alert">
-      <span class="c-lamp is-bad" aria-hidden="true"></span><span>{{ text }}</span>
+  <section class="c-group" aria-labelledby="media-test-heading">
+    <h2 class="c-group__title" id="media-test-heading">
+      {{ t('regie.server.media.testHeading') }}
+    </h2>
+    <div class="c-group__body">
+      <div class="c-group__row">
+        <span class="c-group__label">
+          {{ t('regie.server.media.testLabel') }}
+          <span class="c-group__sub" id="media-test-note">{{
+            t('regie.server.media.testNote')
+          }}</span>
+        </span>
+        <button
+          class="c-btn"
+          type="button"
+          [disabled]="busy() || onAir()"
+          [attr.aria-describedby]="onAir() ? 'media-test-note media-save-note' : 'media-test-note'"
+          (click)="test()"
+        >
+          {{ testing() ? t('regie.server.media.testing') : t('regie.server.media.test') }}
+        </button>
+      </div>
+      @if (testing() || checkText()) {
+        <div class="c-group__row c-group__row--stack">
+          <p class="c-srv__result">
+            @if (testing()) {
+              <span class="c-lamp is-idle" aria-hidden="true"></span>
+              <span>{{ t('regie.server.media.testing') }}</span>
+            } @else if (checkText(); as text) {
+              <span
+                class="c-lamp"
+                [class.is-bad]="check()?.kind !== 'ok'"
+                aria-hidden="true"
+              ></span>
+              <span>{{ text }}</span>
+            }
+          </p>
+          @if (check()?.kind === 'signal') {
+            <sf-technical-details [command]="signalCommand" />
+          }
+        </div>
+      }
+    </div>
+    <p class="u-sr-only" role="status" aria-live="polite">
+      {{ testing() ? t('regie.server.media.testing') : checkText() }}
     </p>
-  }
+  </section>
+
+  <sf-server-problem [problem]="problem()" />
 
   <div class="c-srv__actions">
-    <button class="c-btn" type="button" [disabled]="busy()" (click)="test()">
-      {{ testing() ? t('regie.server.media.testing') : t('regie.server.media.test') }}
-    </button>
-    <button class="c-btn c-btn--fill" type="submit" [disabled]="busy()">
+    <ng-content select="[sfSectionStart]" />
+    <span class="c-srv__actions-note" id="media-save-note">{{
+      onAir() ? t('regie.server.onAir') : t('regie.server.media.changeNote')
+    }}</span>
+    <ng-content />
+    <button
+      class="c-btn c-btn--fill"
+      type="submit"
+      [disabled]="busy() || onAir()"
+      aria-describedby="media-save-note"
+    >
       @if (saving()) {
         {{ t('regie.server.saving') }}
       } @else {

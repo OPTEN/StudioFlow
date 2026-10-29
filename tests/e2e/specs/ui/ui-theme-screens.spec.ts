@@ -1,6 +1,7 @@
 import path from 'node:path';
 import type { Page } from '@playwright/test';
 import { openBusyRegie, settle } from '../../support/a11y/regie-setup';
+import { backToControlRoom, openAppearanceSettings } from '../../support/regie/kit';
 import { newUiContext } from '../../support/ui';
 import { expect, test } from '../../support/ui/fixtures';
 
@@ -45,12 +46,13 @@ for (const size of VIEWPORTS) {
         await target.evaluate(([key, value]) => localStorage.setItem(key!, value!), ['studioflow.theme', appearance.name]);
       }
       await page.goto('/');
-      await expect(page.locator('.c-status__inc.is-warn')).toBeVisible();
+      await expect(page.locator('.c-status__lead.is-warn')).toBeVisible();
       await shoot(page, 'regie-studio', appearance.name, size);
 
-      await page.locator('[aria-controls="sf-pop-settings"]').click();
+      await openAppearanceSettings(page);
       await shoot(page, 'regie-settings', appearance.name, size);
-      await page.keyboard.press('Escape');
+      await backToControlRoom(page);
+      await expect(page.locator('.c-status__lead.is-warn')).toBeVisible();
 
       await regie.setStudioMode(false);
       await shoot(page, 'regie-direct', appearance.name, size);

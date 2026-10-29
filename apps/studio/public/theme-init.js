@@ -18,6 +18,6 @@
   document.documentElement.dataset.theme = theme;
   var chrome = document.querySelector('meta[name="theme-color"]');
   if (chrome) {
-    chrome.setAttribute('content', theme === 'light' ? '#f3f5f8' : '#151a22');
+    chrome.setAttribute('content', theme === 'light' ? '#f7f7f9' : '#1e1e21');
   }
 })();

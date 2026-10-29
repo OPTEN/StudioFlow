@@ -1,0 +1,41 @@
+// Latest backups: the status line with "Back up now", the table flush with the group, the restore command below.
+@use 'mixins' as *;
+
+.c-backups__status {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.c-backups__table {
+  overflow-x: auto;
+  padding: 0;
+}
+
+.c-backups__copy {
+  padding-block: 2px;
+  text-align: right;
+  white-space: nowrap;
+  width: 1%;
+}
+
+.c-backups__restore {
+  display: grid;
+  gap: 6px;
+}
+
+.c-backups__command {
+  align-items: center;
+  background: var(--fill);
+  border-radius: var(--radius-md);
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  padding: 4px 4px 4px 10px;
+
+  code {
+    @include code;
+    color: var(--text);
+    font-size: 12px;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+}

@@ -33,21 +33,24 @@ async function visualFingerprint(page: Page, selector: string): Promise<string> 
 }
 
 test.describe('Forced colours and zoom', () => {
-  test('E2E-DEV-22 [forced colours] states stay distinguishable without colour: the words “reconnecting”, “PGM”, “PVW” and “PROGRAM”/“PREVIEW” name them, lamps are decorative; focus indicators stay', tags, async ({ openRegie, pairContext, onCleanup }) => {
+  test('E2E-DEV-22 [forced colours] states stay distinguishable without colour: the words “reconnecting”, “Live”, “Preview” and “PROGRAM”/“PREVIEW” name them, lamps are decorative; focus indicators stay', tags, async ({ openRegie, pairContext, onCleanup }) => {
     test.setTimeout(150_000);
     const { regie } = await openBusyRegie({ openRegie, pairContext, onCleanup }, { viewport: { width: 1440, height: 900 }, forcedColors: 'active', incident: 'reconnecting', studio: true });
     const { page } = regie;
     expect(await page.evaluate(() => matchMedia('(forced-colors: active)').matches), 'forced colours are on').toBe(true);
     await saveScreen(page, 'regie-1440x900-forced-colors');
-    // the outage is named in words in the strip, on the scene row and on the station row (not only by a lamp colour)
-    await expect(page.getByRole('region', { name: 'Messages' })).toContainText('reconnecting');
-    await expect(page.getByRole('button', { name: /^Presentation PVW K3 disrupted$/ })).toBeVisible();
-    await expect(page.locator('.c-st__row').first()).toHaveAccessibleName(/reconnecting/);
-    await expect(page.locator('.c-st__l2').first()).toContainText('reconnecting');
+    // the outage is named in words in the activity bar, on the scene row and on the station row (not only by a lamp colour)
+    await expect(page.getByRole('region', { name: 'Activity' })).toContainText('reconnecting');
+    await expect(page.getByRole('button', { name: /^Presentation, in Preview, K3 disrupted$/ })).toBeVisible();
+    // the Devices dock keeps its order (by code): the device with the outage is the one with the amber wash
+    await expect(page.locator('.c-st.is-warn .c-st__row').first()).toHaveAccessibleName(/reconnecting/);
+    await expect(page.locator('.c-st.is-warn .c-st__l2').first()).toContainText('reconnecting');
     // Program and Preview are told in words, the scene rows carry the tags
-    await expect(page.getByText('PROGRAM', { exact: false }).first()).toBeVisible();
-    await expect(page.locator('.c-tag--pgm').first()).toHaveText('PGM');
-    await expect(page.locator('.c-tag--pvw').first()).toHaveText('PVW');
+    // (the monitor heads: the redesign writes them in title case, “Program” and “Preview”)
+    await expect(page.locator('.c-monitor__tally', { hasText: /^program$/i })).toBeVisible();
+    await expect(page.locator('.c-monitor__tally', { hasText: /^preview$/i })).toBeVisible();
+    await expect(page.locator('.c-tag--pgm').first()).toHaveText('Live');
+    await expect(page.locator('.c-tag--pvw').first()).toHaveText('Preview');
     // lamps are decorative and the words carry the meaning
     expect(await page.locator('.c-lamp').evaluateAll((elements) => elements.filter((element) => element.getAttribute('aria-hidden') !== 'true').length)).toBe(0);
 
@@ -127,7 +130,7 @@ test.describe('Long text', () => {
   for (const entry of cases) {
     test(`E2E-DEV-18 [long text, ${entry.name}] a scene name of 80 characters, device names of 60 and a production name of 80 stay inside their rows: no overflow, no overlapping controls`, tags, async ({ openRegie, pairContext, onCleanup, production, api }) => {
       test.setTimeout(240_000);
-      if (entry.bug) knownBug('A11Y-12', 'at 390 px the incident entry of the message strip (button.c-status__target with the device name) is wider than the viewport and makes the page scroll horizontally when the device name has 60 characters');
+      if (entry.bug) knownBug('A11Y-12', 'at 390 px the incident entry of the activity bar (button.c-status__target with the device name) is wider than the viewport and makes the page scroll horizontally when the device name has 60 characters');
       const { regie, seeded } = await openBusyRegie({ openRegie, pairContext, onCleanup }, { viewport: entry.viewport, incident: 'reconnecting', studio: false });
       expect((await api.renameDevice(production.id, seeded.stations[0]!.device.id, longDevice)).status, 'the 60-character device name is accepted').toBeLessThan(300);
       if (entry.incidentName === 'long') expect((await api.renameDevice(production.id, seeded.stations[2]!.device.id, longDevice.replace(/^Device/, 'Phone'))).status).toBeLessThan(300);
@@ -156,7 +159,7 @@ test.describe('Long text', () => {
           return offenders;
         });
         expect(cut, `${label}: names stay inside their parents`).toEqual([]);
-        if (entry.viewport.width >= 1280) expect((await boxOf(page.locator('header.c-header')))!.h, `${label}: the header keeps its 50 px`).toBeCloseTo(50, 0);
+        if (entry.viewport.width >= 1280) expect((await boxOf(page.locator('header.c-header')))!.h, `${label}: the toolbar keeps its 52 px`).toBeCloseTo(52, 0);
       }
       expect(regie.problems.pageErrors).toEqual([]);
     });

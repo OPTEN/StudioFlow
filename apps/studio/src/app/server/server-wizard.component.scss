@@ -1,69 +1,50 @@
-// First-run wizard after the account: the login surface (login-page.component.scss is loaded first), wider for the forms,
-// with a progress bar of four segments. Tokens only.
+// First-run wizard after the account: the standalone card (login-page.component.scss is loaded first) holding the server
+// forms. The forms bring their own grouped sections; the wizard adds Back, the "Keep the defaults" note and the end.
 @use 'mixins' as *;
 
-.c-wizard__col {
-  width: min(600px, 100%);
+// The title takes the focus when a step opens (for screen readers); no ring on a heading that is not a control.
+.c-wizard__title:focus {
+  outline: none;
 }
 
-.c-wizard__head {
-  display: grid;
-  gap: 18px;
+.c-wizard__back {
+  margin-right: auto;
+  padding-left: 2px;
 }
 
-.c-wizard__progress {
-  display: grid;
+.c-wizard__keep {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+  padding: 0 4px;
+}
+
+.c-wizard__note {
+  align-items: flex-start;
+  background: var(--fill);
+  border-radius: var(--radius-lg);
+  color: var(--text-2);
+  display: flex;
+  font-size: 13px;
   gap: 8px;
-}
+  line-height: 1.45;
+  padding: 10px 14px;
 
-.c-wizard__bar {
-  display: grid;
-  gap: 4px;
-  grid-template-columns: repeat(4, 1fr);
-}
-
-.c-wizard__seg {
-  background: var(--seam-strong);
-  border-radius: 2px;
-  height: 3px;
-
-  &.is-done {
-    background: var(--text-2);
+  .c-icon {
+    color: var(--muted);
+    flex: none;
+    margin-top: 2px;
   }
-
-  &.is-current {
-    background: var(--blue);
-  }
-}
-
-.c-wizard__step {
-  color: var(--text-2);
-  font-size: 13px;
-  margin: 0;
-}
-
-.c-wizard__section {
-  display: grid;
-  gap: 14px;
-}
-
-.c-wizard__title {
-  font-size: 15px;
-  font-weight: 600;
-  margin: 0;
-}
-
-.c-wizard__text {
-  color: var(--text-2);
-  font-size: 13px;
-  margin: 0;
 }
 
 .c-wizard__link {
-  color: var(--blue);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.c-wizard__skip {
-  border-top: 1px solid var(--seam);
-  padding-top: 12px;
+.c-wizard__state {
+  display: grid;
+  gap: 12px;
+  justify-items: center;
 }

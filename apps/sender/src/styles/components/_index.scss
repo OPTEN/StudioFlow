@@ -1,6 +1,11 @@
-// Shared UI components of the sender (BEMIT `c-`), used by several Angular components.
+// Shared UI primitives of the sender (BEMIT `c-`). The vocabulary is the Regie's (buttons, fields, groups, lamps, tags,
+// menus, confirmations; apps/studio/src/styles/_primitives.scss), sized for touch: 44 px targets, iOS text sizes.
 @forward 'button';
-@forward 'segmented';
-@forward 'status';
 @forward 'field';
-@forward 'pairing';
+@forward 'choice';
+@forward 'status';
+@forward 'group';
+@forward 'page';
+@forward 'menu';
+@forward 'sheet';
+@forward 'tabs';

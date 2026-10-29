@@ -14,7 +14,7 @@ import { t } from '../../support/tags';
 
 /**
  * SRC (Regie side of phone and laptop senders), docs/testing.md 2.5: the picture of a live phone, an outage in the six
- * places, the recovery that stays until “Seen”, shared between operators, the returning source.
+ * places, the recovery that stays until “Dismiss”, shared between operators, the returning source.
  *
  * Phone outage method (documented once for the whole folder): `net.cut(context)` = `context.setOffline(true)` plus closing
  * every WebSocket (device hub, LiveKit signalling) and RTCPeerConnection of that phone's browser context. It is the
@@ -30,7 +30,7 @@ async function programFrames(page: import('@playwright/test').Page): Promise<num
 
 test.describe('SRC outage, phone', () => {
   test(
-    'E2E-SRC-01 [ui] a live phone camera shows as ok: lamp, metrics, details, health chip, playing picture in the Program monitor',
+    'E2E-SRC-01 [ui] a live phone camera shows as ok: lamp, metrics, details, health button, playing picture in the Program monitor',
     t.smoke,
     async ({ regie, openPhone, pairContext, api, production }, testInfo) => {
       test.setTimeout(120_000);
@@ -39,10 +39,10 @@ test.describe('SRC outage, phone', () => {
       expect(k1.code).toBe('K1');
 
       const row = await openStation(regie, k1.device.id);
-      await expect(row.locator('.c-st__row .c-lamp')).not.toHaveClass(/is-(warn|bad|idle)/);
-      // Line 2: “2.8 Mbit/s 31 ms” once the first telemetry is there.
+      await expect(row.locator('.c-st__l2 .c-lamp')).not.toHaveClass(/is-(warn|bad|idle)/);
+      // The state line: “sending · 2.8 Mbit/s · 31 ms” once the first telemetry is there (the dots are drawn by CSS).
       const line = row.locator('.c-st__l2');
-      await expect(line, 'metrics line “<n.n> Mbit/s <n> ms”').toHaveText(/^\s*\d+\.\d\s*Mbit\/s\s*\d+\s*ms/, { timeout: 15_000 });
+      await expect(line, 'state line “sending <n.n> Mbit/s <n> ms”').toHaveText(/^\s*sending\s*\d+\.\d\s*Mbit\/s\s*\d+\s*ms/, { timeout: 15_000 });
 
       const details = row.locator('.c-st__kv');
       await expect(details).toContainText('Device');
@@ -54,9 +54,9 @@ test.describe('SRC outage, phone', () => {
       const hasBattery = await k1.phone.page.evaluate(() => typeof (navigator as unknown as { getBattery?: unknown }).getBattery === 'function');
       if (hasBattery) await expect(details, 'Battery row where the Battery API exists').toContainText(/Battery\s*\d+%/, { timeout: 15_000 });
 
-      // Docs: “All N stations ok” (regex ^All \d+ stations ok$). The product writes “1 station ok” for one station.
+      // “All N devices OK” in the activity bar; the product writes “1 device OK” for one device.
       const chip = (await readPlaces(regie.page)).header;
-      expect(chip.text, 'health chip').toMatch(/^(All \d+ stations ok|1 station ok)$/);
+      expect(chip.text, 'health button').toMatch(/^(All \d+ devices OK|1 device OK)$/);
       expect(chip.lamp, 'green lamp').toBe('');
 
       // Values change within 3 s (telemetry every 2 s).
@@ -95,7 +95,7 @@ test.describe('SRC outage, phone', () => {
         await expect.poll(async () => (await readPlaces(regie.page)).stations.find((row) => row.codes.includes(code))?.line ?? '', { message: `${code} shows its metrics`, timeout: 20_000 }).toMatch(/Mbit\/s/);
       }
       await sleep(3000);
-      expect((await readPlaces(regie.page)).header.text).toBe('All 3 stations ok');
+      expect((await readPlaces(regie.page)).header.text).toBe('All 3 devices OK');
 
       // The clock starts when the phone's connections were closed (inside its page) and stops at the DOM read of the Regie
       // that shows all six places; the round trips of the harness (CDP, polling) are not part of the product's time.
@@ -127,7 +127,7 @@ test.describe('SRC outage, phone', () => {
   );
 
   test(
-    'E2E-SRC-03 [ui] the recovery stays until “Seen”: still there after 30 s, then a calm strip with the last events',
+    'E2E-SRC-03 [ui] the recovery stays until “Dismiss”: still there after 30 s, then a calm activity bar with the latest event',
     t.smoke,
     async ({ regie, openPhone, pairContext, api, production }) => {
       test.setTimeout(240_000);
@@ -143,23 +143,24 @@ test.describe('SRC outage, phone', () => {
       expect(back.seconds, '“was gone for N s” is a number').not.toBeNull();
 
       const row = regie.page.locator(`.c-st[data-device="${k1.device.id}"]`);
-      await expect(row.locator('.c-st__ack')).toContainText('The station is back. Confirm to dismiss the message.');
+      await expect(row.locator('.c-st__ack')).toContainText('The device is back.');
+      await expect(row.locator('.c-st__ack').getByRole('button', { name: 'Dismiss' })).toBeVisible();
       const chip = (await readPlaces(regie.page)).header;
-      expect(chip.text, 'recovered entries are no faults').toMatch(/^(All \d+ stations ok|1 station ok)$/);
+      expect(chip.text, 'recovered entries are no faults').toMatch(/^(All \d+ devices OK|1 device OK)$/);
       expect(chip.lamp).toBe('');
 
-      // Nobody pressed “Seen”: the entry is still there after 30 s.
+      // Nobody pressed “Dismiss”: the entry is still there after 30 s.
       await sleep(30_000);
       expect(checkRecovered(await readPlaces(regie.page), 'K1').ok, 'still recovered after 30 s').toBe(true);
 
       const logBefore = await logTexts(api, production);
-      await regie.page.locator('sf-status-line').getByRole('button', { name: 'Seen' }).click();
-      await expect(regie.page.locator('sf-status-line .c-status__ok')).toHaveText(/No open messages/);
-      await expect(regie.page.locator('sf-status-line .c-status__label')).toHaveText('Recent events');
+      await regie.page.locator('sf-status-line').getByRole('button', { name: 'Dismiss' }).click();
+      await expect(regie.page.locator('sf-status-line .c-status__lead'), 'the activity bar is calm').toHaveCount(0);
+      await expect(regie.page.locator('sf-status-line .c-status__health')).toHaveText(/^(All \d+ devices OK|1 device OK)$/);
       const entries = (await regie.page.locator('sf-status-line .c-status__entry').allTextContents()).map((entry) => entry.replace(/\s+/g, ' ').trim());
-      expect(entries.length).toBeLessThanOrEqual(4);
+      expect(entries, 'one line: the latest event').toHaveLength(1);
       expect(entries[0], 'newest first').toMatch(/^\d\d:\d\d\s*K1 is back, was gone for \d+ s$/);
-      expect(entries.some((entry) => /^\d\d:\d\d\s*K1 reconnecting$/.test(entry)), 'the outage is in the last events').toBe(true);
+      expect(logBefore, 'the outage is in the activity log').toContain('K1 reconnecting');
       expect(await logTexts(api, production), 'an acknowledgement writes no log entry').toEqual(logBefore);
     },
   );
@@ -237,7 +238,7 @@ test.describe('SRC outage, phone', () => {
   );
 
   test(
-    'E2E-SRC-04 [ui] “Seen” is shared between two operators; a simultaneous click of the second one is answered 404 without an error toast',
+    'E2E-SRC-04 [ui] “Dismiss” is shared between two operators; a simultaneous click of the second one is answered 404 without an error toast',
     t.p0,
     async ({ regie, openRegie, openPhone, pairContext, api, production }) => {
       test.setTimeout(180_000);
@@ -261,7 +262,7 @@ test.describe('SRC outage, phone', () => {
       // Both operators hold the button of the same entry; the clicks are fired in the same instant by the page itself (a
       // Playwright click waits for actionability and would miss the button once the first acknowledgement removed it).
       const arm = (page: typeof regie.page) => page.evaluate(() => {
-        const button = [...document.querySelectorAll<HTMLButtonElement>('sf-status-line .c-status__inc.is-ok button')].find((candidate) => candidate.textContent?.trim() === 'Seen');
+        const button = [...document.querySelectorAll<HTMLButtonElement>('sf-status-line .c-status__lead.is-ok button')].find((candidate) => candidate.textContent?.trim() === 'Dismiss');
         (window as unknown as { __ack?: HTMLButtonElement }).__ack = button;
         return Boolean(button);
       });
@@ -269,7 +270,7 @@ test.describe('SRC outage, phone', () => {
       const fire = (page: typeof regie.page) => page.evaluate(() => (window as unknown as { __ack: HTMLButtonElement }).__ack.click());
       await Promise.all([fire(regie.page), fire(other.page)]);
       for (const page of [regie.page, other.page]) {
-        await expect(page.locator('sf-status-line .c-status__ok'), 'entry gone in both within 1 s').toHaveText(/No open messages/, { timeout: 1500 });
+        await expect(page.locator('sf-status-line .c-status__lead'), 'entry gone in both within 1 s').toHaveCount(0, { timeout: 1500 });
       }
       await expect.poll(() => acks.length, { message: 'both operators sent an acknowledgement', timeout: 5000 }).toBe(2);
       expect(acks.map((ack) => ack.status).sort(), 'one wins (204), the other is told it is gone (404)').toEqual([204, 404]);
@@ -368,7 +369,7 @@ test.describe('SRC outage, phone', () => {
   );
 
   test(
-    'E2E-SRC-21 [ui] hold frame on the Regie monitors: the last picture stays (sharp, not black) with the dashed outline, then it is dimmed',
+    'E2E-SRC-21 [ui] hold frame on the Regie monitors: the last picture stays (sharp, not black) with the solid outline, then it is dimmed',
     t.p1,
     async ({ regie, openPhone, pairContext, api, production }) => {
       test.setTimeout(180_000);
@@ -397,7 +398,7 @@ test.describe('SRC outage, phone', () => {
         expect(luma(r, g, b), `${name}: the frozen picture is not black`).toBeGreaterThan(25);
         expect(g, `${name}: it is still the green picture of the fake camera`).toBeGreaterThan(r + 20);
         const outline = await monitors[index]!.evaluate((element) => getComputedStyle(element.querySelector('.sf-r-alert') as HTMLElement).borderTopStyle);
-        expect(outline, `${name}: dashed outline`).toBe('dashed');
+        expect(outline, `${name}: solid outline`).toBe('solid');
       }
       // After the item's hold time (3 s default, counted from the moment LiveKit drops the track at the Regie, which is
       // later than the API's “reconnecting”) the monitor shows the blurred, dimmed picture (and the sentence on a wide item).

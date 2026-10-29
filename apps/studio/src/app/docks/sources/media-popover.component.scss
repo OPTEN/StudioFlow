@@ -1,31 +1,41 @@
-// Media popover: upload drop zone, upload progress, media list with rename and delete.
+// Media popover: the drop target, the running uploads and the media of the production with thumbnails.
 @use 'mixins' as *;
 
 .c-media-pop {
+  display: grid;
+  gap: 2px;
   max-width: calc(100vw - 32px);
   overflow: auto;
+  overscroll-behavior: contain;
   width: 380px;
 }
 
-.c-media-pop__head {
-  border-top: 1px solid var(--seam-strong);
-  margin-top: 6px;
-  padding-top: 10px;
+.c-media-pop__title {
+  @include heading-text;
+  padding: 8px 10px 6px;
 }
 
+.c-media-pop__head {
+  @include label-text;
+  border-top: 1px solid var(--seam);
+  margin: 6px 4px 0;
+  padding: 10px 6px 4px;
+}
+
+// Drop target (dashed: a drag and drop target).
 .c-media-pop__drop {
   @include state-transition(background-color, border-color);
   align-items: center;
-  border: 1px dashed var(--control-edge);
-  border-radius: var(--radius-md);
+  border: 1.5px dashed var(--control-edge);
+  border-radius: 10px;
   color: var(--text-2);
   cursor: pointer;
   display: grid;
-  font-size: 13px;
+  font-size: var(--fs-body);
   gap: 4px;
   justify-items: center;
-  margin: 2px 8px 8px;
-  padding: 14px 10px;
+  margin: 0 4px 6px;
+  padding: 14px 12px;
   text-align: center;
 
   &:hover,
@@ -35,11 +45,10 @@
   }
 
   &:has(:focus-visible) {
-    outline: 2px solid var(--blue);
-    outline-offset: 2px;
+    @include focus-ring;
   }
 
-  .c-icon {
+  > .c-icon {
     color: var(--muted);
     height: 20px;
     width: 20px;
@@ -49,12 +58,10 @@
 .c-media-pop__pick {
   color: var(--blue);
   font-weight: 600;
-  text-decoration: underline;
-  text-underline-offset: 3px;
 }
 
 .c-media-pop__note {
-  padding: 0 8px 6px;
+  padding: 0 10px 6px;
 }
 
 .c-media-pop__list {
@@ -62,55 +69,111 @@
   gap: 2px;
   list-style: none;
   margin: 0;
-  padding: 0 4px 4px;
+  padding: 0 0 2px;
 }
 
 .c-media-pop__upload,
 .c-media-pop__asset {
+  @include state-transition(background-color);
   border-radius: var(--radius-md);
   display: grid;
   gap: 6px;
-  padding: 6px 4px;
+  padding: 5px 4px 5px 6px;
 }
 
 .c-media-pop__asset:hover {
-  background: var(--raised-2);
+  background: var(--raised);
+}
+
+// Just uploaded: one step of accent, like a fresh item in a list.
+.c-media-pop__asset.is-new {
+  background: var(--blue-wash);
 }
 
 .c-media-pop__row {
   align-items: center;
   display: flex;
   gap: 8px;
-  min-height: 28px;
+  min-height: 34px;
   min-width: 0;
+}
 
-  > .c-icon {
+// Thumbnail in the shape of a 16:9 picture (pictures stay dark in both themes) with the slot code on it.
+.c-media-pop__thumb {
+  align-items: center;
+  background: var(--well);
+  border-radius: var(--radius-xs);
+  box-shadow: 0 0 0 1px var(--seam);
+  color: var(--pic-muted);
+  display: inline-flex;
+  flex: none;
+  height: 34px;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+  width: 60px;
+
+  img {
+    height: 100%;
+    inset: 0;
+    object-fit: cover;
+    position: absolute;
+    width: 100%;
+  }
+
+  &.is-pending {
+    background: var(--fill);
+    box-shadow: none;
     color: var(--muted);
   }
+}
+
+.c-media-pop__code {
+  @include mono;
+  background: var(--pic-scrim);
+  border-radius: 3px;
+  bottom: 2px;
+  color: var(--pic-text);
+  font-size: 10px;
+  font-weight: 600;
+  left: 2px;
+  line-height: 1;
+  padding: 2px 3px;
+  position: absolute;
 }
 
 .c-media-pop__text {
   display: grid;
   flex: 1 1 auto;
+  gap: 2px;
   min-width: 0;
 }
 
 .c-media-pop__name {
   @include ellipsis;
-  flex: 1 1 auto;
-  font-size: 13.5px;
+  font-size: var(--fs-body);
   font-weight: 600;
 }
 
 .c-media-pop__meta {
   @include ellipsis;
+  @include mono;
   color: var(--muted);
-  flex: none;
-  font-size: 12px;
+  font-size: var(--fs-footnote);
 }
 
 .c-media-pop__edit {
   flex: 1 1 auto;
+}
+
+.c-media-pop__in-scene {
+  align-items: center;
+  color: var(--muted);
+  display: inline-flex;
+  flex: none;
+  font-size: var(--fs-footnote);
+  gap: 3px;
+  padding: 0 4px;
 }
 
 .c-media-pop__delete:hover {
@@ -119,14 +182,15 @@
 
 .c-media-pop__progress {
   align-items: center;
+  color: var(--muted);
   display: flex;
-  font-size: 12px;
+  font-size: var(--fs-footnote);
   gap: 8px;
 }
 
 .c-media-pop__bar {
-  background: var(--ground);
-  border-radius: 2px;
+  background: var(--fill);
+  border-radius: var(--radius-pill);
   flex: 1 1 auto;
   height: 4px;
   overflow: hidden;
@@ -139,9 +203,29 @@
   transition: width var(--dur-state) linear;
 }
 
+// Still used somewhere: attention (orange), not a failure.
 .c-media-pop__inuse {
-  color: var(--text-2);
-  font-size: 12.5px;
+  align-items: flex-start;
+  background: var(--amber-wash);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  display: flex;
+  font-size: var(--fs-footnote);
+  gap: 6px;
+  line-height: 1.4;
   margin: 0;
-  padding: 0 4px;
+  padding: 6px 8px;
+
+  .c-icon {
+    color: var(--amber);
+    flex: none;
+    margin-top: 1px;
+  }
+}
+
+.c-media-pop__empty {
+  color: var(--muted);
+  font-size: var(--fs-footnote);
+  margin: 0;
+  padding: 4px 10px 8px;
 }

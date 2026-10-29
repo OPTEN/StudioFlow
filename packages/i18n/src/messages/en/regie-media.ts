@@ -7,15 +7,21 @@ export const regieMedia = {
 
   'regie.media.label': 'Media',
 
+  'regie.media.library.add': 'Add',
+  'regie.media.library.addLabel': 'Add {name} to “{scene}”',
   'regie.media.library.delete': 'Delete: {name}',
   'regie.media.library.deleteLabel': 'Delete file',
   'regie.media.library.deleteMessage': '“{name}” will be deleted. This cannot be undone.',
   'regie.media.library.empty': 'No media uploaded yet.',
-  'regie.media.library.inUse': 'in use',
+  'regie.media.library.inScene': 'In scene',
   'regie.media.library.nameLabel': 'File name',
   'regie.media.library.removeFirst': 'Remove it there first.',
   'regie.media.library.rename': 'Rename: {name}',
-  'regie.media.library.title': 'Production media',
+  'regie.media.library.title': 'In this production',
+
+  'regie.media.menu.addTo': 'Add to “{scene}”',
+  'regie.media.menu.delete': 'Delete…',
+  'regie.media.menu.rename': 'Rename',
 
   'regie.media.toast.addToScene': 'Add to scene',
   'regie.media.toast.cancelled': 'Upload of “{name}” cancelled',
@@ -25,9 +31,8 @@ export const regieMedia = {
   'regie.media.toast.uploaded': '“{name}” is uploaded and available as {code}',
 
   'regie.media.upload.hint': 'PNG, JPEG or WebP up to 25 MB · MP4 or WebM up to 1 GB',
-  'regie.media.upload.pick': 'choose a file',
-  'regie.media.upload.prompt': 'Drag here or {pick}',
-  'regie.media.upload.title': 'Upload image or video',
+  'regie.media.upload.pick': 'choose files',
+  'regie.media.upload.prompt': 'Drag images or videos here, or {pick}',
 
   'regie.media.uploads.aborted': 'cancelled',
   'regie.media.uploads.addToScene': 'Add to “{scene}”',

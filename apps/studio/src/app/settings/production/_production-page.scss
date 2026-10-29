@@ -1,0 +1,91 @@
+// Pieces the production pages of the settings window share, on top of the `.c-page` and `.c-group` primitives.
+@use 'mixins' as *;
+
+// A value on the right of a row with its action next to it (the name and "Rename").
+.c-prod-page__value {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.c-prod-page__name {
+  @include ellipsis;
+  color: var(--text-2);
+}
+
+// A field with its buttons on one line (rename in place, add an address).
+.c-prod-page__inline {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+
+  .c-input {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .c-btn {
+    flex: none;
+  }
+
+  @include narrow {
+    flex-wrap: wrap;
+  }
+}
+
+// A quiet notice inside a group: an icon and a sentence (live lock, what a choice does). Neutral, never red.
+.c-prod-page__notice {
+  align-items: start;
+  color: var(--text-2);
+  gap: 10px;
+  grid-template-columns: auto minmax(0, 1fr);
+  margin: 0;
+  min-height: 0;
+
+  .c-icon {
+    color: var(--muted);
+    margin-top: 1px;
+  }
+}
+
+// A field with its label above it (inside a stacked row).
+.c-prod-page__field {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.c-prod-page__label {
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+// A row after the canvas picker (its rows live inside the picker element) or after an open form draws its hairline.
+.c-prod-page__picker + .c-group__row,
+.c-prods__form + .c-group__row {
+  box-shadow: inset 0 1px 0 var(--seam);
+}
+
+// A small neutral capsule next to a name ("Active", "On the output now").
+.c-prod-page__tag {
+  align-items: center;
+  background: var(--fill);
+  border-radius: var(--radius-pill);
+  color: var(--text-2);
+  display: inline-flex;
+  flex: none;
+  font-size: 11px;
+  font-weight: 600;
+  gap: 4px;
+  line-height: 1;
+  padding: 3px 8px;
+  white-space: nowrap;
+
+  .c-icon {
+    height: 12px;
+    width: 12px;
+  }
+}

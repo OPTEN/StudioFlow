@@ -1,9 +1,15 @@
-<sf-dock-frame dock="pair" [draggable]="false" [scroll]="false">
+<sf-dock-frame
+  dock="pair"
+  [title]="t('regie.pairing.dock.title')"
+  [draggable]="false"
+  [scroll]="false"
+>
   <button
     sfDockActions
     class="c-ibtn"
     type="button"
     [attr.aria-label]="t('regie.pairing.dock.close')"
+    [title]="t('regie.pairing.dock.close')"
     (click)="layout.closePairing()"
   >
     <svg sfIcon="close"></svg>
@@ -12,7 +18,7 @@
   <div class="c-pair">
     <div class="c-pair__main">
       <div
-        class="c-tabs"
+        class="c-tabs c-pair__tabs"
         role="tablist"
         [attr.aria-label]="t('regie.pairing.dock.tabs')"
         (keydown)="onTabKeyDown($event)"
@@ -28,7 +34,7 @@
             [attr.tabindex]="layout.pairingTab() === tab.id ? 0 : -1"
             (click)="select(tab.id)"
           >
-            <svg [sfIcon]="tab.icon"></svg>{{ t(tab.labelKey) }}
+            <svg [sfIcon]="tab.icon" [size]="15"></svg>{{ t(tab.labelKey) }}
           </button>
         }
       </div>
@@ -52,14 +58,14 @@
       </div>
     </div>
     <div class="c-pair__side">
-      @if (layout.pairingTab() === 'phone') {
-        <h3 class="c-pair__side-title">{{ t('regie.pairing.dock.tipsTitle') }}</h3>
-        <p class="c-pair__side-text">{{ t('regie.pairing.dock.tipsText') }}</p>
-        @if (requests.pending().length > 0) {
-          <sf-pairing-requests />
-        }
-      } @else {
+      @if (layout.pairingTab() !== 'phone' || requests.pending().length > 0) {
         <sf-pairing-requests />
+      }
+      @if (layout.pairingTab() === 'phone') {
+        <section class="c-pair__tips">
+          <h3 class="c-pair__side-title">{{ t('regie.pairing.dock.tipsTitle') }}</h3>
+          <p class="c-pair__side-text">{{ t('regie.pairing.dock.tipsText') }}</p>
+        </section>
       }
     </div>
   </div>

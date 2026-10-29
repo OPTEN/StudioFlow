@@ -1,97 +1,95 @@
 <main class="c-login">
-  <div class="c-login__col c-wizard__col">
-    <header class="c-wizard__head">
-      <h1 class="c-login__brand"><svg sfIcon="mark"></svg>StudioFlow</h1>
-      <h2 class="c-login__lead">{{ t('regie.server.wizard.lead') }}</h2>
+  <div class="c-login__card c-login__card--wide">
+    <sf-setup-steps [current]="step()" />
 
-      <div class="c-wizard__progress">
-        <div class="c-wizard__bar" aria-hidden="true">
-          @for (segment of segments(); track $index) {
-            <span
-              class="c-wizard__seg"
-              [class.is-done]="segment === 'done'"
-              [class.is-current]="segment === 'current'"
-            ></span>
-          }
-        </div>
-        <p class="c-wizard__step" aria-live="polite">
-          @if (step() === 'done') {
-            {{ t('regie.server.wizard.doneTitle') }}
-          } @else {
-            {{ t('regie.server.wizard.step', { current: stepNumber(), total: total }) }} ·
-            {{ stepLabel() }}
-          }
-        </p>
-      </div>
+    <header class="c-login__head">
+      <svg class="c-login__mark" sfIcon="mark"></svg>
+      <h1 class="c-login__title c-wizard__title" #title tabindex="-1">{{ t(text().title) }}</h1>
+      <p class="c-login__lead">{{ t(text().lead) }}</p>
     </header>
 
     @if (settings.settings()) {
       @switch (step()) {
         @case ('media') {
-          <section class="c-wizard__section" aria-labelledby="wizard-media">
-            <h3 class="c-wizard__title" id="wizard-media">{{ t('regie.server.media.heading') }}</h3>
-            <sf-media-section mode="next" (saved)="mediaSaved()" />
-          </section>
+          <sf-media-section mode="next" (saved)="mediaSaved()" />
         }
         @case ('address') {
-          <section class="c-wizard__section" aria-labelledby="wizard-address">
-            <h3 class="c-wizard__title" id="wizard-address">
-              {{ t('regie.server.address.heading') }}
-            </h3>
-            <sf-address-section mode="next" (saved)="addressSaved($event)" />
-            <div class="c-wizard__skip">
-              <button class="c-btn c-btn--sm" type="button" (click)="skip()">
-                {{ t('regie.server.wizard.keep') }}
-              </button>
-            </div>
-          </section>
+          <sf-address-section mode="next" (saved)="addressSaved($event)">
+            <p sfSectionNote class="c-wizard__keep">{{ t('regie.server.wizard.keepAddress') }}</p>
+            <button
+              sfSectionStart
+              class="c-btn c-btn--plain c-wizard__back"
+              type="button"
+              (click)="back()"
+            >
+              <svg sfIcon="chev-left" [size]="14"></svg>{{ t('regie.server.wizard.back') }}
+            </button>
+            <button class="c-btn" type="button" (click)="skip()">
+              {{ t('regie.server.wizard.keep') }}
+            </button>
+          </sf-address-section>
         }
         @case ('embedding') {
-          <section class="c-wizard__section" aria-labelledby="wizard-embedding">
-            <h3 class="c-wizard__title" id="wizard-embedding">
-              {{ t('regie.server.embedding.heading') }}
-            </h3>
-            <sf-embedding-section mode="next" (saved)="embeddingSaved()" />
-            <div class="c-wizard__skip">
-              <button class="c-btn c-btn--sm" type="button" (click)="skip()">
-                {{ t('regie.server.wizard.keep') }}
-              </button>
-            </div>
-          </section>
+          <sf-embedding-section mode="next" (saved)="embeddingSaved()">
+            <p sfSectionNote class="c-wizard__keep">{{ t('regie.server.wizard.keepEmbedding') }}</p>
+            <button
+              sfSectionStart
+              class="c-btn c-btn--plain c-wizard__back"
+              type="button"
+              (click)="back()"
+            >
+              <svg sfIcon="chev-left" [size]="14"></svg>{{ t('regie.server.wizard.back') }}
+            </button>
+            <button class="c-btn" type="button" (click)="skip()">
+              {{ t('regie.server.wizard.keep') }}
+            </button>
+          </sf-embedding-section>
         }
         @case ('done') {
-          <section class="c-wizard__section" aria-labelledby="wizard-done">
-            <h3 class="c-wizard__title" id="wizard-done">
-              {{ t('regie.server.wizard.doneTitle') }}
-            </h3>
-            <p class="c-wizard__text">{{ t('regie.server.wizard.doneText') }}</p>
-            @if (newAddress(); as url) {
-              <p class="c-wizard__text">
-                {{ t('regie.server.wizard.doneNewAddress') }}
-                <a class="c-wizard__link" [href]="url">{{
-                  t('regie.server.wizard.doneNewAddressLink', { url })
-                }}</a>
-              </p>
-            }
-            <button class="c-btn c-btn--fill c-login__submit" type="button" (click)="open()">
-              {{ t('regie.server.wizard.doneOpen') }}
-            </button>
-          </section>
+          @if (newAddress(); as url) {
+            <p class="c-wizard__note">
+              <svg sfIcon="info" [size]="15"></svg>
+              <span>{{ t('regie.server.wizard.doneNewAddress') }}</span>
+            </p>
+            <div class="c-login__actions">
+              <button class="c-btn c-btn--plain c-login__secondary" type="button" (click)="open()">
+                {{ t('regie.server.wizard.doneHere') }}
+              </button>
+              <a class="c-btn c-btn--lg c-btn--fill c-wizard__link" [href]="url">{{
+                t('regie.server.wizard.doneNewAddressLink', { url })
+              }}</a>
+            </div>
+          } @else {
+            <div class="c-login__actions">
+              <button
+                class="c-btn c-btn--lg c-btn--fill c-login__submit"
+                type="button"
+                (click)="open()"
+              >
+                {{ t('regie.server.wizard.doneOpen') }}
+              </button>
+            </div>
+          }
         }
       }
     } @else if (loadFailed()) {
-      <div class="c-wizard__section">
+      <div class="c-wizard__state">
         <p class="c-login__error" role="alert">
-          <svg sfIcon="alert" [size]="14"></svg>{{ t('regie.server.wizard.loadError') }}
+          <svg sfIcon="alert" [size]="14"></svg
+          ><span>{{ t('regie.server.wizard.loadError') }}</span>
         </p>
-        <button class="c-btn" type="button" (click)="load()">{{ t('regie.server.retry') }}</button>
+        <div class="c-login__actions">
+          <button class="c-btn c-btn--lg c-btn--fill" type="button" (click)="load()">
+            {{ t('regie.server.retry') }}
+          </button>
+        </div>
       </div>
     } @else {
-      <p class="c-wizard__text">{{ t('regie.server.loading') }}</p>
+      <p class="c-wizard__state c-hint" role="status">{{ t('regie.server.loading') }}</p>
     }
-
-    <footer class="c-login__footer">
-      <sf-language-select />
-    </footer>
   </div>
+
+  <footer class="c-login__footer c-login__footer--wide">
+    <sf-language-select variant="inline" />
+  </footer>
 </main>

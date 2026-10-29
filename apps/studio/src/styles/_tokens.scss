@@ -1,4 +1,4 @@
-// Design tokens of the Regie (DESIGN.md; docs/history/design/design.json is the design-phase source).
+// Design tokens of the Regie (DESIGN.md).
 //
 // Colours are CSS custom properties in three groups, so no component stylesheet ever branches on the theme:
 // - the theme maps (`$theme-dark`, `$theme-light`) hold every colour that changes with the appearance. Dark is the
@@ -6,131 +6,188 @@
 //   ('dark' or 'light'), set before the first paint by public/theme-init.js and kept by ThemeService.
 // - `$picture` holds the picture surfaces (monitors, thumbnails, previews). They stay dark in both themes, together
 //   with the ink, tally and guide colours that sit on them (`--pic-*`); the renderer's canvas colours are unchanged.
-// - everything else (fonts, radii, motion, layout) does not depend on the theme.
+// - everything else (fonts, sizes, radii, motion, layout) does not depend on the theme.
+//
+// The neutral ladder follows the system materials of Apple's platforms: a viewer surface behind the monitors (`stage`),
+// the window chrome of toolbar and docks (`panel`), hover and selection steps (`raised`, `raised-2`), floating layers
+// (`float`), and the grouped surfaces of the settings window (`sidebar`, `grouped`, `group`). Saturated hues carry state
+// only (DESIGN.md "Colour is state"); the section tiles of the settings sidebar are the one place a hue names something.
 //
 // Every non-colour token exists twice: as a Sass variable with `!default` for compile-time use (mixins, calculations)
-// and as a CSS custom property on `:root` for runtime use (`var(--radius-md)`). The custom property names are
-// identical to the prototype (prototype/regie.html), so prototype CSS ports 1:1.
+// and as a CSS custom property on `:root` for runtime use (`var(--radius-md)`).
 //
 // This file emits no CSS by itself. `styles.scss` includes `custom-properties` exactly once; component stylesheets
 // may `@use 'tokens'` for the Sass variables without duplicating the `:root` block.
 
-// Colours: dark console (default). Neutral graphite ladder, then the state hues (each has exactly one meaning, see
-// DESIGN.md "The State-Only Colour Rule"), then text on fills, washes and floating layers.
+// Colours: dark appearance (default). Neutral ladder, then the state hues (each has exactly one meaning), then text on
+// fills, washes, the grouped settings surfaces and floating layers.
 $theme-dark: (
-  'ground': #0d1117,
-  'panel': #151a22,
-  'raised': #1b212b,
-  'raised-2': #232a36,
-  'float': #1b212b,
-  'seam': #262c36,
-  'seam-strong': #353d4a,
-  'control-edge': #636d7b,
-  'btn-hover-border': #445064,
-  'text': #e6edf3,
-  'text-2': #b4bdc8,
-  'muted': #8b949e,
-  'blue': #79c0ff,
-  'blue-fill': #1f6feb,
-  'blue-fill-hover': #1a5fd0,
-  'green': #56d364,
-  'green-hover': #6fe07c,
-  'red': #ff6a63,
-  'red-flash': #ff8a80,
-  'amber': #e3b341,
-  'violet': #c678dd,
+  'stage': #131315,
+  'ground': #29292d,
+  'panel': #1e1e21,
+  'raised': #29292d,
+  'raised-2': #313135,
+  'float': #2a2a2e,
+  'sidebar': #1b1b1e,
+  'grouped': #151517,
+  'group': #232326,
+  'seam': #333337,
+  'seam-strong': #48484d,
+  'control-edge': #7a7a81,
+  'fill': rgba(120, 120, 128, 0.24),
+  'fill-hover': rgba(120, 120, 128, 0.32),
+  'btn-hover-border': #5c5c62,
+  'text': #f5f5f7,
+  'text-2': #d0d0d6,
+  'muted': #a1a1a8,
+  'blue': #5aa9ff,
+  'blue-ink': #9ccbff,
+  'blue-fill': #0071e3,
+  'blue-fill-hover': #0062c4,
+  'green': #30d158,
+  'green-hover': #4ade6c,
+  'red': #ff6961,
+  'red-flash': #ff8f87,
+  'amber': #ff9f0a,
+  'violet': #d0d0d6,
   'on-fill': #ffffff,
-  'on-state': #0d1117,
-  'red-wash': rgba(248, 81, 73, 0.1),
-  'amber-wash': rgba(227, 179, 65, 0.1),
-  'green-wash': rgba(86, 211, 100, 0.08),
-  'blue-wash': rgba(121, 192, 255, 0.08),
-  'scroll-edge': rgba(1, 4, 9, 0.65),
+  'on-state': #1c1c1e,
+  'red-wash': rgba(255, 105, 97, 0.14),
+  'amber-wash': rgba(255, 159, 10, 0.13),
+  'green-wash': rgba(48, 209, 88, 0.12),
+  'blue-wash': rgba(90, 169, 255, 0.14),
+  'scroll-edge': rgba(0, 0, 0, 0.55),
   'shadow-pop': (
-    0 4px 10px rgba(1, 4, 9, 0.5),
+    0 12px 32px rgba(0, 0, 0, 0.42),
+    0 2px 6px rgba(0, 0, 0, 0.28),
+    0 0 0 0.5px rgba(255, 255, 255, 0.1),
+  ),
+  'shadow-raise': (
+    0 1px 2px rgba(0, 0, 0, 0.4),
+    0 0 0 0.5px rgba(0, 0, 0, 0.3),
   ),
 ) !default;
 
-// Colours: light console. The same names; state hues are darkened for text and lamps on a light surface (WCAG AA,
-// checked by tools/lib/studio-theme-contrast.spec.ts). Action Blue and its hover stay, white text passes on them.
+// Colours: light appearance. The same names; the state hues are darkened for text and lamps on light surfaces (WCAG AA,
+// checked by tools/lib/studio-theme-contrast.spec.ts). Action Blue and its pressed step carry white text in both.
 $theme-light: (
+  'stage': #e6e6eb,
   'ground': #ffffff,
-  'panel': #f3f5f8,
-  'raised': #e9edf2,
-  'raised-2': #dfe4eb,
+  'panel': #f7f7f9,
+  'raised': #ececf0,
+  'raised-2': #e2e2e7,
   'float': #ffffff,
-  'seam': #d8dde4,
-  'seam-strong': #818b99,
-  'control-edge': #7c8694,
-  'btn-hover-border': #6b7684,
-  'text': #17202b,
-  'text-2': #3a4552,
-  'muted': #566170,
-  'blue': #0a5cc7,
-  'blue-fill': #1f6feb,
-  'blue-fill-hover': #1a5fd0,
-  'green': #146a2a,
-  'green-hover': #115c25,
-  'red': #b71c28,
-  'red-flash': #ff5a52,
-  'amber': #8a5800,
-  'violet': #7a3fd0,
+  'sidebar': #ececf0,
+  'grouped': #f2f2f7,
+  'group': #ffffff,
+  'seam': #dedee3,
+  'seam-strong': #c6c6cc,
+  'control-edge': #85858b,
+  'fill': rgba(118, 118, 128, 0.12),
+  'fill-hover': rgba(118, 118, 128, 0.2),
+  'btn-hover-border': #a8a8ae,
+  'text': #1d1d1f,
+  'text-2': #3a3a3e,
+  'muted': #5c5c63,
+  'blue': #005fc2,
+  'blue-ink': #004c9c,
+  'blue-fill': #0071e3,
+  'blue-fill-hover': #0062c4,
+  'green': #146c2e,
+  'green-hover': #105a26,
+  'red': #c2001b,
+  'red-flash': #ff453a,
+  'amber': #9a4700,
+  'violet': #3a3a3e,
   'on-fill': #ffffff,
   'on-state': #ffffff,
-  'red-wash': rgba(196, 32, 43, 0.09),
-  'amber-wash': rgba(190, 120, 0, 0.13),
-  'green-wash': rgba(22, 114, 46, 0.08),
-  'blue-wash': rgba(10, 92, 199, 0.07),
-  'scroll-edge': rgba(31, 41, 55, 0.14),
+  'red-wash': rgba(194, 0, 27, 0.08),
+  'amber-wash': rgba(196, 98, 0, 0.11),
+  'green-wash': rgba(20, 108, 46, 0.09),
+  'blue-wash': rgba(0, 113, 227, 0.09),
+  'scroll-edge': rgba(0, 0, 0, 0.1),
   'shadow-pop': (
-    0 4px 12px rgba(31, 41, 55, 0.2),
+    0 12px 32px rgba(0, 0, 0, 0.14),
+    0 2px 6px rgba(0, 0, 0, 0.08),
+    0 0 0 0.5px rgba(0, 0, 0, 0.12),
+  ),
+  'shadow-raise': (
+    0 1px 2px rgba(0, 0, 0, 0.12),
+    0 0 0 0.5px rgba(0, 0, 0, 0.08),
   ),
 ) !default;
 
 // Colours: picture surfaces and what sits on them. The same in both themes (DESIGN.md "Picture areas stay dark").
 $picture: (
-  'well': #05070a,
-  'slot': #3a4352,
-  'slot-strong': #5a6578,
-  'pic-ink': #0d1117,
-  'pic-text': #e6edf3,
-  'pic-text-2': #b4bdc8,
-  'pic-muted': #8b949e,
-  'pic-blue': #79c0ff,
-  'pic-red': #f85149,
-  'pic-amber': #e3b341,
-  'pic-scrim': rgba(13, 17, 23, 0.9),
+  'well': #000000,
+  'slot': #3a3a3f,
+  'slot-strong': #5f5f66,
+  'pic-ink': #1c1c1e,
+  'pic-text': #f5f5f7,
+  'pic-text-2': #d0d0d6,
+  'pic-muted': #a1a1a8,
+  'pic-blue': #5aa9ff,
+  'pic-red': #ff6961,
+  'pic-amber': #ff9f0a,
+  'pic-scrim': rgba(0, 0, 0, 0.72),
 ) !default;
 
-// Typography
-$font-ui: 'Sofia Sans Semi Condensed', 'Arial Narrow', system-ui, sans-serif !default;
-$font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace !default;
-$font-size-brand: 16.5px !default;
-$font-size-title: 15px !default;
-$font-size-body: 14px !default;
-$font-size-control: 13px !default;
-$font-size-control-sm: 12.5px !default;
-$font-size-meta: 12.5px !default;
-$font-size-label: 11.5px !default;
-$font-size-label-sm: 11px !default;
-$font-size-tag: 10.5px !default;
-$font-size-take: 15px !default;
-$font-size-mono-value: 12.5px !default;
-$font-size-mono-meta: 11.5px !default;
-$font-size-mono-code: 11.5px !default;
-$font-size-mono-pair-code: 24px !default;
-$letter-spacing-label: 0.09em !default;
-$letter-spacing-tag: 0.08em !default;
-$line-height-body: 1.4 !default;
+// Section tiles of the settings sidebar: a white glyph on a hue, the same in both themes (identity, not state; DESIGN.md
+// "Settings"). Every tile keeps 3:1 against its white glyph.
+$tiles: (
+  'tile-blue': #0a6cdb,
+  'tile-indigo': #4b4fd1,
+  'tile-purple': #8e44c9,
+  'tile-pink': #c92f6b,
+  'tile-orange': #c95f00,
+  'tile-green': #1f8a3f,
+  'tile-teal': #0b7f8f,
+  'tile-gray': #6b6b72,
+) !default;
 
-// Shapes
-$radius-screen: 2px !default;
-$radius-xs: 3px !default;
-$radius-md: 4px !default;
-$radius-lg: 6px !default;
-$radius-switch: 10px !default;
+// Typography: the platform's own UI font (SF Pro on Apple devices, Segoe UI Variable on Windows, Roboto on Android),
+// tabular figures for every number. Mono only for codes, addresses and keys.
+$font-ui:
+  -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI Variable Text', 'Segoe UI', system-ui,
+  Roboto, 'Helvetica Neue', Arial, sans-serif !default;
+$font-display:
+  -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI Variable Display', 'Segoe UI',
+  system-ui, Roboto, 'Helvetica Neue', Arial, sans-serif !default;
+$font-mono:
+  ui-monospace, 'SF Mono', 'Cascadia Mono', 'Segoe UI Mono', Menlo, Consolas, monospace !default;
 
-// Spacing scale (4 / 6 / 8 / 10 / 12 / 16 / 20)
+// Type scale (Apple text styles, desktop sizes): caption 11, footnote 12, body 13, callout 14, headline 15, title 17 /
+// 20 / 24, large title 28.
+$font-size-caption: 11px !default;
+$font-size-footnote: 12px !default;
+$font-size-body: 13px !default;
+$font-size-callout: 14px !default;
+$font-size-headline: 15px !default;
+$font-size-title-3: 17px !default;
+$font-size-title-2: 20px !default;
+$font-size-title-1: 24px !default;
+$font-size-large-title: 28px !default;
+$line-height-body: 1.38 !default;
+$line-height-tight: 1.2 !default;
+$letter-spacing-title: -0.01em !default;
+$letter-spacing-large: -0.02em !default;
+
+// Shapes: picture screens, chips, controls, grouped sections, floating layers, capsules.
+$radius-screen: 6px !default;
+$radius-xs: 4px !default;
+$radius-sm: 6px !default;
+$radius-md: 7px !default;
+$radius-lg: 12px !default;
+$radius-xl: 14px !default;
+$radius-pill: 999px !default;
+$radius-switch: 999px !default;
+
+// Control heights: regular, small, large (forms and dialogs).
+$control-height: 28px !default;
+$control-height-sm: 24px !default;
+$control-height-lg: 34px !default;
+
+// Spacing scale (4 / 6 / 8 / 10 / 12 / 16 / 20 / 24 / 32)
 $space-hairline: 1px !default;
 $space-xs: 4px !default;
 $space-sm: 6px !default;
@@ -139,26 +196,31 @@ $space-row: 10px !default;
 $space-lg: 12px !default;
 $space-gutter: 16px !default;
 $space-stage: 20px !default;
+$space-xl: 24px !default;
+$space-2xl: 32px !default;
 
 // Elevation (only floating layers have shadows; the popover shadow is part of the theme maps)
-$shadow-selected: inset 0 -2px 0 var(--blue) !default;
+$shadow-selected: inset 0 0 0 1px var(--blue) !default;
 $shadow-splitter: 0 0 0 1px var(--blue) !default;
+$shadow-focus: 0 0 0 3px color-mix(in srgb, var(--blue) 45%, transparent) !default;
 
-// Motion
-$ease: cubic-bezier(0.2, 0.8, 0.2, 1) !default;
-$duration-state: 150ms !default;
+// Motion: state changes ease out quickly; reveals take a little longer.
+$ease: cubic-bezier(0.22, 1, 0.36, 1) !default;
+// "Spring" in name only: a soft settle without overshoot (nothing in the UI bounces).
+$ease-spring: cubic-bezier(0.32, 0.72, 0, 1) !default;
+$duration-state: 160ms !default;
 $duration-splitter-delay: 100ms !default;
-$duration-reveal: 200ms !default;
+$duration-reveal: 240ms !default;
 $duration-tally-flash: 500ms !default;
 $duration-lamp-pulse: 1200ms !default;
 $duration-station-flash: 1000ms !default;
 
 // Layout
-$layout-header-height: 50px !default;
-$layout-status-height: 38px !default;
+$layout-header-height: 52px !default;
+$layout-status-height: 36px !default;
 $layout-dock-header-height: 40px !default;
 $layout-dock-header-height-short: 36px !default;
-$layout-control-column: 172px !default;
+$layout-control-column: 176px !default;
 $layout-monitor-split: 20px !default;
 $layout-side-width: 320px !default;
 $layout-side-min: 220px !default;
@@ -166,6 +228,8 @@ $layout-side-max: 42% !default;
 $layout-bottom-min: 150px !default;
 $layout-stage-min: 160px !default;
 $layout-splitter-hit: 9px !default;
+$layout-settings-sidebar: 248px !default;
+$layout-settings-content: 680px !default;
 
 /// Emits the entries of a colour map as CSS custom properties.
 @mixin map-properties($tokens) {
@@ -179,16 +243,35 @@ $layout-splitter-hit: 9px !default;
   color-scheme: dark;
   @include map-properties($theme-dark);
   @include map-properties($picture);
+  @include map-properties($tiles);
   --font-ui: #{$font-ui};
+  --font-display: #{$font-display};
   --font-mono: #{$font-mono};
+  --fs-caption: #{$font-size-caption};
+  --fs-footnote: #{$font-size-footnote};
+  --fs-body: #{$font-size-body};
+  --fs-callout: #{$font-size-callout};
+  --fs-headline: #{$font-size-headline};
+  --fs-title-3: #{$font-size-title-3};
+  --fs-title-2: #{$font-size-title-2};
+  --fs-title-1: #{$font-size-title-1};
+  --fs-large-title: #{$font-size-large-title};
   --radius-screen: #{$radius-screen};
   --radius-xs: #{$radius-xs};
+  --radius-sm: #{$radius-sm};
   --radius-md: #{$radius-md};
   --radius-lg: #{$radius-lg};
+  --radius-xl: #{$radius-xl};
+  --radius-pill: #{$radius-pill};
   --radius-switch: #{$radius-switch};
+  --control-h: #{$control-height};
+  --control-h-sm: #{$control-height-sm};
+  --control-h-lg: #{$control-height-lg};
   --shadow-selected: #{$shadow-selected};
   --shadow-splitter: #{$shadow-splitter};
+  --shadow-focus: #{$shadow-focus};
   --ease: #{$ease};
+  --ease-spring: #{$ease-spring};
   // Durations become 0s under prefers-reduced-motion (see _base.scss); always animate with these variables.
   --dur-state: #{$duration-state};
   --dur-splitter-delay: #{$duration-splitter-delay};

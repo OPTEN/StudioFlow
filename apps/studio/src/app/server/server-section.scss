@@ -1,5 +1,5 @@
-// A section of the server settings (the same in the first-run wizard and on the "Server settings" page): the intro, labelled
-// fields, hints, the result of a test and the row of actions. Only tokens; both themes follow.
+// A server form (the same on the server pages of the settings window and in the first-run wizard): a stack of grouped
+// sections (`.c-group`, primitives) with the few pieces the primitives do not have. Only tokens; both themes follow.
 @use 'mixins' as *;
 
 :host {
@@ -8,16 +8,11 @@
 
 .c-srv {
   display: grid;
-  gap: 14px;
-  max-width: 560px;
+  gap: 26px;
+  min-width: 0;
 }
 
-.c-srv__intro {
-  color: var(--text-2);
-  font-size: 13px;
-  margin: 0;
-}
-
+// A field inside a stacked group row: label, control, error, hint.
 .c-srv__field {
   display: grid;
   gap: 6px;
@@ -25,87 +20,14 @@
 }
 
 .c-srv__label {
-  color: var(--muted);
+  color: var(--text);
+  font-size: 13px;
+}
+
+// Addresses, host names, keys: read character by character.
+.c-srv__code {
+  @include code;
   font-size: 12.5px;
-}
-
-.c-srv__mono {
-  @include mono;
-}
-
-.c-srv__row {
-  align-items: center;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.c-srv__grid {
-  display: grid;
-  gap: 10px 14px;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-}
-
-.c-srv__group {
-  border-top: 1px solid var(--seam);
-  display: grid;
-  gap: 12px;
-  padding-top: 14px;
-}
-
-.c-srv__group-title {
-  color: var(--text);
-  font-size: 13px;
-  font-weight: 600;
-  margin: 0;
-}
-
-.c-srv__note {
-  color: var(--text-2);
-  font-size: 13px;
-  margin: 0;
-}
-
-.c-srv__link {
-  color: var(--blue);
-}
-
-// The outcome of a test or of applying the settings: a sentence with a lamp, never only a colour.
-.c-srv__result {
-  align-items: flex-start;
-  display: flex;
-  font-size: 13px;
-  gap: 8px;
-  margin: 0;
-
-  .c-lamp {
-    margin-top: 5px;
-  }
-}
-
-.c-srv__result--ok {
-  color: var(--text);
-}
-
-.c-srv__result--bad {
-  color: var(--red);
-}
-
-.c-srv__warning {
-  border: 1px dashed var(--amber);
-  border-radius: var(--radius-md);
-  color: var(--text-2);
-  font-size: 13px;
-  margin: 0;
-  padding: 8px 10px;
-}
-
-.c-srv__actions {
-  align-items: center;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding-top: 2px;
 }
 
 .c-srv__textarea {
@@ -116,16 +38,70 @@
   resize: vertical;
 }
 
-.c-srv__file {
-  color: var(--text-2);
-  font-size: 13px;
-  max-width: 100%;
+// A control on the right of a group row that must not stretch (number fields, time, selects).
+.c-srv__compact {
+  width: 140px;
 }
 
-.c-srv__suggestions {
+.c-srv__row {
+  align-items: center;
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 8px;
+}
+
+// A neutral note inside a form (the address will change; the restart that follows a save).
+.c-srv__note {
+  align-items: flex-start;
+  background: var(--fill);
+  border-radius: var(--radius-lg);
+  color: var(--text-2);
+  display: flex;
+  font-size: 13px;
+  gap: 8px;
+  line-height: 1.45;
+  padding: 10px 14px;
+
+  .c-icon {
+    color: var(--muted);
+    flex: none;
+    margin-top: 2px;
+  }
+}
+
+// The outcome of a test: a sentence with a lamp, never only a colour.
+.c-srv__result {
+  align-items: flex-start;
+  display: flex;
+  font-size: 13px;
+  gap: 8px;
+  line-height: 1.45;
+  margin: 0;
+
+  &:empty {
+    display: none;
+  }
+
+  .c-lamp {
+    margin-top: 5px;
+  }
+}
+
+// The action row of a form: what happens on save on the left, the one filled action on the right. In the wizard the
+// projected Back and "Keep the defaults" come first.
+.c-srv__actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.c-srv__actions-note {
+  color: var(--muted);
+  flex: 1 1 200px;
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .c-srv__table {
@@ -133,14 +109,35 @@
   font-size: 13px;
   width: 100%;
 
+  th,
   td {
-    border-bottom: 1px solid var(--seam);
-    color: var(--text-2);
-    padding: 6px 12px 6px 0;
-    vertical-align: baseline;
+    padding: 8px 14px;
+    text-align: left;
+    vertical-align: middle;
   }
 
-  td:first-child {
+  thead th {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 600;
+    padding-block: 9px 7px;
+  }
+
+  tbody tr {
+    box-shadow: inset 0 1px 0 var(--seam);
+  }
+
+  tbody td {
+    color: var(--text-2);
+  }
+
+  tbody td:first-child {
     color: var(--text);
   }
+}
+
+.c-srv__num {
+  @include mono;
+  text-align: right;
+  white-space: nowrap;
 }

@@ -12,6 +12,7 @@ import {
   cropBox,
   desiredPixelSize,
   heldBlurPx,
+  heldMessagePx,
   itemLook,
   mediaBox,
   type Box,
@@ -136,7 +137,7 @@ export class ItemView {
       color: PALETTE.text,
       'font-family': UI_FONT,
       'font-weight': '600',
-      'font-size': '30px',
+      'letter-spacing': '0.01em',
     });
     this.heldTextEl = createElement(doc, 'span', 'sf-r-held-text');
     this.borderEl = createElement(doc, 'div', 'sf-r-border', {
@@ -652,6 +653,7 @@ export class ItemView {
     setVisible(this.heldEl, darken, 'flex');
     if (darken) {
       setText(this.heldTextEl, t('renderer.held'));
+      setStyle(this.heldEl, 'font-size', px(heldMessagePx(rect.w, rect.h)));
     }
     setVisible(this.heldTextEl, rect.w >= HELD_MESSAGE_MIN_WIDTH, 'inline');
     this.renderFallback(showFallback);

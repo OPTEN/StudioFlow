@@ -1,0 +1,45 @@
+<sf-dock-frame dock="insp">
+  @if (loading()) {
+    <div class="c-empty">
+      <strong>{{ t('regie.properties.dock.loadingTitle') }}</strong
+      >{{ t('regie.docks.loadingText') }}
+    </div>
+  } @else if (editor.editScene(); as scene) {
+    @let item = editor.selectedItem();
+    <div class="c-insp-head" [attr.data-view]="item ? 'item' : 'scene'">
+      @if (item) {
+        <button
+          class="c-btn c-btn--sm c-btn--plain c-insp-head__back"
+          type="button"
+          aria-keyshortcuts="Escape"
+          [attr.aria-label]="t('regie.properties.dock.backLabel')"
+          [title]="t('regie.properties.dock.backTitle')"
+          (click)="backToScene()"
+        >
+          <svg sfIcon="chev-left"></svg>{{ t('regie.properties.dock.back') }}
+        </button>
+      }
+      <h2 #heading class="c-insp-head__title" tabindex="-1">
+        @if (item) {
+          <svg class="c-insp-head__icon" [sfIcon]="subject().icon"></svg>
+          <span class="c-code">{{ subject().code }}</span>
+          <span class="c-insp-head__name">{{ subject().name }}</span>
+        } @else {
+          <span class="c-insp-head__name">{{ scene.name }}</span>
+          <sf-scene-tag [sceneId]="scene.id" />
+        }
+      </h2>
+    </div>
+    <sf-edit-status class="c-insp-head__status" />
+    @if (item) {
+      <sf-element-inspector [item]="item" />
+    } @else {
+      <sf-scene-inspector [scene]="scene" />
+    }
+  } @else {
+    <div class="c-empty">
+      <strong>{{ t('regie.properties.dock.noSceneTitle') }}</strong
+      >{{ t('regie.properties.dock.noSceneText') }}
+    </div>
+  }
+</sf-dock-frame>

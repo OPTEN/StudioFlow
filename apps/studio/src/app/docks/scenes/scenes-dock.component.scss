@@ -1,27 +1,26 @@
-// Szenen dock (prototype .scene-list; horizontal strip ≤ 900 px).
+// Scenes dock: the navigator list (a horizontal strip ≤ 900 px) and its empty state.
 @use 'mixins' as *;
 
 .c-scenes-dock__list {
   align-content: start;
   display: grid;
   gap: 2px;
-  padding: 4px;
+  padding: 6px 6px 8px;
 
+  // The cards share their top edge: a card whose state wraps onto a second line grows downwards only.
   @include narrow {
+    align-items: flex-start;
     display: flex;
+    gap: 4px;
     overflow-x: auto;
     padding-bottom: 10px;
   }
 }
 
-.c-scenes-dock__keys {
-  white-space: nowrap;
+.c-scenes-dock__empty {
+  max-width: 44ch;
 }
 
-// Five docks side by side leave the Scenes dock about 210 px on a 1280 px screen, too little for the hint and the button:
-// the hint gives way, so that "Add scene" stays inside the head (the dock slot is the container).
-@container (max-width: 270px) {
-  .c-scenes-dock__keys {
-    display: none;
-  }
+.c-scenes-dock__actions {
+  margin-top: 12px;
 }

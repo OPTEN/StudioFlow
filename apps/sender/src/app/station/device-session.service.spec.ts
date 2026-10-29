@@ -33,7 +33,6 @@ import { actionErrorText } from './slot-errors';
 import {
   BLOCKED_RETRY_MS,
   DeviceSessionService,
-  MESSAGE_DISMISS_MS,
   OUTAGE_PROBE_MS,
   REMOTE_NOTICE_MS,
   REPORT_INTERVAL_MS,
@@ -401,7 +400,7 @@ describe('DeviceSessionService', () => {
     expect(service.tally().overall).toBe('program');
   });
 
-  it('a Regie message shows text and time, vibrates on phones and disappears after 15 s', async () => {
+  it('a Regie message shows text and time, vibrates on phones and stays until it is dismissed', async () => {
     const service = setup();
     await online(service);
 
@@ -415,11 +414,11 @@ describe('DeviceSessionService', () => {
 
     expect(service.message()).toMatchObject({ id: 'cmd_1', text: 'In 10 s live' });
     expect(environment.vibrate).toHaveBeenCalled();
-    await vi.advanceTimersByTimeAsync(MESSAGE_DISMISS_MS);
-    expect(service.message()).toBeNull();
+    await vi.advanceTimersByTimeAsync(10 * 60_000);
+    expect(service.message()).toMatchObject({ id: 'cmd_1' });
   });
 
-  it('“OK” dismisses a Regie message', async () => {
+  it('“Dismiss” hides a Regie message', async () => {
     const service = setup();
     await online(service);
     hub.emit('command', {

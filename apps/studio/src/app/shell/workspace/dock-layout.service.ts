@@ -33,7 +33,7 @@ function clamp(value: number, min: number, max: number): number {
  * weights, zone sizes, the monitor split, hidden docks and the temporary pairing dock. Persisted per browser
  * (`studioflow.layout`, v1); a stored layout with any inconsistency is replaced by the default.
  *
- * Used by the workspace (rendering, drag and drop, splitters), the header ("Docks and layout"), the stations dock
+ * Used by the workspace (rendering, drag and drop, splitters), the header ("Layout"), the devices dock
  * (pairing toggle) and the stage (monitor split: {@link split}, {@link monitorSplitBehavior}).
  */
 @Injectable({ providedIn: 'root' })
@@ -101,7 +101,7 @@ export class DockLayoutService {
     return zoneOf(this.layoutSignal(), id);
   }
 
-  /** Shows or hides a dock ("Docks and layout"); persisted. */
+  /** Shows or hides a dock ("Layout"); persisted. */
   setShown(id: DockId, shown: boolean): void {
     const layout = this.layoutSignal();
     const hidden = shown
@@ -110,9 +110,22 @@ export class DockLayoutService {
     this.commit({ ...layout, hidden });
   }
 
+  /** "Hide dock" of a dock's right-click menu: hides it with a toast that offers "Undo" ("Layout" shows it again). */
+  hideDock(id: DockId): void {
+    if (!this.isShown(id)) {
+      return;
+    }
+    this.setShown(id, false);
+    this.toasts.show(t('regie.workspace.menu.hidden', { dock: t(DOCK_TITLE_KEYS[id]) }), {
+      label: t('regie.workspace.layout.undo'),
+      run: () => this.setShown(id, true),
+    });
+  }
+
   /**
-   * Docks a dock in `zone` at `index` (drag and drop, keyboard); persisted. Shows "Stations is docked on the right"
-   * with "Reset layout". Returns false when nothing changed.
+   * Docks a dock in `zone` at `index` (drag and drop, keyboard); persisted. Shows "Devices is docked on the right"
+   * with "Undo", which puts the docks back where they were before this move (sizes and hidden docks stay as they are
+   * now). Returns false when nothing changed.
    */
   moveDock(id: DockId, zone: DockZone, index: number): boolean {
     const layout = this.layoutSignal();
@@ -121,9 +134,13 @@ export class DockLayoutService {
       return false;
     }
     this.commit(next);
-    this.toasts.show(t(`regie.workspace.docked.${zone}`, { dock: t(DOCK_TITLE_KEYS[id]) }), {
-      label: t('regie.workspace.layout.reset'),
-      run: () => this.resetLayout(),
+    const dock = t(DOCK_TITLE_KEYS[id]);
+    this.toasts.success(t(`regie.workspace.docked.${zone}`, { dock }), {
+      label: t('regie.workspace.layout.undo'),
+      run: () => {
+        this.commit({ ...this.layoutSignal(), zones: layout.zones });
+        this.toasts.show(t('regie.workspace.layout.moveUndone', { dock }));
+      },
     });
     return true;
   }
@@ -134,10 +151,17 @@ export class DockLayoutService {
     return target ? this.moveDock(id, target.zone, target.index) : false;
   }
 
-  /** Restores the default layout ("Reset layout"); persisted. */
+  /**
+   * Restores the default layout ("Reset layout…", after a confirmation); persisted. The toast offers "Undo", which
+   * brings back the whole layout as it was.
+   */
   resetLayout(): void {
+    const before = this.layoutSignal();
     this.commit(defaultLayout());
-    this.toasts.show(t('regie.workspace.layout.resetDone'));
+    this.toasts.success(t('regie.workspace.layout.resetDone'), {
+      label: t('regie.workspace.layout.undo'),
+      run: () => this.commit(before),
+    });
   }
 
   /** Sets the weights of two neighbouring docks while a splitter moves (not persisted until {@link save}). */
@@ -156,6 +180,23 @@ export class DockLayoutService {
     const defaults = defaultLayout().weights;
     const layout = this.layoutSignal();
     this.commit({ ...layout, weights: { ...layout.weights, [a]: defaults[a], [b]: defaults[b] } });
+  }
+
+  /**
+   * "Reset size" of a dock's right-click menu: its share of the zone and the zone's own size (the width of a side zone,
+   * the height of the bottom zone) go back to their defaults; persisted.
+   */
+  resetDockSize(id: DockId): void {
+    const defaults = defaultLayout();
+    const layout = this.layoutSignal();
+    const zone = zoneOf(layout, id);
+    const weights = { ...layout.weights, [id]: defaults.weights[id] };
+    if (zone === 'bottom') {
+      this.commit({ ...layout, weights, bottomH: null });
+    } else {
+      const key = zone === 'left' ? 'leftW' : 'rightW';
+      this.commit({ ...layout, weights, [key]: defaults[key] });
+    }
   }
 
   /** Height of the bottom zone as a fraction of the centre column (null = default height). */
@@ -218,7 +259,7 @@ export class DockLayoutService {
     this.pairingOpenSignal.set(false);
   }
 
-  /** Toggles the pairing dock ("Pair device"), opening on the Laptop tab like the prototype. */
+  /** Toggles the pairing dock ("Add device"), opening on the Laptop tab like the prototype. */
   togglePairing(): void {
     if (this.pairingOpenSignal()) {
       this.closePairing();

@@ -6,6 +6,7 @@ import { newUiContext } from '../../support/ui';
 import { expect, test } from '../../support/ui/fixtures';
 import { RegiePage } from '../../support/ui/regie';
 import { randomClientIp, recordRequests } from '../../support/regie/kit';
+import { openSettingsPage } from '../../support/regie/settings-window';
 
 /**
  * The login, the session and the presence of the Regie in the browser (docs/testing.md 2.1: E2E-AUTH-01 ... 05, 25, 26). The
@@ -204,7 +205,8 @@ test.describe('REGIE login and session', () => {
         path.startsWith('/hubs/studio/negotiate'),
       );
 
-      await first.page.getByRole('button', { name: /^Production .*, menu$/ }).click();
+      // Settings › Account: "Sign out" (no confirmation while nothing is on air).
+      await openSettingsPage(first.page, '/settings/account');
       await first.page.getByRole('button', { name: 'Sign out' }).click();
       const loggedOutAt = Date.now();
       await expect(first.page).toHaveURL(/\/login$/);
@@ -287,17 +289,17 @@ test.describe('REGIE login and session', () => {
   );
 
   test(
-    'E2E-AUTH-25 [regie ui] two operators: both stay signed in across a reload, both see “2 in the control room”, closing one brings the other back to one within 8 s',
+    'E2E-AUTH-25 [regie ui] two operators: both stay signed in across a reload, both see the presence count 2, closing one brings the other back to one within 8 s',
     t.p2,
     async ({ openRegie }) => {
       const first = await openRegie({ login: 'ui' });
       const second = await openRegie({ login: 'ui' });
-      const label = (page: Page) => page.locator('.c-header__presence-label');
+      const label = (page: Page) => page.locator('.c-header__presence-count');
       const reader = (page: Page) => page.locator('.c-header__presence .u-sr-only');
-      await expect(label(first.page)).toHaveText('2 in the control room', { timeout: 8000 });
-      await expect(label(second.page)).toHaveText('2 in the control room', { timeout: 8000 });
+      await expect(label(first.page)).toHaveText('2', { timeout: 8000 });
+      await expect(label(second.page)).toHaveText('2', { timeout: 8000 });
       await expect(reader(first.page), 'screen readers get the full sentence').toHaveText(
-        'Two people in the control room',
+        '2 people in the control room',
       );
 
       await first.page.reload();
@@ -306,11 +308,11 @@ test.describe('REGIE login and session', () => {
       await second.waitReady();
       expect(new URL(first.page.url()).pathname).toBe('/');
       expect(new URL(second.page.url()).pathname).toBe('/');
-      await expect(label(first.page)).toHaveText('2 in the control room', { timeout: 8000 });
+      await expect(label(first.page)).toHaveText('2', { timeout: 8000 });
 
       const closed = Date.now();
       await second.page.context().close();
-      await expect(label(first.page)).toHaveText('1 in the control room', { timeout: 8000 });
+      await expect(label(first.page)).toHaveText('1', { timeout: 8000 });
       await expect(reader(first.page)).toHaveText('One person in the control room');
       test.info().annotations.push({
         type: 'measurement',

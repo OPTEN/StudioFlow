@@ -49,7 +49,7 @@ test.describe('axe scans: Regie', () => {
     const { regie } = await openBusyRegie({ openRegie, pairContext, onCleanup }, { viewport: VIEWPORT, incident: 'reconnecting', studio: false });
     const { page } = regie;
     const scanner = new Scanner(page);
-    await expect(page.getByRole('region', { name: 'Messages' })).toContainText('reconnecting');
+    await expect(page.getByRole('region', { name: 'Activity' })).toContainText('reconnecting');
     await scanner.scan('regie-direct-incident');
     // a toast (direct mode: a scene click switches and confirms)
     await regie.clickScene('Break');
@@ -70,7 +70,7 @@ test.describe('axe scans: Regie', () => {
     await page.getByRole('button', { name: 'Cancel' }).first().click();
     // an element selected: the overlay box, the label tab and the handles (the first scene holds one)
     await regie.clickScene('Welcome');
-    await page.locator('.c-src__select').first().click();
+    await page.getByRole('button', { name: /^Select: / }).first().click();
     await expect(page.locator('.c-edit-box.is-sel')).toHaveCount(1);
     await scanner.scan('regie-element-selected');
     scanner.verify();
@@ -99,16 +99,17 @@ test.describe('axe scans: Regie', () => {
     void production;
   });
 
-  test('E2E-DEV-15 [axe, popovers] output, Docks and layout, production menu, add source, scene menu', tags('p1'), async ({ openRegie, pairContext, onCleanup }) => {
+  test('E2E-DEV-15 [axe, popovers] output, layout, issues of the activity bar, production menu, add source, scene menu', tags('p1'), async ({ openRegie, pairContext, onCleanup }) => {
     test.setTimeout(150_000);
     const { regie } = await openBusyRegie({ openRegie, pairContext, onCleanup }, { viewport: VIEWPORT, incident: 'reconnecting', studio: true });
     const { page } = regie;
     const scanner = new Scanner(page);
     const cases: Array<[string, () => ReturnType<typeof page.getByRole>, string]> = [
       ['output', () => page.getByRole('button', { name: /^Output/ }), '[role=dialog][aria-label=Output]'],
-      ['layout', () => page.getByRole('button', { name: 'Docks and layout' }), '[role=dialog][aria-label="Docks and layout"]'],
+      ['layout', () => page.getByRole('button', { name: 'Layout', exact: true }), '[role=dialog][aria-label="Layout"]'],
+      ['issues', () => page.locator('sf-status-line .c-status__health'), '#sf-pop-issues'],
       ['production-menu', () => page.getByRole('button', { name: /^Production .*, menu$/ }), '[role=dialog][aria-label=Production]'],
-      ['add-source', () => page.getByRole('button', { name: 'Source', exact: true }), '[role=menu][aria-label="Add source"]'],
+      ['add-source', () => page.getByRole('button', { name: 'Add source', exact: true }), '[role=menu][aria-label="Add source"]'],
       ['scene-menu', () => page.getByRole('button', { name: 'Actions for scene Break' }), '[role=menu][aria-label="Scene Break"]'],
     ];
     for (const [label, trigger, popover] of cases) {
@@ -142,7 +143,7 @@ test.describe('axe scans: Regie', () => {
   test('E2E-DEV-15 [axe, monitoring, empty] the monitoring page without stations', tags('p2'), async ({ regie, page }) => {
     const scanner = new Scanner(page);
     await page.goto('/monitoring');
-    await expect(page.getByText('No stations yet.')).toBeVisible();
+    await expect(page.getByText('No devices yet.')).toBeVisible();
     await scanner.scan('monitoring-empty');
     scanner.verify();
     void regie;
@@ -237,7 +238,7 @@ test.describe('axe scans: sender', () => {
     const laptop = await openLaptop();
     await pairViaApi(pairContext, laptop, { name: 'Laptop Axe Station' });
     const scanner = new Scanner(laptop.page);
-    await expect(laptop.page.getByRole('heading', { name: /Sources of this laptop/ })).toBeVisible();
+    await expect(laptop.page.getByRole('heading', { name: /What this laptop sends/ })).toBeVisible();
     await scanner.scan('sender-laptop-before-share');
     await laptop.shareScreen();
     await laptop.waitForSlot('screen-1', 'live');
@@ -325,12 +326,12 @@ test.describe('axe scans: open bugs, isolated', () => {
 
   test('E2E-DEV-15 [axe, contrast phone dark mode] the dimmed code and hint of the phone sender in dark mode meet 4.5:1', tags('p2'), async ({ openPhone, pairContext }) => {
     test.setTimeout(120_000);
-    knownBug('A11Y-07', 'dark mode of the phone sender: the station code is 2.96:1 and “Tap for controls” 2.35:1 (needs 4.5:1)');
+    knownBug('A11Y-07', 'dark mode of the phone sender: the station code is 2.96:1 and “Tap to show the controls” 2.35:1 (needs 4.5:1)');
     const phone = await openPhone({ profile: 'pixel7' });
     await pairViaApi(pairContext, phone, { name: 'Phone Contrast' });
     await phone.waitForCamera('live');
     await phone.darkToggle().click();
-    const scan = await scanAxe(phone.page, 'sender-phone-dark-contrast', { include: ['.c-phone__dark'], includeKnownBugs: true, noBestPractice: true });
+    const scan = await scanAxe(phone.page, 'sender-phone-dark-contrast', { include: ['.c-phone__screen-off'], includeKnownBugs: true, noBestPractice: true });
     expect(scan.blocking.map((violation) => `${violation.id}: ${violation.nodes.map((node) => `${node.target} ${JSON.stringify(node.data)}`).join(' | ')}`), 'the dark overlay text has enough contrast').toEqual([]);
   });
 });
@@ -341,17 +342,17 @@ test.describe('Regie semantics', () => {
     const { regie } = await openBusyRegie({ openRegie, pairContext, onCleanup }, { viewport: VIEWPORT, incident: 'reconnecting', studio: true });
     const { page } = regie;
     // landmarks and regions
-    for (const name of ['Monitors', 'Scenes', 'Sources of the scene', 'Properties', 'Stations', 'Audio', 'Messages']) await expect(page.getByRole('region', { name }), `region “${name}”`).toHaveCount(1);
+    for (const name of ['Monitors', 'Scenes', 'Sources of the scene', 'Properties', 'Devices', 'Audio', 'Activity']) await expect(page.getByRole('region', { name }), `region “${name}”`).toHaveCount(1);
     await expect(page.getByRole('banner'), 'the header is the banner landmark').toHaveCount(1);
-    expect(await page.locator('sf-status-line').evaluate((element) => element.getAttribute('role')), 'the message strip is a region').toBe('region');
+    expect(await page.locator('sf-status-line').evaluate((element) => element.getAttribute('role')), 'the activity bar is a region').toBe('region');
     // switch and groups
     await expect(page.getByRole('switch', { name: 'Studio Mode' })).toBeChecked();
     await expect(page.getByRole('group', { name: 'Transition type' }).getByRole('button')).toHaveCount(2);
     await expect(page.getByRole('group', { name: 'Fade duration' }).getByRole('button')).toHaveCount(2);
     // scene buttons: aria-pressed, tally and health text in the name
-    const program = page.getByRole('button', { name: /^Welcome PGM( |$)/ });
+    const program = page.getByRole('button', { name: 'Welcome, live on Program' });
     await expect(program).toHaveAttribute('aria-pressed', 'false');
-    const preview = page.getByRole('button', { name: /^Presentation PVW K3 disrupted$/ });
+    const preview = page.getByRole('button', { name: /^Presentation, in Preview, K3 disrupted$/ });
     await expect(preview, 'the Preview scene is pressed and carries the tally and the health word').toHaveAttribute('aria-pressed', 'true');
     // sources: role=list with listitems
     await expect(page.getByRole('list', { name: 'Items of the scene' }).getByRole('listitem')).toHaveCount(2);
@@ -370,10 +371,11 @@ test.describe('Regie semantics', () => {
     // every button has an accessible name
     for (const button of await page.getByRole('button').all()) await expect(button).toHaveAccessibleName(/\S/);
     for (const control of await page.locator('input:visible, select:visible, textarea:visible').all()) await expect(control).toHaveAccessibleName(/\S/);
-    // toast: polite live region (in Studio Mode a click on a scene only loads the Preview; the toast comes with the program switch)
+    // toast: polite live region that announces each new toast on its own (aria-atomic false; in Studio Mode a click on a scene
+    // only loads the Preview; the toast comes with the program switch)
     await regie.take().click();
     await expect(regie.toast().first()).toBeVisible();
-    expect(await page.locator('sf-toast-host').evaluate((element) => ({ role: element.getAttribute('role'), live: element.getAttribute('aria-live'), atomic: element.getAttribute('aria-atomic') }))).toEqual({ role: 'status', live: 'polite', atomic: 'true' });
+    expect(await page.locator('sf-toast-host').evaluate((element) => ({ role: element.getAttribute('role'), live: element.getAttribute('aria-live'), atomic: element.getAttribute('aria-atomic') }))).toEqual({ role: 'status', live: 'polite', atomic: 'false' });
     expect(await page.evaluate(() => document.documentElement.lang), 'the toast text is announced in the language of the document').toBe('en');
   });
 });

@@ -1,5 +1,5 @@
-// Workspace: stage and dock zones (prototype .work, .center, .stage, .zone, .split, .dock-ghost, .drop-line,
-// .drop-zone and the responsive stacking at 1180 / 900 px).
+// Workspace: the stage on the viewer surface and the dock zones around it, with hairline dividers that show a grip on
+// hover, drag and drop of docks (ghost, insertion line, drop strips) and the responsive stacking at 1180 / 900 px.
 @use 'mixins' as *;
 
 :host {
@@ -25,9 +25,10 @@
   }
 }
 
-// The stage area: monitors and control column (StageComponent). Container queries inside refer to this box.
+// The stage area: monitors and control column (StageComponent) on the viewer surface, so the pictures stand out from
+// the chrome around them. Container queries inside refer to this box.
 .c-workspace__stage {
-  background: var(--panel);
+  background: var(--stage);
   container-type: size;
   flex: 1 1 auto;
   min-height: 160px;
@@ -42,6 +43,7 @@
 }
 
 .c-workspace__zone {
+  background: var(--panel);
   display: flex;
   flex: none;
   min-height: 0;
@@ -67,7 +69,8 @@
   width: 320px;
 }
 
-// Hairlines between the stage and the zones; widened 9 px hit area, blue on hover/focus/drag after a short delay.
+// Dividers between the stage and the zones: a 1 px hairline with a 9 px hit area. On hover, focus or drag it turns
+// into the accent line with a grip in its middle, after a short delay so passing the pointer over it stays calm.
 .c-workspace__split {
   background: var(--seam);
   flex: none;
@@ -84,12 +87,31 @@
     position: absolute;
   }
 
+  &::after {
+    background: var(--blue);
+    border-radius: var(--radius-pill);
+    content: '';
+    height: 32px;
+    left: 50%;
+    opacity: 0;
+    pointer-events: none;
+    position: absolute;
+    top: 50%;
+    transition: opacity var(--dur-state) var(--ease) var(--dur-splitter-delay);
+    translate: -50% -50%;
+    width: 5px;
+  }
+
   &:hover,
   &:focus-visible,
   &.is-drag {
     background: var(--blue);
     box-shadow: var(--shadow-splitter);
     outline: none;
+
+    &::after {
+      opacity: 1;
+    }
   }
 }
 
@@ -105,32 +127,41 @@
   &::before {
     inset: -4px 0;
   }
+
+  &::after {
+    height: 5px;
+    width: 32px;
+  }
 }
 
-// Dock drag: ghost, insertion line, drop strips for empty zones.
+// Dock drag: the ghost follows the pointer on the floating material, the insertion line marks the place between docks,
+// and the drop strips offer the empty zones.
 .c-dock-ghost {
-  @include label-text;
+  @include heading-text(var(--fs-body));
   align-items: center;
-  background: var(--raised-2);
-  border: 1px solid var(--seam-strong);
+  background: var(--float);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-pop);
-  color: var(--text);
   display: inline-flex;
   gap: 8px;
-  height: 30px;
+  height: 32px;
   left: -999px;
-  padding: 0 10px;
+  padding: 0 12px 0 8px;
   pointer-events: none;
   position: fixed;
   top: -999px;
   transform: translate(14px, 10px);
   z-index: 80;
+
+  .c-icon {
+    color: var(--muted);
+  }
 }
 
 .c-drop-line {
   background: var(--blue);
-  border-radius: 2px;
+  border-radius: var(--radius-pill);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--blue) 25%, transparent);
   display: none;
   pointer-events: none;
   position: fixed;
@@ -138,12 +169,14 @@
 }
 
 .c-drop-zone {
+  @include state-transition(background-color);
   background: var(--blue-wash);
-  border: 1px dashed var(--blue);
+  border: 1.5px dashed var(--blue);
+  border-radius: var(--radius-lg);
   color: var(--blue);
   display: grid;
-  font-size: 12.5px;
-  font-weight: 700;
+  font-size: var(--fs-body);
+  font-weight: 600;
   padding: 8px;
   place-items: center;
   pointer-events: none;
@@ -152,29 +185,30 @@
   z-index: 30;
 
   &.is-hot {
-    background: color-mix(in srgb, var(--blue) 20%, transparent);
+    background: color-mix(in srgb, var(--blue) 22%, transparent);
+    border-style: solid;
   }
 }
 
 .c-drop-zone--left {
-  bottom: 0;
-  left: 0;
-  top: 0;
-  width: 92px;
+  bottom: 8px;
+  left: 8px;
+  top: 8px;
+  width: 96px;
 }
 
 .c-drop-zone--right {
-  bottom: 0;
-  right: 0;
-  top: 0;
-  width: 92px;
+  bottom: 8px;
+  right: 8px;
+  top: 8px;
+  width: 96px;
 }
 
 .c-drop-zone--bottom {
-  bottom: 0;
+  bottom: 8px;
   height: 72px;
-  left: 0;
-  right: 0;
+  left: 8px;
+  right: 8px;
 }
 
 // ≤ 1180 px: no dragging; zones become two-column grids of hairline-separated docks below the stage.

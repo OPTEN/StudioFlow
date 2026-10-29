@@ -2,8 +2,12 @@
   <div
     class="c-edit-box"
     [attr.data-item-id]="box.id"
+    [attr.title]="box.pinned ? t('regie.stage.overlay.locked') : null"
     [class.is-sel]="box.selected"
     [class.is-locked]="box.locked"
+    [class.is-pinned]="box.pinned"
+    [class.is-end]="box.percent.left + box.percent.width / 2 > 50"
+    [class.is-top]="box.percent.top < 4"
     [class.is-alert]="box.alert !== null"
     [class.is-bad]="box.alert === 'bad'"
     [style.left.%]="box.percent.left"
@@ -11,7 +15,28 @@
     [style.width.%]="box.percent.width"
     [style.height.%]="box.percent.height"
   >
-    <span class="c-edit-box__label">{{ box.label }}</span>
+    <span class="c-edit-box__label">
+      @if (box.code) {
+        <b class="c-edit-box__code">{{ box.code }}</b>
+      }
+      <span class="c-edit-box__name">{{ box.name }}</span>
+      <span class="c-edit-box__detail">{{ box.detail }}</span>
+      @if (box.selected) {
+        <button
+          class="c-edit-box__more"
+          type="button"
+          tabindex="-1"
+          [attr.aria-label]="t('regie.stage.menu.itemMore', { name: box.name })"
+          [title]="t('regie.stage.menu.itemMore', { name: box.name })"
+          (click)="openItemMenu(box.id, $event)"
+        >
+          <svg sfIcon="more" [size]="14"></svg>
+        </button>
+      }
+    </span>
+    @if (box.pinned) {
+      <span class="c-edit-box__lock" aria-hidden="true"><svg sfIcon="lock" [size]="11"></svg></span>
+    }
     @if (box.handles) {
       @for (edge of edges; track edge) {
         <span

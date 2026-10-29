@@ -1577,7 +1577,7 @@ Strings: “Starting soon”, “Thanks for watching”, “No access”, “Pic
 
 **E2E-OUT-05** · P1 · pw — `debug=1` overlay
 - Steps: open with `&debug=1`.
-- Expect: `[data-testid=debug-overlay]` in a mono font with lines `scene`, `revision`, `hub`, `livekit`, per source `<code> <w>x<h> <fps> fps <kbps> kbps`, `latency <n> ms`; updates at least every 1 s; `pointer-events: none`; absent without the parameter; values match the `<video>` elements (`videoWidth`/`videoHeight`) and the API state [GAP-24]; the last line is the build, `StudioFlow 0.1.0+1a2b3c4` (the commit is missing in a local build).
+- Expect: `[data-testid=debug-overlay]` in a mono font, in sections (Program, Connections, Sources, Audio) with lines `scene`, `revision`, `Server` (hub and sync), `Media server` (LiveKit), per source `<code> <w>x<h> <fps> fps <kbps> kbps`, `latency <n> ms`; updates at least every 1 s; `pointer-events: none`; absent without the parameter; values match the `<video>` elements (`videoWidth`/`videoHeight`) and the API state [GAP-24]; the last line is the build, `StudioFlow 0.1.0+1a2b3c4` (the commit is missing in a local build).
 
 **E2E-OUT-06** · P0 · pw — Hold frame on source loss
 - Pre: K1 item 1360 px wide (holdMs 3000), K2 item 300 px wide (holdMs 3000), K3 item (holdMs null), K4 item (holdMs 10000); all live; output open.
@@ -1606,7 +1606,7 @@ Strings: “Starting soon”, “Thanks for watching”, “No access”, “Pic
 
 **E2E-OUT-12** · P0 · pw — Access denied
 - Steps: wrong key; missing `k`; unknown slug; key of another production; observe for 70 s with request logging.
-- Expect: slate “No access” (`data-slate=denied`), no video, no scene content; identical for all four cases (no hint whether the slug exists); at most 3 attempts in 70 s, spaced ≥ 30 s; fixing the URL and reloading works.
+- Expect: slate “No access” (`data-slate=denied`), drawn as a quiet notice of the page, no video, no scene content; identical for the three refused links (no hint whether the slug exists), with the plain cause, the next step and “This page tries again by itself every 30 seconds.”; the missing key says that the link is incomplete and is never retried; at most 3 attempts in 70 s, spaced ≥ 30 s; fixing the URL and reloading works.
 
 **E2E-OUT-13** · P0 · pw — Glass-to-glass latency
 - Pre: `chromium-desktop` on the perf runner (≥ 4 cores, nothing else running); laptop shares the timecode tab (screen, VP9) and a phone publishes the timecode camera (H.264); scene “Full screen” with the source; output 1920×1080 standalone; warm-up 5 s. Tagged `@perf`: not part of the nightly run on the 2-vCPU runner (6.8).

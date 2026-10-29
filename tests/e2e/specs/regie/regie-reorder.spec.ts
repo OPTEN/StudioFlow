@@ -299,7 +299,7 @@ test.describe('REGIE reorder', () => {
       expect(takeRequests, 'dragging does not switch the scene').toEqual([]);
       expect((await api.getSnapshot(production.id)).body.production.programSceneId).toBe(sceneA);
       await expect.poll(() => names(operatorB.page), { timeout: 4000 }).toEqual(['Scene C', 'Scene A', 'Scene B']);
-      await expect(page.locator('sf-scenes-dock .c-scene .c-keycap').first()).toHaveAttribute('data-key', '1');
+      await expect(page.locator('sf-scenes-dock .c-scene .c-keycap').first()).toHaveText('1');
 
       // Key 1 now puts the new first scene live.
       await page.locator('body').click({ position: { x: 5, y: 5 } });

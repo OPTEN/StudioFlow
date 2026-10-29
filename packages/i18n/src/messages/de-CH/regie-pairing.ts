@@ -2,11 +2,12 @@ import type { Translation } from '../../types';
 import type { regiePairing as en } from '../en/regie-pairing';
 
 export const regiePairing: Translation<typeof en> = {
-  'regie.pairing.dock.close': 'Gerät koppeln schliessen',
+  'regie.pairing.dock.close': 'Gerät hinzufügen schliessen',
   'regie.pairing.dock.tabs': 'Art des Geräts',
   'regie.pairing.dock.tipsText':
-    'Ans Ladekabel hängen und im Querformat montieren. StudioFlow hält den Bildschirm selbst wach und startet nach einem Neuladen mit den letzten Einstellungen.',
+    'Ans Ladekabel hängen und im Querformat montieren. StudioFlow hält den Bildschirm wach und startet nach einem Neuladen mit den letzten Einstellungen.',
   'regie.pairing.dock.tipsTitle': 'Tipps für fest montierte Handys',
+  'regie.pairing.dock.title': 'Gerät hinzufügen',
 
   'regie.pairing.expiry.expired': 'abgelaufen',
   'regie.pairing.expiry.minutes': {
@@ -19,16 +20,15 @@ export const regiePairing: Translation<typeof en> = {
   'regie.pairing.knock.codeLabel': 'Prüfcode {digits}',
   'regie.pairing.knock.deny': 'Ablehnen',
   'regie.pairing.knock.label': 'Kopplungsanfrage',
-  'regie.pairing.knock.question': 'Steht derselbe Prüfcode auf dem Laptop? Dann zulassen.',
+  'regie.pairing.knock.question': 'Derselbe Code auf dem Gerät?',
   'regie.pairing.knock.title': '{name} möchte beitreten',
 
-  'regie.pairing.laptop.enterName':
-    'Dort einen Namen eingeben. Die Anfrage erscheint rechts mit einem Prüfcode.',
-  'regie.pairing.laptop.miniBar': 'So sieht es auf dem Laptop aus',
-  'regie.pairing.laptop.miniCode': 'Prüfcode für die Regie',
-  'regie.pairing.laptop.miniName': 'Name des Laptops',
-  'regie.pairing.laptop.open': 'Auf dem Laptop im Browser diese Adresse öffnen:',
-  'regie.pairing.laptop.title': 'Laptop ohne QR-Code',
+  'regie.pairing.laptop.step1': 'Auf dem Laptop im Browser diese Adresse öffnen:',
+  'regie.pairing.laptop.step2':
+    'Dort einen Namen eingeben. Für den Ton vom Mischpult «Audiostation» wählen.',
+  'regie.pairing.laptop.step3':
+    'Die Anfrage erscheint hier mit einem Prüfcode. Zulassen, wenn das Gerät denselben Code zeigt.',
+  'regie.pairing.laptop.title': 'Laptop oder Audiostation',
 
   'regie.pairing.link.create': 'Link erstellen',
   'regie.pairing.link.createAnother': 'Weiteren Link erstellen',
@@ -37,8 +37,11 @@ export const regiePairing: Translation<typeof en> = {
   'regie.pairing.link.revoke': 'Link widerrufen',
   'regie.pairing.link.revokeInvite': 'Einladung widerrufen: {url}',
   'regie.pairing.link.revokeShort': 'Widerrufen',
+  'regie.pairing.link.show': 'Link anzeigen',
+  'regie.pairing.link.showHint':
+    'Die Links sind verborgen, damit sie niemand von einem geteilten Bildschirm abschreibt.',
   'regie.pairing.link.text':
-    'Für Laptops, die schon vor dem Webinar gekoppelt werden sollen. Den Link per Teams oder Mail schicken.',
+    'Für Laptops, die schon vor dem Webinar gekoppelt werden. Den Link per Teams oder Mail schicken.',
   'regie.pairing.link.title': 'Einladungslink',
   'regie.pairing.link.toastCreated': 'Einladungslink erstellt',
   'regie.pairing.link.toastRevoked': 'Einladungslink widerrufen',
@@ -47,14 +50,15 @@ export const regiePairing: Translation<typeof en> = {
   'regie.pairing.phone.generating': 'QR-Code wird erzeugt …',
   'regie.pairing.phone.qrLabel': 'QR-Code zum Koppeln eines Handys',
   'regie.pairing.phone.renew': 'Neuen Code erzeugen',
-  'regie.pairing.phone.text':
-    'Mit der Kamera-App scannen. Das Handy öffnet StudioFlow und erscheint danach unter Stationen.',
+  'regie.pairing.phone.step1': 'Auf dem Handy die Kamera-App öffnen.',
+  'regie.pairing.phone.step2': 'Diesen Code scannen. StudioFlow öffnet sich im Browser.',
+  'regie.pairing.phone.step3': 'Die Kamera erlauben. Danach erscheint das Handy unter Geräte.',
   'regie.pairing.phone.title': 'Handy als Kamera',
   'regie.pairing.phone.toastRenewed': 'Neuer QR-Code, der alte gilt nicht mehr',
-  'regie.pairing.phone.valid': 'Gilt einmal, noch {time} min.',
+  'regie.pairing.phone.valid': 'Gilt einmal, noch {time}.',
 
   'regie.pairing.requests.empty':
-    'Noch keine Anfrage. Sobald jemand die Adresse öffnet und einen Namen eingibt, erscheint sie hier mit Prüfcode.',
+    'Noch keine Anfrage. Sobald jemand die Adresse öffnet und einen Namen eingibt, erscheint die Anfrage hier mit Prüfcode.',
   'regie.pairing.requests.title': 'Wartende Anfragen',
 
   'regie.pairing.tab.laptop': 'Laptop',

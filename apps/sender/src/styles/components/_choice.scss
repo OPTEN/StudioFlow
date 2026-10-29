@@ -1,0 +1,121 @@
+@use 'mixins' as *;
+@use 'tokens' as *;
+
+// A choice of one among a few (device kind, picture quality): a grouped list of rows built from native radios, each
+// with an icon, a title, a one-line description and a checkmark on the chosen row, like an iOS selection list. The
+// fieldset is the group; arrow keys move between the rows.
+.c-choices {
+  border: 0;
+  display: grid;
+  gap: $SPACE_SM;
+  margin: 0;
+  min-width: 0;
+  padding: 0;
+}
+
+.c-choices__legend {
+  color: var(--text-2);
+  font-size: var(--fs-subhead);
+  font-weight: 600;
+  margin-bottom: $SPACE_SM;
+  padding: 0;
+}
+
+.c-choices__list {
+  background: var(--group);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 0 0 0.5px var(--seam);
+  display: grid;
+  overflow: hidden;
+}
+
+.c-choice {
+  @include state-transition(background-color);
+  align-items: center;
+  border: 1px solid transparent;
+  cursor: pointer;
+  display: grid;
+  gap: 2px $SPACE_LG;
+  grid-template-areas:
+    'icon title mark'
+    'icon text mark';
+  grid-template-columns: auto minmax(0, 1fr) 22px;
+  min-height: 60px;
+  padding: $SPACE_ROW $SPACE_GUTTER;
+  position: relative;
+
+  & + & {
+    box-shadow: inset 0 1px 0 var(--seam);
+  }
+
+  &:hover {
+    background: var(--raised);
+  }
+
+  &:has(:focus-visible) {
+    border-radius: var(--radius-lg);
+    outline: 2px solid var(--blue);
+    outline-offset: -3px;
+  }
+
+  &:has(:disabled) {
+    cursor: not-allowed;
+    opacity: 0.45;
+  }
+}
+
+.c-choice__input {
+  appearance: none;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  position: absolute;
+}
+
+// The icon sits on a small tile so the rows read as kinds of device at a glance.
+.c-choice__icon {
+  --icon-size: 20px;
+  align-items: center;
+  background: var(--fill);
+  border-radius: var(--radius-sm);
+  color: var(--text-2);
+  display: inline-flex;
+  grid-area: icon;
+  height: 34px;
+  justify-content: center;
+  width: 34px;
+
+  .c-choice:has(:checked) & {
+    background: var(--blue-wash);
+    color: var(--blue);
+  }
+}
+
+.c-choice__title {
+  color: var(--text);
+  font-size: var(--fs-body);
+  font-weight: 500;
+  grid-area: title;
+
+  .c-choice:has(:checked) & {
+    font-weight: 600;
+  }
+}
+
+.c-choice__text {
+  color: var(--muted);
+  font-size: var(--fs-footnote);
+  grid-area: text;
+  line-height: 1.35;
+}
+
+.c-choice__mark {
+  --icon-size: 20px;
+  color: var(--blue);
+  grid-area: mark;
+  opacity: 0;
+
+  .c-choice:has(:checked) & {
+    opacity: 1;
+  }
+}

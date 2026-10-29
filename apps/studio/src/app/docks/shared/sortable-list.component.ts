@@ -132,7 +132,8 @@ interface HeldView {
  *
  * Keyboard: Space or Enter on the handle picks the row up, the arrow keys (Home/End) move it, Space or Enter drops
  * it, Escape or leaving the handle cancels. Alt+Up/Down anywhere in a row moves it one place at once, with Shift to
- * the very start or end. Every step is announced ("K1 moved to position 2 of 5").
+ * the very start or end. Every step is announced ("K1 moved to position 2 of 5"). The arrow keys alone (and Home/End)
+ * move the focus from row to row.
  *
  * The list is the host element: style it as grid or flex (the direction decides the axis), the rows are its
  * children. Buttons inside a row start a drag only with the attribute `data-sortable-grab`.
@@ -160,6 +161,8 @@ export class SortableListComponent {
   readonly nameOf = input.required<(id: string) => string>();
   /** The complete new order after a move (never emitted for a move that changes nothing). */
   readonly reorder = output<readonly string[]>();
+  /** The arrow keys moved the focus to the main control of this entry (the Sources dock selects it). */
+  readonly focusStep = output<string>();
 
   private readonly item = contentChild.required(SortableItemDirective);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
@@ -389,8 +392,15 @@ export class SortableListComponent {
     }
   }
 
-  /** Alt+Up/Down in a row moves it at once, Shift to the very start or end. */
+  /**
+   * Alt+Up/Down in a row moves it at once, Shift to the very start or end. Without a modifier, the arrow keys and
+   * Home/End on the main control of a row (`data-sortable-grab`) move the focus to that control of the neighbour row
+   * and report it ({@link focusStep}).
+   */
   protected onKeyDown(event: KeyboardEvent): void {
+    if (this.moveFocus(event)) {
+      return;
+    }
     const up = event.key === 'ArrowUp';
     if (
       this.session ||
@@ -421,6 +431,47 @@ export class SortableListComponent {
     if (index >= 0 && target !== index) {
       this.emit(ids, id, target, 'moved');
     }
+  }
+
+  /** Plain arrow keys or Home/End on a row's main control: focus the neighbour's. True when it handled the key. */
+  private moveFocus(event: KeyboardEvent): boolean {
+    const steps: Readonly<Record<string, ReorderStep>> = {
+      ArrowUp: 'earlier',
+      ArrowLeft: 'earlier',
+      ArrowDown: 'later',
+      ArrowRight: 'later',
+      Home: 'first',
+      End: 'last',
+    };
+    const step = steps[event.key];
+    const target = event.target as Element;
+    if (
+      !step ||
+      this.session ||
+      event.altKey ||
+      event.ctrlKey ||
+      event.metaKey ||
+      event.shiftKey ||
+      !target.matches?.('[data-sortable-grab]')
+    ) {
+      return false;
+    }
+    const id = target.closest<HTMLElement>('[data-sortable-id]')?.dataset['sortableId'];
+    const ids = this.ids();
+    const index = id === undefined ? -1 : ids.indexOf(id);
+    if (index < 0) {
+      return false;
+    }
+    event.preventDefault();
+    const next = ids[stepTarget(index, ids.length, step)];
+    if (next === id) {
+      return true;
+    }
+    const control = this.rowElement(next)?.querySelector<HTMLElement>('[data-sortable-grab]');
+    control?.focus();
+    control?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+    this.focusStep.emit(next);
+    return true;
   }
 
   private moveHeld(event: KeyboardEvent, session: Held): void {

@@ -1,17 +1,14 @@
 <sf-dock-frame dock="scenes" [count]="loading() ? null : entries().length">
-  <span sfDockActions class="c-hint c-scenes-dock__keys">{{
-    t('regie.scenes.dock.keysHint')
-  }}</span>
   <button
     sfDockActions
-    class="c-btn c-btn--sm"
+    class="c-btn c-btn--sm c-btn--primary"
     type="button"
     [attr.aria-label]="t('regie.scenes.dock.addLabel')"
     [title]="createTitle()"
-    [disabled]="!commands.canCreate() || commands.blocked('scene:create')"
+    [disabled]="!canCreate()"
     (click)="create()"
   >
-    <svg sfIcon="plus" [size]="14"></svg>{{ t('regie.scenes.dock.add') }}
+    <svg sfIcon="plus"></svg>{{ t('regie.scenes.dock.add') }}
   </button>
 
   @if (loading()) {
@@ -19,33 +16,40 @@
       <strong>{{ t('regie.scenes.dock.loadingTitle') }}</strong
       >{{ t('regie.docks.loadingText') }}
     </div>
-  } @else {
-    @if (entries().length === 0) {
-      <div class="c-scenes-dock__list">
-        <div class="c-empty">
-          <strong>{{ t('regie.scenes.dock.emptyTitle') }}</strong
-          >{{ t('regie.scenes.dock.emptyText') }}
-        </div>
+  } @else if (entries().length === 0) {
+    <div class="c-empty c-scenes-dock__empty">
+      <strong>{{ t('regie.scenes.dock.emptyTitle') }}</strong
+      >{{ t('regie.scenes.dock.emptyText') }}
+      <div class="c-scenes-dock__actions">
+        <button
+          class="c-btn c-btn--sm c-btn--primary"
+          type="button"
+          [disabled]="!canCreate()"
+          (click)="create()"
+        >
+          <svg sfIcon="plus"></svg>{{ t('regie.scenes.dock.addLabel') }}
+        </button>
       </div>
-    } @else {
-      <sf-sortable-list
-        class="c-scenes-dock__list"
-        [ids]="sceneIds()"
-        [label]="t('regie.scenes.dock.listLabel')"
-        [nameOf]="sceneName"
-        (reorder)="reorder($event)"
-      >
-        <ng-template sfSortableItem let-id>
-          @if (entryById().get(id); as entry) {
-            <sf-scene-row
-              [scene]="entry.scene"
-              [view]="entry.view"
-              [blocked]="switcher.busy()"
-              (choose)="choose($event)"
-            />
-          }
-        </ng-template>
-      </sf-sortable-list>
-    }
+    </div>
+  } @else {
+    <sf-sortable-list
+      class="c-scenes-dock__list"
+      [ids]="sceneIds()"
+      [label]="t('regie.scenes.dock.listLabel')"
+      [nameOf]="sceneName"
+      [attr.aria-busy]="switcher.busy() ? 'true' : null"
+      (reorder)="reorder($event)"
+    >
+      <ng-template sfSortableItem let-id>
+        @if (entryById().get(id); as entry) {
+          <sf-scene-row
+            [scene]="entry.scene"
+            [view]="entry.view"
+            [blocked]="switcher.busy()"
+            (choose)="choose($event)"
+          />
+        }
+      </ng-template>
+    </sf-sortable-list>
   }
 </sf-dock-frame>

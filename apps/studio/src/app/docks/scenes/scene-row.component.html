@@ -3,7 +3,7 @@
     <span class="c-scene__thumb" aria-hidden="true" [style.aspect-ratio]="store.canvasAspect()">
       <sf-scene-thumb [scene]="scene()" />
       @if (view().key) {
-        <span class="c-keycap" [attr.data-key]="view().key"></span>
+        <span class="c-keycap">{{ view().key }}</span>
       }
     </span>
     <sf-inline-edit
@@ -22,102 +22,81 @@
     [attr.aria-pressed]="view().pressed"
     [class.is-blocked]="blocked()"
     [attr.aria-keyshortcuts]="view().key"
+    [attr.aria-label]="view().ariaLabel"
+    [attr.title]="rowTitle()"
     (click)="choose.emit(view().id)"
+    [sfContextMenu]="menu"
+    [sfContextMenuLabel]="t('regie.scenes.row.menuLabel', { name: displayName() })"
     (keydown)="onRowKeyDown($event)"
   >
     <span class="c-scene__thumb" aria-hidden="true" [style.aspect-ratio]="store.canvasAspect()">
       <sf-scene-thumb [scene]="scene()" />
       @if (view().key) {
-        <span class="c-keycap" [attr.data-key]="view().key"></span>
+        <span class="c-keycap">{{ view().key }}</span>
       }
     </span>
     <span class="c-scene__text">
       <span class="c-scene__name">{{ displayName() }}</span>
       <span class="c-scene__meta">
         @if (view().isProgram) {
-          <span class="c-tag c-tag--pgm">PGM</span>
+          <span class="c-tag c-tag--pgm">{{ t('regie.scenes.row.live') }}</span>
         } @else if (view().isPreview) {
-          <span class="c-tag c-tag--pvw">PVW</span>
+          <span class="c-tag c-tag--pvw">{{ t('regie.scenes.row.preview') }}</span>
         }
         @if (view().health; as health) {
-          <span
-            class="c-lamp"
-            aria-hidden="true"
-            [class.is-bad]="health.bad"
-            [class.is-warn]="!health.bad"
-          ></span>
-          <span class="u-mono">{{ health.code }}</span>
-          <span [class.c-state--bad]="health.bad" [class.c-state--warn]="!health.bad">{{
-            t('regie.scenes.row.disrupted')
-          }}</span>
+          <span class="c-scene__health">
+            <span
+              class="c-lamp"
+              aria-hidden="true"
+              [class.is-bad]="health.bad"
+              [class.is-warn]="!health.bad"
+            ></span>
+            <span class="c-scene__codes">{{ health.code }}</span
+            >&ngsp;
+            <span
+              class="c-scene__state"
+              [class.c-state--bad]="health.bad"
+              [class.c-state--warn]="!health.bad"
+              >{{ t('regie.scenes.row.disrupted') }}</span
+            >
+          </span>
         } @else {
-          <span class="u-mono">{{ view().codes }}</span>
+          <span class="c-scene__codes">{{ view().codes }}</span>
         }
       </span>
     </span>
   </button>
   <button
+    #more
     class="c-ibtn c-scene__more"
     type="button"
     aria-haspopup="menu"
+    [attr.aria-expanded]="menuOpen()"
     [attr.aria-label]="t('regie.scenes.row.menuTriggerLabel', { name: displayName() })"
-    [sfPopoverTrigger]="menuId()"
-    (click)="placeMenu($event)"
+    [title]="t('regie.scenes.row.menuTitle')"
+    (click)="openMenuAt($event)"
   >
     <svg sfIcon="more"></svg>
   </button>
-  @if (menuOpen()) {
+  @if (confirmOpen()) {
     <div
-      class="c-pop c-scene__menu"
-      role="menu"
-      [attr.aria-label]="t('regie.scenes.row.menuLabel', { name: displayName() })"
-      [sfPopover]="menuId()"
-      [style.top.px]="menuPosition().top"
-      [style.left.px]="menuPosition().left"
-      (keydown)="onMenuKeyDown($event)"
+      #confirm
+      class="c-pop c-scene__confirm"
+      role="dialog"
+      [attr.aria-label]="t('regie.scenes.row.deleteLabel')"
+      [sfPopover]="confirmId()"
+      [style.top.px]="confirmPosition().top"
+      [style.left.px]="confirmPosition().left"
     >
-      <button
-        class="c-menu-item"
-        type="button"
-        role="menuitem"
-        aria-keyshortcuts="F2"
-        [disabled]="!commands.online()"
-        (click)="startRename()"
-      >
-        <svg sfIcon="pencil"></svg>{{ t('common.rename') }}<kbd class="c-scene__shortcut">F2</kbd>
-      </button>
-      <button
-        class="c-menu-item"
-        type="button"
-        role="menuitem"
-        [disabled]="!commands.canCreate() || commands.blocked('scene:' + view().id + ':duplicate')"
-        (click)="duplicate()"
-      >
-        <svg sfIcon="copy"></svg>{{ t('regie.scenes.row.duplicate') }}
-      </button>
-      <div class="c-menu-sep" role="separator"></div>
-      <button
-        class="c-menu-item"
-        type="button"
-        role="menuitem"
-        aria-keyshortcuts="Alt+ArrowUp"
-        [disabled]="!canMoveUp() || commands.blocked('scene:order')"
-        (click)="move(-1)"
-      >
-        <svg sfIcon="up"></svg>{{ t('regie.scenes.row.moveUp')
-        }}<kbd class="c-scene__shortcut">Alt+↑</kbd>
-      </button>
-      <button
-        class="c-menu-item"
-        type="button"
-        role="menuitem"
-        aria-keyshortcuts="Alt+ArrowDown"
-        [disabled]="!canMoveDown() || commands.blocked('scene:order')"
-        (click)="move(1)"
-      >
-        <svg sfIcon="down"></svg>{{ t('regie.scenes.row.moveDown')
-        }}<kbd class="c-scene__shortcut">Alt+↓</kbd>
-      </button>
+      <sf-confirm-box
+        [label]="t('regie.scenes.row.deleteLabel')"
+        [confirmLabel]="t('regie.scenes.row.deleteLabel')"
+        [flush]="true"
+        [message]="t('regie.scenes.row.deleteMessage', { name: displayName() })"
+        [busy]="deleting()"
+        (confirm)="remove()"
+        (cancel)="cancelDelete()"
+      />
     </div>
   }
 }

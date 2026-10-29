@@ -1,20 +1,23 @@
 import type { Namespace } from '../../types';
 
-/** The Stations dock: rows, details, actions, the message composer and the toasts of the station commands. */
+/** The Devices dock: rows, details, actions, the message composer and the toasts of the device commands. */
 export const regieStations = {
-  'regie.stations.ack.seen': 'Seen',
-  'regie.stations.ack.text': 'The station is back. Confirm to dismiss the message.',
+  'regie.stations.ack.dismiss': 'Dismiss',
+  'regie.stations.ack.text': 'The device is back.',
 
   'regie.stations.action.block': 'Block device',
-  'regie.stations.action.message': 'Send message',
+  'regie.stations.action.manage': 'Manage device',
   'regie.stations.action.reshare': 'Ask to share again',
   'regie.stations.action.reshareCode': 'Ask {code} to share again',
   'regie.stations.action.switchCamera': 'Switch camera',
   'regie.stations.action.unblock': 'Unblock',
 
+  'regie.stations.composer.count':
+    'Up to {max} characters. The device shows the message as a banner.',
   'regie.stations.composer.label': 'Message to {name}',
-  'regie.stations.composer.placeholder': 'Short message to the station',
+  'regie.stations.composer.placeholder': 'Short message to the device',
   'regie.stations.composer.quick': 'Quick send: {text}',
+  'regie.stations.composer.quickGroup': 'Quick messages, sent at once',
   'regie.stations.composer.send': 'Send',
 
   'regie.stations.confirm.blockMessage':
@@ -35,23 +38,48 @@ export const regieStations = {
   'regie.stations.detail.tech': 'Tech check',
   'regie.stations.detail.techNotRun': 'not run yet',
 
+  'regie.stations.dock.add': 'Add device',
+  'regie.stations.dock.addFirst': 'Add the first device',
   'regie.stations.dock.emptyText':
-    'Use “Pair device” to connect a phone as a camera or a laptop with a screen.',
-  'regie.stations.dock.emptyTitle': 'No stations yet.',
-  'regie.stations.dock.loadingTitle': 'Loading stations…',
-  'regie.stations.dock.pair': 'Pair device',
+    'Add a phone as a camera, a laptop that shares its screen, or the audio station of the mixing desk.',
+  'regie.stations.dock.emptyTitle': 'No devices yet',
+  'regie.stations.dock.loadingTitle': 'Loading devices…',
+  'regie.stations.dock.offline':
+    'No connection to the server. The buttons work again once it is back.',
+
+  'regie.stations.hint.remove': 'Remove (Delete)',
+  'regie.stations.hint.rename': 'Rename (F2)',
+
+  'regie.stations.kind.audioStation': 'Audio station',
+  'regie.stations.kind.laptop': 'Laptop',
+  'regie.stations.kind.phone': 'Phone',
 
   'regie.stations.line.back': 'back',
   'regie.stations.line.battery': 'Battery {percent}',
   'regie.stations.line.cannotConnect': 'cannot connect',
   'regie.stations.line.freezeFrame': 'freeze frame',
   'regie.stations.line.lastSeen': 'last seen {time}',
+  'regie.stations.line.rateTitle': 'Upload rate',
+  'regie.stations.line.rttTitle': 'Delay to the server and back',
+  'regie.stations.line.sending': 'sending',
   'regie.stations.line.wasGone': 'was gone {seconds} s',
 
-  'regie.stations.nameLabel': 'Station name',
+  'regie.stations.menu.block': 'Block…',
+  'regie.stations.menu.camera': 'Camera settings…',
+  'regie.stations.menu.deleteKey': 'Del',
+  'regie.stations.menu.details': 'Show details',
+  'regie.stations.menu.label': 'Device {name}',
+  'regie.stations.menu.message': 'Send message…',
+  'regie.stations.menu.remove': 'Remove…',
+  'regie.stations.menu.rename': 'Rename…',
+
+  'regie.stations.nameHint': 'Enter saves, Esc cancels.',
+  'regie.stations.nameLabel': 'Device name',
 
   'regie.stations.network.cellular': 'Cellular',
   'regie.stations.network.wifi': 'Wi-Fi',
+
+  'regie.stations.offer.text': 'This device can take the place of a missing source:',
 
   'regie.stations.paired.otherDay': '{day}/{month} {time}',
   'regie.stations.paired.today': 'today {time}',
@@ -59,6 +87,14 @@ export const regieStations = {
   'regie.stations.quick.break': 'Break',
   'regie.stations.quick.live': 'Live in 10 s',
   'regie.stations.quick.smile': 'Please smile',
+
+  'regie.stations.tab.camera': 'Camera',
+  'regie.stations.tab.details': 'Details',
+  'regie.stations.tab.label': 'Details of {name}',
+  'regie.stations.tab.message': 'Message',
+
+  'regie.stations.tag.live': 'Live',
+  'regie.stations.tag.preview': 'Preview',
 
   'regie.stations.tech.bad': 'poor',
   'regie.stations.tech.camera': 'Camera',

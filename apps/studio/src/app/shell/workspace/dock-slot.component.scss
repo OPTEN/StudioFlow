@@ -1,4 +1,5 @@
-// One dock in a zone (prototype .panel, .zone > .panel, .edge-l/.edge-r, .split between docks, .is-moving).
+// One dock in a zone (prototype .panel, .zone > .panel, .edge-l/.edge-r, .split between docks, .is-moving): a hairline
+// to the previous dock that shows the accent line and a grip on hover, and the dragged dock fading while it moves.
 @use 'mixins' as *;
 
 :host {
@@ -43,6 +44,7 @@
 
 :host(.is-moving) {
   opacity: 0.4;
+  transition: opacity var(--dur-state) var(--ease);
 }
 
 .c-dock-slot__split {
@@ -66,12 +68,32 @@
     position: absolute;
   }
 
+  // The grip in the middle of the line, shown with the accent line.
+  &::after {
+    background: var(--blue);
+    border-radius: var(--radius-pill);
+    content: '';
+    height: 5px;
+    left: 50%;
+    opacity: 0;
+    pointer-events: none;
+    position: absolute;
+    top: 50%;
+    transition: opacity var(--dur-state) var(--ease) var(--dur-splitter-delay);
+    translate: -50% -50%;
+    width: 32px;
+  }
+
   &:hover,
   &:focus-visible,
   &.is-drag {
     background: var(--blue);
     box-shadow: var(--shadow-splitter);
     outline: none;
+
+    &::after {
+      opacity: 1;
+    }
   }
 }
 
@@ -86,6 +108,11 @@
 
   &::before {
     inset: 0 -4px;
+  }
+
+  &::after {
+    height: 32px;
+    width: 5px;
   }
 }
 

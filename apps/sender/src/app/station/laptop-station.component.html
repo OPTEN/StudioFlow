@@ -1,317 +1,358 @@
 <div class="c-laptop">
-  <header class="c-laptop__bar">
-    <sf-brand-mark class="c-laptop__brand" />
-    <sf-connection-status
-      class="c-laptop__connection"
-      [view]="session.connection()"
-      [since]="session.degradedSince()"
-      [now]="session.now()"
-    />
-    <button class="c-button c-laptop__check" type="button" (click)="openTechCheck.emit()">
-      <span
-        class="c-lamp"
-        [class.c-lamp--idle]="techLevel() === 'unknown'"
-        [class.c-lamp--warn]="techLevel() === 'warn'"
-        [class.c-lamp--bad]="techLevel() === 'bad'"
-        aria-hidden="true"
-      ></span>
-      {{ t('sender.techcheck.open') }}
-    </button>
-  </header>
+  <div class="c-top">
+    <header class="c-bar">
+      <sf-brand-mark class="c-bar__brand" />
+      <sf-connection-status
+        class="c-bar__connection"
+        [view]="session.connection()"
+        [since]="session.degradedSince()"
+        [now]="session.now()"
+      />
+      <div class="c-bar__end">
+        <sf-tally-tag [state]="tally()" testId="tally-tag" />
+        <button class="c-btn" type="button" aria-haspopup="dialog" (click)="openTechCheck.emit()">
+          <span
+            class="c-lamp"
+            [class.is-idle]="techLevel() === 'unknown'"
+            [class.is-warn]="techLevel() === 'warn'"
+            [class.is-bad]="techLevel() === 'bad'"
+            aria-hidden="true"
+          ></span>
+          {{ t('sender.techcheck.open') }}
+        </button>
+      </div>
+    </header>
+    <div class="c-top__banners"><ng-content /></div>
+  </div>
 
-  <main class="c-laptop__main">
-    <div class="c-laptop__intro">
-      <h1 class="c-laptop__title" data-route-focus tabindex="-1">
-        {{ justPaired() ? t('sender.station.laptop.paired') : self()?.name }}
-      </h1>
-      <p class="c-laptop__lead">
-        @if (justPaired()) {
-          {{ t('sender.station.laptop.pairedLead', { name: self()?.name ?? '' }) }}
-        } @else {
-          {{ t('sender.station.laptop.pairedWith', { production: self()?.productionName ?? '' }) }}
-        }
-      </p>
-    </div>
+  <main class="c-column">
+    <header class="c-column__head">
+      <h1 class="c-column__title" data-route-focus tabindex="-1">{{ self()?.name }}</h1>
+      @if (self()?.productionName; as production) {
+        <p class="c-column__lead">{{ t('sender.station.laptop.pairedWith', { production }) }}</p>
+      }
+    </header>
 
     @if (!canShareScreen) {
       <div class="c-notice c-notice--warn" role="status">
-        <sf-icon class="c-notice__icon" name="alert" />
+        <sf-icon name="alert" />
         <p class="c-notice__text">{{ t('sender.station.laptop.noScreenShare') }}</p>
       </div>
     }
 
-    @for (slot of reshare(); track slot.slot) {
-      <section
-        class="c-laptop__reshare"
-        role="alert"
-        [attr.aria-labelledby]="'reshare-' + slot.slot"
-      >
-        <p class="c-laptop__reshare-text" [id]="'reshare-' + slot.slot">
-          {{ t('sender.station.laptop.reshare') }}
-          <span class="c-code">{{ slot.code }}</span>
-        </p>
-        <div class="c-laptop__reshare-actions">
-          <button
-            class="c-button c-button--fill c-button--large"
-            type="button"
-            (click)="share(slot)"
+    <section class="c-column__section" aria-labelledby="sources-title">
+      <h2 class="c-column__heading" id="sources-title">{{ t('sender.station.laptop.sources') }}</h2>
+
+      <ul class="c-sources">
+        @for (slot of screens(); track slot.slot) {
+          <li
+            class="c-source"
+            [attr.data-testid]="'slot-' + slot.slot"
+            [attr.data-state]="slot.state"
+            [attr.data-tally]="slot.tally"
+            [class.is-program]="slot.tally === 'program'"
+            [class.is-preview]="slot.tally === 'preview'"
+            [class.is-requested]="slot.reshareRequested"
+            (contextmenu)="openMenuAt($event, slot)"
           >
-            <sf-icon name="screen" />
-            {{ t('sender.station.laptop.shareAgain') }}
-          </button>
-          <button class="c-button" type="button" (click)="session.dismissReshare(slot.slot)">
-            {{ t('sender.station.laptop.later') }}
-          </button>
-        </div>
-      </section>
-    }
-
-    <h2 class="c-laptop__section">{{ t('sender.station.laptop.sources') }}</h2>
-    <ul class="c-laptop__slots">
-      @for (slot of screens(); track slot.slot) {
-        <li
-          class="c-slot"
-          [attr.data-testid]="'slot-' + slot.slot"
-          [attr.data-state]="slot.state"
-          [class.is-program]="slot.tally === 'program'"
-          [class.is-preview]="slot.tally === 'preview'"
-        >
-          <div class="c-slot__thumb">
-            @if (preview(slot); as stream) {
-              <video class="c-slot__video" [sfMediaPreview]="stream" aria-hidden="true"></video>
-            } @else {
-              <sf-icon class="c-slot__placeholder" name="screen" />
-            }
-          </div>
-          <div class="c-slot__info">
-            <p class="c-slot__head">
-              <span class="c-code">{{ slot.code ?? '…' }}</span>
-              <span class="c-slot__name">{{ label(slot) }}</span>
-              @if (slot.tally === 'program') {
-                <span class="c-tag c-tag--program">LIVE</span>
-              } @else if (slot.tally === 'preview') {
-                <span class="c-tag c-tag--preview">{{ t('sender.station.slot.tagNext') }}</span>
+            <div class="c-source__thumb">
+              @if (preview(slot); as stream) {
+                <video class="c-source__video" [sfMediaPreview]="stream" aria-hidden="true"></video>
+              } @else {
+                <sf-icon class="c-source__placeholder" name="screen" />
               }
-            </p>
-            <p
-              class="c-slot__state"
-              [class.is-bad]="slot.state === 'ended' || slot.state === 'failed'"
-            >
-              {{ stateText(slot) }}
-            </p>
-            @if (slot.messageKey && slot.state !== 'live' && slot.state !== 'ended') {
-              <p class="c-slot__message">{{ t(slot.messageKey) }}</p>
-            }
-            @if (videoScreen(slot)) {
-              <p class="c-slot__message" data-testid="video-screen-hint">
-                {{ t('sender.station.laptop.videoHint') }}
+            </div>
+
+            <div class="c-source__info">
+              <p class="c-source__head">
+                <span class="c-code">{{ slot.code ?? '…' }}</span>
+                <span class="c-source__name">{{ label(slot) }}</span>
+                <sf-tally-tag [state]="slot.tally" />
               </p>
-            }
-            @if (slot.state === 'live') {
-              @if (hasSound(slot)) {
-                <p class="c-slot__message" data-testid="screen-sound">
-                  {{ t('sender.audio.screen.withSound') }}
-                </p>
-              } @else if (shareAudio()) {
-                <p class="c-slot__message" data-testid="screen-no-sound">
-                  {{ t('sender.audio.screen.noSound') }}
-                </p>
-              }
-            }
-          </div>
-          <div class="c-slot__actions">
-            @switch (slot.state) {
-              @case ('starting') {
-                <button class="c-button" type="button" (click)="session.endShare(slot.slot)">
-                  {{ t('sender.station.laptop.stopSharing') }}
-                </button>
-              }
-              @case ('live') {
-                <button class="c-button" type="button" (click)="session.endShare(slot.slot)">
-                  {{ t('sender.station.laptop.stopSharing') }}
-                </button>
-              }
-              @case ('paused') {
-                <button class="c-button" type="button" (click)="session.endShare(slot.slot)">
-                  {{ t('sender.station.laptop.stopSharing') }}
-                </button>
-              }
-              @case ('ended') {
-                <button
-                  class="c-button c-button--fill c-button--large"
-                  type="button"
-                  (click)="share(slot)"
-                >
-                  {{ t('sender.station.laptop.shareAgain') }}
-                </button>
-              }
-              @case ('failed') {
-                <button
-                  class="c-button c-button--fill c-button--large"
-                  type="button"
-                  (click)="share(slot)"
-                >
-                  {{ t('sender.station.laptop.shareAgain') }}
-                </button>
-              }
-              @default {
-                <button
-                  class="c-button c-button--fill c-button--large"
-                  type="button"
-                  [disabled]="!canShareScreen"
-                  (click)="share(slot)"
-                >
-                  {{ t('sender.station.laptop.shareScreen') }}
-                </button>
-              }
-            }
-            @if (slot.code !== null) {
-              <button
-                class="c-button"
-                type="button"
-                data-testid="video-screen"
-                [attr.aria-pressed]="videoScreen(slot)"
-                (click)="toggleVideoScreen(slot)"
+              <p
+                class="c-source__state"
+                [class.is-bad]="slot.state === 'ended' || slot.state === 'failed'"
               >
-                {{ t('sender.station.laptop.video') }}
-              </button>
-              <button
-                class="c-button c-button--danger c-slot__remove"
-                type="button"
-                (click)="session.removeSlot(slot.slot)"
-              >
-                {{ t('common.remove') }}
-              </button>
-            }
-          </div>
-        </li>
-      }
+                {{ stateText(slot) }}
+              </p>
+              @if (slot.messageKey && slot.state !== 'live' && slot.state !== 'ended') {
+                <p class="c-source__note">{{ t(slot.messageKey) }}</p>
+              }
+              @if (slot.state === 'live') {
+                @if (hasSound(slot)) {
+                  <p class="c-source__note" data-testid="screen-sound">
+                    {{ t('sender.audio.screen.withSound') }}
+                  </p>
+                } @else if (shareAudio()) {
+                  <p class="c-source__note" data-testid="screen-no-sound">
+                    {{ t('sender.audio.screen.noSound') }}
+                  </p>
+                }
+              }
+              @if (videoScreen(slot)) {
+                <p class="c-source__note" data-testid="video-screen-hint">
+                  {{ t('sender.station.laptop.videoHint') }}
+                </p>
+              }
+            </div>
 
-      @if (camera(); as slot) {
-        <li
-          class="c-slot"
-          data-testid="slot-camera"
-          [attr.data-state]="slot.state"
-          [class.is-program]="slot.tally === 'program'"
-          [class.is-preview]="slot.tally === 'preview'"
-        >
-          <div class="c-slot__thumb">
-            @if (preview(slot); as stream) {
-              <video
-                class="c-slot__video"
-                [class.is-mirrored]="facing() === 'user'"
-                [sfMediaPreview]="stream"
-                aria-hidden="true"
-              ></video>
-            } @else {
-              <sf-icon class="c-slot__placeholder" name="camera" />
-            }
-          </div>
-          <div class="c-slot__info">
-            <p class="c-slot__head">
-              <span class="c-code">{{ slot.code }}</span>
-              <span class="c-slot__name">{{ t('sender.station.slot.camera') }}</span>
-              @if (slot.tally === 'program') {
-                <span class="c-tag c-tag--program">LIVE</span>
-              } @else if (slot.tally === 'preview') {
-                <span class="c-tag c-tag--preview">{{ t('sender.station.slot.tagNext') }}</span>
-              }
-            </p>
-            <p class="c-slot__state" [class.is-bad]="slot.state === 'failed'">
-              {{ stateText(slot) }}
-            </p>
-            @if (cameraProblem(slot); as issue) {
-              <div class="c-slot__problem">
-                <p class="c-slot__message">{{ issue.title }}</p>
-                <ol class="c-slot__steps">
-                  @for (step of issue.steps; track $index) {
-                    <li>{{ step }}</li>
-                  }
-                </ol>
+            @if (slot.reshareRequested) {
+              <div class="c-source__request" role="alert">
+                <sf-icon name="refresh" />
+                <p>{{ t('sender.station.laptop.reshare') }}</p>
               </div>
             }
-          </div>
-          <div class="c-slot__actions">
-            @if (busy(slot)) {
-              <button class="c-button" type="button" (click)="session.stopCamera()">
-                {{ t('sender.station.laptop.stopCamera') }}
-              </button>
-            } @else {
-              <button
-                class="c-button c-button--primary"
-                type="button"
-                (click)="session.startCamera()"
-              >
-                {{
-                  slot.state === 'failed'
-                    ? t('sender.station.laptop.tryAgain')
-                    : t('sender.station.laptop.startCamera')
-                }}
-              </button>
-            }
-            <button
-              class="c-button c-button--danger c-slot__remove"
-              type="button"
-              (click)="session.removeSlot(slot.slot)"
-            >
-              {{ t('common.remove') }}
-            </button>
-          </div>
-        </li>
-      }
-    </ul>
 
-    @if (mic() !== null) {
-      <sf-mic-panel />
-    }
+            <div class="c-source__actions">
+              @switch (slot.state) {
+                @case ('ended') {
+                  <button class="c-btn c-btn--fill c-btn--lg" type="button" (click)="share(slot)">
+                    {{ t('sender.station.laptop.shareAgain') }}
+                  </button>
+                }
+                @case ('failed') {
+                  <button class="c-btn c-btn--fill c-btn--lg" type="button" (click)="share(slot)">
+                    {{ t('sender.station.laptop.shareAgain') }}
+                  </button>
+                }
+                @case ('idle') {
+                  <button
+                    class="c-btn c-btn--fill c-btn--lg"
+                    type="button"
+                    [disabled]="!canShareScreen"
+                    (click)="share(slot)"
+                  >
+                    <sf-icon name="screen" />
+                    {{ t('sender.station.laptop.shareScreen') }}
+                  </button>
+                }
+                @default {
+                  <button class="c-btn" type="button" (click)="stopShare(slot)">
+                    <sf-icon name="stop" />
+                    {{ t('sender.station.laptop.stopSharing') }}
+                  </button>
+                }
+              }
+              @if (slot.reshareRequested) {
+                <button
+                  class="c-btn c-btn--plain"
+                  type="button"
+                  (click)="session.dismissReshare(slot.slot)"
+                >
+                  {{ t('sender.station.laptop.later') }}
+                </button>
+              }
+              @if (soundHost() === slot.slot) {
+                <ng-container *ngTemplateOutlet="sound" />
+              }
+              <ng-container *ngTemplateOutlet="more; context: { $implicit: slot }" />
+            </div>
+          </li>
+        }
+
+        @if (camera(); as slot) {
+          <li
+            class="c-source"
+            data-testid="slot-camera"
+            [attr.data-state]="slot.state"
+            [attr.data-tally]="slot.tally"
+            [class.is-program]="slot.tally === 'program'"
+            [class.is-preview]="slot.tally === 'preview'"
+            (contextmenu)="openMenuAt($event, slot)"
+          >
+            <div class="c-source__thumb">
+              @if (preview(slot); as stream) {
+                <video
+                  class="c-source__video"
+                  [class.is-mirrored]="facing() === 'user'"
+                  [sfMediaPreview]="stream"
+                  aria-hidden="true"
+                ></video>
+              } @else {
+                <sf-icon class="c-source__placeholder" name="camera" />
+              }
+            </div>
+
+            <div class="c-source__info">
+              <p class="c-source__head">
+                <span class="c-code">{{ slot.code }}</span>
+                <span class="c-source__name">{{ t('sender.station.slot.camera') }}</span>
+                <sf-tally-tag [state]="slot.tally" />
+              </p>
+              <p class="c-source__state" [class.is-bad]="slot.state === 'failed'">
+                {{ stateText(slot) }}
+              </p>
+              @if (cameraProblem(slot); as issue) {
+                <div class="c-source__problem">
+                  <p class="c-source__note">{{ issue.title }}</p>
+                  <ol class="c-source__steps">
+                    @for (step of issue.steps; track $index) {
+                      <li>{{ step }}</li>
+                    }
+                  </ol>
+                </div>
+              }
+            </div>
+
+            <div class="c-source__actions">
+              @if (busy(slot)) {
+                <button class="c-btn" type="button" (click)="stopCamera(slot)">
+                  <sf-icon name="stop" />
+                  {{ t('sender.station.laptop.stopCamera') }}
+                </button>
+              } @else if (slot.state === 'failed') {
+                <button class="c-btn c-btn--fill" type="button" (click)="session.startCamera()">
+                  {{ t('sender.station.laptop.tryAgain') }}
+                </button>
+              } @else {
+                <button class="c-btn c-btn--primary" type="button" (click)="session.startCamera()">
+                  <sf-icon name="camera" />
+                  {{ t('sender.station.laptop.startCamera') }}
+                </button>
+              }
+              <ng-container *ngTemplateOutlet="more; context: { $implicit: slot }" />
+            </div>
+          </li>
+        }
+
+        @if (mic() !== null) {
+          <li class="c-sources__mic">
+            <sf-mic-panel />
+          </li>
+        }
+      </ul>
+
+      <div class="c-laptop__add">
+        @if (screens().length === 0 && canShareScreen) {
+          <button class="c-btn c-btn--fill c-btn--lg" type="button" (click)="addScreen()">
+            <sf-icon name="screen" />
+            {{ t('sender.station.laptop.shareScreen') }}
+          </button>
+        }
+        @if (showAddScreen()) {
+          <button
+            class="c-btn"
+            type="button"
+            [disabled]="!canAddScreen()"
+            [title]="canAddScreen() ? '' : t('sender.station.laptop.addScreenWait')"
+            (click)="addScreen()"
+          >
+            <sf-icon name="plus" />
+            {{ t('sender.station.laptop.addScreen') }}
+          </button>
+        }
+        @if (soundHost() === 'add') {
+          <ng-container *ngTemplateOutlet="sound" />
+        }
+        @if (camera() === null) {
+          <button class="c-btn" type="button" (click)="session.addCamera()">
+            <sf-icon name="camera" />
+            {{ t('sender.station.laptop.addCamera') }}
+          </button>
+        }
+        @if (mic() === null) {
+          <button class="c-btn" type="button" data-testid="mic-add" (click)="session.startMic()">
+            <sf-icon name="mic" />
+            {{ t('sender.audio.add') }}
+          </button>
+        }
+      </div>
+
+      @if (actionError(); as error) {
+        <div class="c-notice c-notice--bad" role="alert">
+          <sf-icon name="alert" />
+          <p class="c-notice__text">{{ error }}</p>
+        </div>
+      }
+    </section>
 
     @if (canShareScreen) {
-      <div class="c-laptop__audio">
-        <label class="c-laptop__check-row">
-          <input
-            class="c-laptop__checkbox"
-            type="checkbox"
-            data-testid="share-audio"
-            [checked]="shareAudio()"
-            (change)="setShareAudio($event)"
-          />
-          <span>{{ t('sender.audio.screen.label') }}</span>
-        </label>
-        <p class="c-field__hint">{{ t('sender.audio.screen.explain') }}</p>
-      </div>
-    }
-
-    <div class="c-laptop__add">
-      @if (screens().length === 0 && canShareScreen) {
-        <button class="c-button c-button--fill c-button--large" type="button" (click)="addScreen()">
-          <sf-icon name="screen" />
-          {{ t('sender.station.laptop.shareScreen') }}
-        </button>
-      }
-      @if (canAddScreen()) {
-        <button class="c-button c-button--primary" type="button" (click)="addScreen()">
-          {{ t('sender.station.laptop.addScreen') }}
-        </button>
-      }
-      @if (camera() === null) {
-        <button class="c-button" type="button" (click)="session.addCamera()">
-          <sf-icon name="camera" />
-          {{ t('sender.station.laptop.addCamera') }}
-        </button>
-      }
-      @if (mic() === null) {
-        <button class="c-button" type="button" data-testid="mic-add" (click)="session.startMic()">
-          <sf-icon name="mic" />
-          {{ t('sender.audio.add') }}
-        </button>
-      }
-    </div>
-
-    @if (actionError(); as error) {
-      <div class="c-notice c-notice--bad" role="alert">
-        <sf-icon class="c-notice__icon" name="alert" />
-        <p class="c-notice__text">{{ error }}</p>
-      </div>
+      <details class="c-help">
+        <summary class="c-help__summary">
+          <sf-icon name="info" />
+          {{ t('sender.audio.screen.help') }}
+        </summary>
+        <p class="c-help__text">{{ t('sender.audio.screen.explain') }}</p>
+      </details>
     }
   </main>
 </div>
+
+<!-- “With sound”: one checkbox, always next to the next share action (it applies to the next share). -->
+<ng-template #sound>
+  <label class="c-check">
+    <input
+      type="checkbox"
+      data-testid="share-audio"
+      [checked]="shareAudio()"
+      (change)="setShareAudio($event)"
+    />
+    <span>{{ t('sender.audio.screen.label') }}</span>
+  </label>
+</ng-template>
+
+<!-- The ⋯ menu of a card: every command of the source, also offered on a right-click of the card. -->
+<ng-template #more let-slot>
+  <div class="c-menu-wrap c-source__more">
+    <button
+      class="c-ibtn"
+      type="button"
+      aria-haspopup="menu"
+      [attr.aria-expanded]="menuFor() === slot.slot"
+      [attr.aria-label]="t('sender.station.laptop.more', { name: label(slot) })"
+      [title]="t('sender.station.laptop.more', { name: label(slot) })"
+      (click)="toggleMenu(slot.slot)"
+    >
+      <sf-icon name="more" />
+    </button>
+    @if (menuFor() === slot.slot) {
+      <div class="c-menu" role="menu" [attr.aria-label]="label(slot)" (keydown)="menuKey($event)">
+        @for (entry of menuEntries(slot); track entry.id) {
+          @if (entry.id === 'remove') {
+            <div class="c-menu-sep" role="separator"></div>
+          }
+          @if (entry.checked !== undefined) {
+            <button
+              class="c-menu-item"
+              type="button"
+              role="menuitemcheckbox"
+              [attr.data-testid]="entry.testId"
+              [attr.aria-checked]="entry.checked"
+              (click)="entry.run()"
+            >
+              <span class="c-menu-item__body">
+                <span>{{ entry.label }}</span>
+                @if (entry.hint) {
+                  <span class="c-menu-item__sub">{{ entry.hint }}</span>
+                }
+              </span>
+              <sf-icon class="c-menu-item__check" name="check" />
+            </button>
+          } @else {
+            <button
+              class="c-menu-item"
+              type="button"
+              role="menuitem"
+              [class.c-menu-item--danger]="entry.danger"
+              [disabled]="entry.disabled"
+              (click)="entry.run()"
+            >
+              <sf-icon [name]="entry.icon" />
+              {{ entry.label }}
+            </button>
+          }
+        }
+      </div>
+    }
+  </div>
+</ng-template>
+
+@if (asking(); as pending) {
+  <sf-confirm-sheet
+    [title]="confirmTitle(pending)"
+    [text]="confirmText(pending)"
+    [confirmLabel]="confirmLabel(pending)"
+    (confirmed)="confirmAsk()"
+    (cancelled)="cancelAsk()"
+  />
+}

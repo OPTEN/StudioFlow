@@ -69,7 +69,7 @@ describe('PlaceholderOfferComponent', () => {
   it('offers "Use as K1 · Stage phone" to a new camera and assigns it with one click', async () => {
     await setup();
     expect(buttons()).toEqual(['Use as K1 · Stage phone']);
-    expect(element.textContent).toContain('This station can take the place of a missing source:');
+    expect(element.textContent).toContain('This device can take the place of a missing source:');
     element.querySelector<HTMLButtonElement>('[data-placeholder="K1"]')!.click();
     const request = harness.http.expectOne(`${BASE}/${K1.id}/assignment`);
     expect(request.request.method).toBe('PUT');

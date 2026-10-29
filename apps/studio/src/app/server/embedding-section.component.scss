@@ -1,0 +1,24 @@
+// Embedding: one row per allowed website (address and a remove button), the add row at the end of the group.
+.c-origin {
+  gap: 4px 8px;
+  padding-block: 7px;
+}
+
+.c-origin__error {
+  grid-column: 1 / -1;
+}
+
+.c-origin__empty {
+  color: var(--muted);
+}
+
+.c-origin__add {
+  grid-template-columns: auto minmax(0, 1fr);
+  min-height: 40px;
+  padding-block: 4px;
+  padding-left: 8px;
+}
+
+.c-origin__list-error {
+  padding: 0 4px;
+}

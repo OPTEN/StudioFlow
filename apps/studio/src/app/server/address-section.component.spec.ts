@@ -56,11 +56,23 @@ describe('AddressSectionComponent', () => {
     input(id).dispatchEvent(new Event('input'));
   }
 
+  /** Picks a certificate card, and for Let's Encrypt the provider in its select. */
   async function choose(mode: string): Promise<void> {
-    const select = element.querySelector<HTMLSelectElement>('#address-mode')!;
-    select.value = mode;
-    select.dispatchEvent(new Event('change'));
+    const kind = mode === 'internal' || mode === 'custom' ? mode : 'dns';
+    input(`address-kind-${kind}`).click();
     await render();
+    if (kind === 'dns') {
+      const select = element.querySelector<HTMLSelectElement>('#address-provider')!;
+      select.value = mode;
+      select.dispatchEvent(new Event('change'));
+      await render();
+    }
+  }
+
+  function credentialLabels(): string[] {
+    return Array.from(
+      element.querySelectorAll<HTMLLabelElement>('label[for^="address-credential-"]'),
+    ).map((label) => label.textContent?.trim() ?? '');
   }
 
   async function attach(id: string, name: string, text: string, size = text.length): Promise<void> {
@@ -99,18 +111,45 @@ describe('AddressSectionComponent', () => {
 
   afterEach(() => http.verify());
 
-  it('offers the local certificate, an own certificate and every provider of the server', async () => {
+  it('offers three kinds of certificate as radio cards, the local one recommended', async () => {
     await setup();
-    const options = Array.from(element.querySelectorAll('#address-mode option')).map((option) =>
+    const radios = Array.from(
+      element.querySelectorAll<HTMLInputElement>('input[type="radio"][name="address-kind"]'),
+    );
+    expect(radios.map((radio) => radio.value)).toEqual(['internal', 'custom', 'dns']);
+    expect(radios.map((radio) => radio.checked)).toEqual([true, false, false]);
+    expect(
+      radios.map((radio) =>
+        element.querySelector(`label[for="${radio.id}"]`)?.textContent?.replace(/\s+/g, ' ').trim(),
+      ),
+    ).toEqual([
+      'Local certificate Recommended on a LAN',
+      'Own certificate',
+      'Let’s Encrypt via DNS',
+    ]);
+    expect(element.querySelector('legend')?.textContent?.trim()).toBe('Certificate');
+    expect(element.querySelector('#address-provider')).toBeNull();
+  });
+
+  it('asks for the provider only for Let’s Encrypt, with every provider of the server', async () => {
+    await setup();
+    await choose('dns-cloudflare');
+    const options = Array.from(element.querySelectorAll('#address-provider option')).map((option) =>
       option.textContent?.trim(),
     );
-    expect(options).toEqual([
-      'Local certificate (no domain needed)',
-      'My own certificate',
-      'Let’s Encrypt through DNS: Cloudflare',
-      'Let’s Encrypt through DNS: Hetzner',
-      'Let’s Encrypt through DNS: Amazon Route 53',
-    ]);
+    expect(options).toEqual(['Cloudflare', 'Hetzner', 'Amazon Route 53']);
+    expect(input('address-kind-dns').checked).toBe(true);
+    expect(element.querySelector('a[download]')).toBeNull();
+
+    await choose('internal');
+    expect(element.querySelector('#address-provider')).toBeNull();
+    await choose('dns-hetzner');
+    await choose('custom');
+    input('address-kind-dns').click();
+    await render();
+    expect(element.querySelector<HTMLSelectElement>('#address-provider')?.value).toBe(
+      'dns-hetzner',
+    );
   });
 
   describe('local certificate', () => {
@@ -177,7 +216,7 @@ describe('AddressSectionComponent', () => {
         },
         configuredSettingsFixture({ baseUrl: 'https://studioflow.example.com:8443' }),
       );
-      const link = element.querySelector<HTMLAnchorElement>('.c-srv__link')!;
+      const link = element.querySelector<HTMLAnchorElement>('.c-address__link')!;
       expect(link.getAttribute('href')).toBe('https://studioflow.example.com:8443');
       expect(link.textContent).toContain('Open https://studioflow.example.com:8443');
     });
@@ -186,24 +225,25 @@ describe('AddressSectionComponent', () => {
   describe('warning about paired devices', () => {
     it('appears on the settings page when the domain would change', async () => {
       await setup(configuredSettingsFixture({ address: { domain: 'old.example.com' } }));
-      expect(element.querySelector('.c-srv__warning')).toBeNull();
+      expect(element.querySelector('.c-address__warning')).toBeNull();
       type('address-domain', 'new.example.com');
       await render();
-      const warning = element.querySelector('.c-srv__warning')!;
+      const warning = element.querySelector('.c-address__warning')!;
       expect(warning.textContent).toContain('https://new.example.com:8443');
+      expect(warning.getAttribute('role')).toBe('note');
     });
 
     it('appears when the kind of certificate would change', async () => {
       await setup(configuredSettingsFixture());
       await choose('custom');
-      expect(element.querySelector('.c-srv__warning')).not.toBeNull();
+      expect(element.querySelector('.c-address__warning')).not.toBeNull();
     });
 
     it('does not appear in the wizard, which only announces the address', async () => {
       await setup(serverSettingsFixture(), 'next');
       type('address-domain', 'new.example.com');
       await render();
-      expect(element.querySelector('.c-srv__warning')).toBeNull();
+      expect(element.querySelector('.c-address__warning')).toBeNull();
       expect(element.textContent).toContain(
         'The control room will then be at https://new.example.com:8443',
       );
@@ -214,11 +254,7 @@ describe('AddressSectionComponent', () => {
     it('needs the domain and every credential of the provider', async () => {
       await setup();
       await choose('dns-cloudflare');
-      expect(
-        Array.from(element.querySelectorAll('.c-srv__grid label')).map((label) =>
-          label.textContent?.trim(),
-        ),
-      ).toEqual(['API token']);
+      expect(credentialLabels()).toEqual(['API token']);
       await submit();
       expect(errorOf('address-domain')).toBe('Enter the domain.');
       expect(errorOf('address-credential-token')).toBe('Enter this value.');
@@ -244,6 +280,12 @@ describe('AddressSectionComponent', () => {
     it('sends the credentials and the optional values trimmed, then forgets the secrets', async () => {
       await setup();
       await choose('dns-cloudflare');
+      expect(element.querySelector('#address-email')).toBeNull();
+      const more = element.querySelector<HTMLButtonElement>('.c-address__toggle')!;
+      expect(more.getAttribute('aria-expanded')).toBe('false');
+      more.click();
+      await render();
+      expect(more.getAttribute('aria-expanded')).toBe('true');
       type('address-domain', 'studioflow.example.com');
       type('address-email', ' ops@example.ch ');
       type('address-challenge', '_acme-challenge.studioflow.dedyn.io');
@@ -263,6 +305,8 @@ describe('AddressSectionComponent', () => {
     it('checks the e-mail address and the challenge domain', async () => {
       await setup();
       await choose('dns-cloudflare');
+      element.querySelector<HTMLButtonElement>('.c-address__toggle')!.click();
+      await render();
       type('address-domain', 'studioflow.example.com');
       type('address-email', 'nobody');
       type('address-challenge', 'not valid');
@@ -365,6 +409,10 @@ describe('AddressSectionComponent', () => {
       type('address-domain', 'studioflow.example.com');
       await attach('address-certificate', 'fullchain.pem', CERTIFICATE);
       await attach('address-key', 'privkey.pem', KEY);
+      expect(element.querySelector('#address-certificate-name')?.textContent?.trim()).toBe(
+        'fullchain.pem',
+      );
+      expect(element.querySelector('#address-key-name')?.textContent?.trim()).toBe('privkey.pem');
       await submit();
       const upload = http.expectOne('/api/settings/certificate');
       expect(upload.request.body).toEqual({
@@ -399,8 +447,17 @@ describe('AddressSectionComponent', () => {
           },
         }),
       );
-      expect(element.textContent).toContain('Current certificate: CN=studioflow.example.com');
-      expect(element.textContent).toContain('AB:CD');
+      const current = Array.from(element.querySelectorAll('.c-address__kv dt')).map((term) => [
+        term.textContent?.trim(),
+        term.nextElementSibling?.textContent?.trim(),
+      ]);
+      expect(current).toEqual([
+        ['Issued to', 'CN=studioflow.example.com'],
+        ['Names', 'studioflow.example.com'],
+        ['Valid until', expect.any(String)],
+        ['Fingerprint', 'AB:CD'],
+      ]);
+      expect(element.textContent).toContain('No file chosen');
       await submit();
       http.expectNone('/api/settings/certificate');
       await accept({

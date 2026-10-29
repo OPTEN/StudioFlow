@@ -1,0 +1,133 @@
+<div class="c-page">
+  <sf-settings-page-head
+    [title]="t('regie.settings.nav.slates')"
+    scope="production"
+    [note]="t('regie.production.slates.lead')"
+  />
+
+  @if (store.production()) {
+    <form class="c-page__body" novalidate [formGroup]="form" (submit)="save($event)">
+      <div
+        class="c-tabs c-slates__tabs"
+        role="tablist"
+        [attr.aria-label]="t('regie.production.slates.tabs')"
+        (keydown)="onTabKeyDown($event)"
+      >
+        @for (slate of slates; track slate.key) {
+          <button
+            class="c-tab"
+            type="button"
+            role="tab"
+            [id]="'sf-slate-tab-' + slate.key"
+            [attr.aria-selected]="tab() === slate.key"
+            [attr.aria-controls]="'sf-slate-panel-' + slate.key"
+            [tabIndex]="tab() === slate.key ? 0 : -1"
+            (click)="tab.set(slate.key)"
+          >
+            {{ t(slate.title) }}
+            @if (showing() === slate.key) {
+              <span class="c-prod-page__tag">{{ t('regie.production.slates.showing') }}</span>
+            }
+            @if (changed(slate.key)) {
+              <span class="c-slates__dot" [title]="t('regie.production.form.unsaved')">
+                <span class="u-sr-only">{{ t('regie.production.form.unsaved') }}</span>
+              </span>
+            }
+          </button>
+        }
+      </div>
+      @for (slate of slates; track slate.key) {
+        <section
+          class="c-group c-slates__panel"
+          role="tabpanel"
+          [id]="'sf-slate-panel-' + slate.key"
+          [attr.aria-labelledby]="'sf-slate-tab-' + slate.key"
+          [hidden]="tab() !== slate.key"
+          [formGroupName]="slate.key"
+        >
+          <div class="c-group__body">
+            <div class="c-group__row c-slates__row">
+              <sf-picture-preview
+                class="c-slates__preview"
+                [slate]="drafts()[slate.key]"
+                [label]="t('regie.production.slates.preview', { title: t(slate.title) })"
+                [box]="{ width: 320, height: 200 }"
+              />
+              <div class="c-slates__fields">
+                <div class="c-prod-page__field">
+                  <label class="c-prod-page__label" [for]="'slate-' + slate.key + '-title'">{{
+                    t('regie.header.production.title')
+                  }}</label>
+                  <input
+                    class="c-input"
+                    type="text"
+                    autocomplete="off"
+                    formControlName="title"
+                    [id]="'slate-' + slate.key + '-title'"
+                    [maxlength]="textMax"
+                    [class.is-invalid]="invalid(slate.key)"
+                    [attr.aria-invalid]="invalid(slate.key) ? 'true' : null"
+                    [attr.aria-describedby]="'slate-' + slate.key + '-error'"
+                  />
+                  @if (invalid(slate.key)) {
+                    <p class="c-field-error" role="alert" [id]="'slate-' + slate.key + '-error'">
+                      {{ t('regie.production.slates.titleInvalid', { max: textMax }) }}
+                    </p>
+                  }
+                </div>
+                <div class="c-prod-page__field">
+                  <label class="c-prod-page__label" [for]="'slate-' + slate.key + '-subtitle'">{{
+                    t('regie.header.production.subtitle')
+                  }}</label>
+                  <input
+                    class="c-input"
+                    type="text"
+                    autocomplete="off"
+                    formControlName="subtitle"
+                    [id]="'slate-' + slate.key + '-subtitle'"
+                    [maxlength]="textMax"
+                    [placeholder]="t('regie.production.slates.optional')"
+                  />
+                </div>
+                <div class="c-prod-page__field">
+                  <label class="c-prod-page__label" [for]="'slate-' + slate.key + '-background'">{{
+                    t('regie.header.production.background')
+                  }}</label>
+                  <select
+                    class="c-select"
+                    formControlName="background"
+                    [id]="'slate-' + slate.key + '-background'"
+                    [attr.aria-describedby]="
+                      images().length === 0 ? 'slate-' + slate.key + '-images' : null
+                    "
+                  >
+                    <option value="">{{ t('regie.header.production.backgroundNone') }}</option>
+                    @for (asset of images(); track asset.id) {
+                      <option [value]="asset.id">{{ asset.code }} · {{ asset.name }}</option>
+                    }
+                  </select>
+                  @if (images().length === 0) {
+                    <p class="c-hint" [id]="'slate-' + slate.key + '-images'">
+                      {{ t('regie.production.slates.noImages') }}
+                    </p>
+                  }
+                </div>
+              </div>
+            </div>
+          </div>
+          <p class="c-group__footer">{{ t(slate.hint) }}</p>
+        </section>
+      }
+
+      <sf-form-actions
+        [submit]="true"
+        [dirty]="dirty()"
+        [busy]="saving()"
+        [saveLabel]="t('regie.production.slates.save')"
+        (discard)="reset()"
+      />
+    </form>
+  } @else {
+    <p class="c-empty">{{ t('common.loading') }}</p>
+  }
+</div>

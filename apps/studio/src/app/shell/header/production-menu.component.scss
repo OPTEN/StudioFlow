@@ -1,4 +1,5 @@
-// Production name in the header (prototype .prod) and its menu.
+// The production title in the toolbar and its switcher. The title reads like a pop-up button: the name, then a chevron
+// in a small filled square, so it is clearly something to press.
 @use 'mixins' as *;
 
 :host {
@@ -8,30 +9,29 @@
 }
 
 .c-prod {
-  // The trigger's padding would push the name away from the brand; the wrapper absorbs it.
-  margin-left: -8px;
-  max-width: calc(100% + 8px);
+  max-width: 100%;
   min-width: 0;
 }
 
 .c-prod__trigger {
-  @include state-transition(background-color, color);
+  @include state-transition(background-color);
   align-items: center;
   background: transparent;
   border: 0;
   border-radius: var(--radius-md);
-  color: var(--text-2);
+  color: var(--text);
   cursor: pointer;
   display: inline-flex;
   font-size: 14px;
-  gap: 6px;
+  font-weight: 600;
+  gap: 8px;
   height: 30px;
   max-width: 100%;
-  padding: 0 8px;
+  padding: 0 4px 0 8px;
 
-  &:hover {
-    background: var(--raised);
-    color: var(--text);
+  &:hover,
+  &[aria-expanded='true'] {
+    background: var(--fill);
   }
 }
 
@@ -39,75 +39,61 @@
   @include ellipsis;
 }
 
-.c-prod__pop {
-  width: 300px;
-}
-
-.c-prod__form {
-  display: grid;
-  gap: 8px;
-  padding: 0 8px 8px;
-
-  .c-pop-h {
-    padding-inline: 0;
-  }
-}
-
-.c-prod__field {
-  display: grid;
-  gap: 4px;
-}
-
-.c-prod__label {
-  color: var(--muted);
-  font-size: 12.5px;
-}
-
-.c-prod__color {
-  align-items: center;
-  display: grid;
-  gap: 8px;
-  grid-template-columns: 36px minmax(0, 1fr);
-}
-
-.c-prod__swatch {
-  background: var(--ground);
-  border: 1px solid var(--control-edge);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  height: 30px;
+.c-prod__chev {
+  @include state-transition(background-color, color);
+  background: var(--fill);
+  border-radius: 5px;
+  color: var(--text-2);
+  height: 20px;
   padding: 3px;
-  width: 36px;
+  width: 20px;
+
+  .c-prod__trigger:hover &,
+  .c-prod__trigger[aria-expanded='true'] & {
+    background: var(--fill-hover);
+    color: var(--text);
+  }
 }
 
-// The colours of the text as the output will draw them: they come from the form, never from the theme tokens.
-.c-prod__sample {
-  border-left: 6px solid;
-  border-radius: var(--radius-md);
+.c-prod__pop {
+  max-width: calc(100vw - 24px);
+  width: 320px;
+}
+
+// Many productions scroll inside the list; the actions below stay in view.
+.c-prod__list {
+  max-height: min(52dvh, 380px);
+  overflow-y: auto;
+}
+
+.c-prod__item {
   display: grid;
-  line-height: 1.25;
-  padding: 8px 12px;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+}
 
-  strong {
-    font-size: 15px;
-  }
+.c-prod__check {
+  display: grid;
+  place-items: center;
 
-  span {
-    font-size: 12.5px;
+  .c-icon {
+    color: var(--blue);
   }
 }
 
-.c-prod__row {
-  display: flex;
-  gap: 8px;
-  padding-top: 2px;
-}
-
-.c-prod__spacer {
-  flex: none;
-  width: 16px;
+.c-prod__item:hover .c-prod__check .c-icon,
+.c-prod__item:focus-visible .c-prod__check .c-icon {
+  color: var(--on-fill);
 }
 
 .c-prod__item-name {
   @include ellipsis;
+
+  [aria-current='true'] > & {
+    font-weight: 600;
+  }
+}
+
+.c-prod__date {
+  @include mono;
+  white-space: nowrap;
 }

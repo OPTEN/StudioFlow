@@ -13,7 +13,7 @@ describe('scene list helpers', () => {
     itemFixture('itm_4', 'dev_cccccccccccccccc/camera', { hidden: true }),
   ]);
 
-  it('builds the prototype row: keycap, PGM, codes of visible items and the aria label', () => {
+  it('builds the row: keycap, Live, codes of visible items, the aria label and no click hint', () => {
     const view = sceneRowView(scene, 2, {
       programSceneId: 'scn_b',
       previewSceneId: null,
@@ -25,6 +25,8 @@ describe('scene list helpers', () => {
     expect(view.isProgram).toBe(true);
     expect(view.pressed).toBe(true);
     expect(view.codes).toBe('S1 · K1');
+    expect(view.ariaLabel).toBe('Lea presents, live on Program');
+    expect(view.hint).toBeNull();
   });
 
   it('marks the preview only in Studio Mode and reports the outage', () => {
@@ -37,12 +39,17 @@ describe('scene list helpers', () => {
     const studio = sceneRowView(scene, 0, { ...context, studioMode: true });
     expect(studio.isPreview).toBe(true);
     expect(studio.pressed).toBe(true);
+    expect(studio.ariaLabel).toBe('Lea presents, in Preview, K2 disrupted');
     const direct = sceneRowView(scene, 0, { ...context, studioMode: false });
     expect(direct.isPreview).toBe(false);
     expect(direct.pressed).toBe(false);
+    expect(direct.hint).toBe('Click or press 1 to go live');
+    expect(
+      sceneRowView(scene, 4, { ...context, previewSceneId: 'scn_a', studioMode: true }).hint,
+    ).toBe('Click or press 5 to show in Preview');
   });
 
-  it('has no keycap after the ninth scene and says "empty" without visible items', () => {
+  it('has no keycap after the ninth scene and says "No sources" without visible items', () => {
     const empty = sceneFixture('scn_x', 'Break', 9);
     const view = sceneRowView(empty, 9, {
       programSceneId: null,
@@ -52,7 +59,8 @@ describe('scene list helpers', () => {
       codeOf: () => undefined,
     });
     expect(view.key).toBeNull();
-    expect(view.codes).toBe('empty');
+    expect(view.codes).toBe('No sources');
+    expect(view.hint).toBe('Click to go live');
   });
 
   it('names new scenes after their keycap and skips taken names', () => {

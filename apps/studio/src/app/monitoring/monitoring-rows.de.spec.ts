@@ -35,7 +35,7 @@ describe('monitoring rows in German', () => {
     const [row] = monitoringRows([device], () => sources, NOW);
     expect(row.stateWord).toBe('sendet');
     expect(row.techText).toBe('nicht gelaufen');
-    expect(row.slots[0]).toMatchObject({ state: 'live', bitrate: '2,8', loss: '0,5 %' });
+    expect(row.slots[0]).toMatchObject({ state: 'live', bitrate: '2,8', loss: '0,5' });
   });
 
   it('says how long ago a station was seen', () => {

@@ -8,9 +8,10 @@ import {
   sourceFixture,
 } from '../../../testing/fixtures';
 import {
-  addableSourceGroups,
   assetUsage,
+  canAddEntry,
   kindOfReference,
+  sourceMenuGroups,
   sourceRows,
   usageSentence,
 } from './source-rows';
@@ -52,6 +53,7 @@ describe('source rows', () => {
     expect(front).toMatchObject({
       code: 'M1',
       icon: 'image',
+      thumbSourceId: null,
       hidden: true,
       lamp: null,
       state: null,
@@ -64,7 +66,13 @@ describe('source rows', () => {
       statusSince: '2026-10-22T10:00:00.000Z',
     });
     expect(middle.state).toEqual({ word: 'reconnecting', tone: 'warn', timer: true });
-    expect(back).toMatchObject({ code: 'S1', icon: 'screen', lamp: '', selected: false });
+    expect(back).toMatchObject({
+      code: 'S1',
+      icon: 'screen',
+      thumbSourceId: S1.id,
+      lamp: '',
+      selected: false,
+    });
   });
 
   it('shows a deleted source as "Source missing" with the icon of its reference', () => {
@@ -72,7 +80,13 @@ describe('source rows', () => {
       itemFixture('itm_1', 'dev_zzzzzzzzzzzzzzzz/screen-2'),
     ]);
     const [row] = sourceRows(scene, sources, null);
-    expect(row).toMatchObject({ code: '–', name: 'Source missing', icon: 'screen', missing: true });
+    expect(row).toMatchObject({
+      code: '–',
+      name: 'Source missing',
+      icon: 'screen',
+      thumbSourceId: null,
+      missing: true,
+    });
     expect(kindOfReference('ast_zzzzzzzzzzzzzzzz', null)).toBe('image');
   });
 
@@ -109,19 +123,28 @@ describe('source rows', () => {
     expect(row.state).toBeNull();
   });
 
-  it('offers the sources not in the scene, without blocked ones, grouped and sorted', () => {
+  it('lists every source grouped and sorted, marking the ones in the scene and the blocked ones', () => {
     const scene = sceneFixture('scn_a', 'A', 0, [itemFixture('itm_1', K1.id)]);
-    const groups = addableSourceGroups(scene, sources);
+    const groups = sourceMenuGroups(scene, sources);
     expect(groups.map((group) => group.label)).toEqual(['Cameras', 'Screens', 'Media']);
-    expect(groups[0].sources.map((source) => source.code)).toEqual(['K2']);
-    expect(groups[2].sources.map((source) => source.code)).toEqual(['M1']);
+    expect(
+      groups[0].entries.map((entry) => [entry.source.code, entry.inScene, entry.blocked]),
+    ).toEqual([
+      ['K1', true, false],
+      ['K2', false, false],
+      ['K10', false, true],
+    ]);
+    expect(groups[0].entries.map(canAddEntry)).toEqual([false, true, false]);
+    expect(groups[2].entries.map((entry) => entry.source.code)).toEqual(['M1']);
     const full = sceneFixture('scn_b', 'B', 1, [
       itemFixture('itm_1', K1.id),
       itemFixture('itm_2', K2.id),
       itemFixture('itm_3', S1.id),
       itemFixture('itm_4', M1.id),
     ]);
-    expect(addableSourceGroups(full, sources)).toEqual([]);
+    expect(sourceMenuGroups(full, sources).every((group) => !group.entries.some(canAddEntry))).toBe(
+      true,
+    );
   });
 
   it('finds every use of a medium and turns it into a sentence', () => {

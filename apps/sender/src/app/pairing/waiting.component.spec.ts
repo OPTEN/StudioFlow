@@ -59,6 +59,20 @@ describe('WaitingComponent', () => {
     expect(element.querySelector('h1')?.textContent).toContain('Waiting for approval');
   });
 
+  it('says until when the code is valid, and counts down only in the last two minutes', async () => {
+    const { element, detect } = await render();
+    const expiry = () => element.querySelector('.c-waiting__expiry');
+
+    expect(expiry()?.textContent).toMatch(/^\s*Valid until \d\d:\d\d\s*$/);
+    expect(expiry()?.classList).not.toContain('is-soon');
+
+    await vi.advanceTimersByTimeAsync(7 * 60_000 + 30_000);
+    detect();
+
+    expect(expiry()?.textContent?.trim()).toBe('Expires in 01:30');
+    expect(expiry()?.classList).toContain('is-soon');
+  });
+
   it('shows the denial with “New request”', async () => {
     getPairingRequestStatus.mockResolvedValue({ status: 'denied', credentials: null });
     const { element, detect } = await render();

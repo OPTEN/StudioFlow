@@ -1,0 +1,103 @@
+<div class="c-page">
+  <sf-settings-page-head
+    [title]="t('regie.settings.nav.textStyle')"
+    scope="production"
+    [note]="t('regie.production.text.lead')"
+  />
+
+  @if (store.production()) {
+    <form class="c-page__body" novalidate [formGroup]="form" (submit)="save($event)">
+      <section class="c-group" aria-labelledby="sf-text-preview">
+        <h2 class="c-group__title" id="sf-text-preview">
+          {{ t('regie.production.text.preview') }}
+        </h2>
+        <div class="c-group__body">
+          <div class="c-group__row c-group__row--stack c-text-style__stage">
+            <sf-picture-preview
+              [textTheme]="preview()"
+              [label]="t('regie.production.text.previewLabel')"
+              [box]="{ width: 520, height: 292 }"
+            />
+          </div>
+          @if (lowContrast(); as ratio) {
+            <p class="c-group__row c-prod-page__notice c-text-style__advice" role="status">
+              <svg sfIcon="info" aria-hidden="true"></svg>
+              <span>{{ t('regie.header.production.textContrastLow', { ratio }) }}</span>
+            </p>
+          }
+        </div>
+      </section>
+
+      <section class="c-group" aria-labelledby="sf-text-colours">
+        <h2 class="c-group__title" id="sf-text-colours">
+          {{ t('regie.production.text.colours') }}
+        </h2>
+        <div class="c-group__body">
+          @for (field of fields; track field.key) {
+            <div class="c-group__row">
+              <span class="c-group__label">
+                {{ t(field.label) }}
+                <span class="c-group__sub">{{ t(field.sub) }}</span>
+              </span>
+              <span class="c-text-style__colour">
+                <input
+                  class="c-text-style__swatch"
+                  type="color"
+                  [attr.aria-label]="
+                    t('regie.header.production.textPick', { colour: t(field.label) })
+                  "
+                  [value]="form.controls[field.key].value"
+                  (input)="pick(field.key, $any($event.target).value)"
+                />
+                <input
+                  class="c-input c-text-style__hex"
+                  type="text"
+                  maxlength="7"
+                  autocomplete="off"
+                  spellcheck="false"
+                  [formControlName]="field.key"
+                  [attr.aria-label]="
+                    t('regie.header.production.textHex', { colour: t(field.label) })
+                  "
+                  [class.is-invalid]="invalid(field.key)"
+                  [attr.aria-invalid]="invalid(field.key) ? 'true' : null"
+                  [attr.aria-describedby]="'text-' + field.key + '-error'"
+                />
+              </span>
+              @if (invalid(field.key)) {
+                <p
+                  class="c-field-error c-text-style__error"
+                  role="alert"
+                  [id]="'text-' + field.key + '-error'"
+                >
+                  {{ t('regie.production.text.hexInvalid') }}
+                </p>
+              }
+            </div>
+          }
+        </div>
+        <div class="c-group__footer c-text-style__footer">
+          <span>{{ t('regie.production.text.defaultsHint') }}</span>
+          <button
+            class="c-btn c-btn--sm c-btn--plain"
+            type="button"
+            [disabled]="isDefault() || saving()"
+            (click)="useDefaults()"
+          >
+            {{ t('regie.production.text.defaults') }}
+          </button>
+        </div>
+      </section>
+
+      <sf-form-actions
+        [submit]="true"
+        [dirty]="dirty()"
+        [busy]="saving()"
+        [saveLabel]="t('regie.production.text.save')"
+        (discard)="discard()"
+      />
+    </form>
+  } @else {
+    <p class="c-empty">{{ t('common.loading') }}</p>
+  }
+</div>

@@ -1,24 +1,54 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { t } from '@studioflow/i18n';
 import { formatCheckCode, type PairingRequestDto } from '@studioflow/scene-model';
-import { IconComponent } from '../../core/ui/icon.component';
+import { ClockService } from '../../core/ui/clock.service';
+import { ContextMenuDirective, type ContextMenuEntry } from '../../core/ui/context-menu';
+import { IconComponent, type IconName } from '../../core/ui/icon.component';
+import { ProductionStoreService } from '../../core/state/production-store.service';
+import { expiryText } from './link-tab.component';
 import { PairingRequestsService } from './pairing-requests.service';
 
+/** Icon of the kind of device that knocks. */
+const KIND_ICON: Readonly<Record<PairingRequestDto['kind'], IconName>> = {
+  phone: 'phone',
+  laptop: 'laptop',
+  audioStation: 'mic',
+};
+
 /**
- * Knock card of a waiting laptop (prototype `knockCard`): "Laptop Mia wants to join", the check code "47 12" in
- * large mono, the question and "Allow" (go) / "Deny". Both buttons are disabled while an answer is in flight.
+ * Knock card of a waiting device (prototype `knockCard`): its kind icon, "Laptop Mia wants to join", the kind,
+ * platform and expiry, then the check code "47 12" large in mono next to the question "Same code on the device?" and
+ * "Deny" / "Allow". Allow is the last button, as the default action of a dialog, so the eye passes the code first.
+ * Both buttons are disabled while an answer is in flight. A right click offers the same two answers.
  */
 @Component({
   selector: 'sf-knock-card',
-  imports: [IconComponent],
+  imports: [ContextMenuDirective, IconComponent],
   template: `
-    <div class="c-knock" role="group" [attr.aria-label]="t('regie.pairing.knock.label')">
-      <span class="c-knock__title">{{
-        t('regie.pairing.knock.title', { name: request().name })
-      }}</span>
-      <span class="c-knock__code" [attr.aria-label]="codeLabel()">{{ code() }}</span>
-      <span class="c-knock__question">{{ t('regie.pairing.knock.question') }}</span>
-      <div class="c-knock__row">
+    <div
+      class="c-knock"
+      role="group"
+      [attr.aria-label]="t('regie.pairing.knock.label')"
+      [sfContextMenu]="menu"
+      [sfContextMenuLabel]="t('regie.pairing.knock.title', { name: request().name })"
+    >
+      <span class="c-knock__icon" aria-hidden="true"
+        ><svg [sfIcon]="icon()" [size]="16"></svg
+      ></span>
+      <span class="c-knock__head">
+        <span class="c-knock__title">{{
+          t('regie.pairing.knock.title', { name: request().name })
+        }}</span>
+        <span class="c-knock__meta">{{ meta() }}</span>
+      </span>
+      <span class="c-knock__check">
+        <span class="c-knock__code" [attr.aria-label]="codeLabel()">{{ code() }}</span>
+        <span class="c-knock__question">{{ t('regie.pairing.knock.question') }}</span>
+      </span>
+      <span class="c-knock__row">
+        <button class="c-btn c-btn--sm" type="button" [disabled]="busy()" (click)="deny()">
+          {{ t('regie.pairing.knock.deny') }}
+        </button>
         <button
           class="c-btn c-btn--go c-btn--sm"
           type="button"
@@ -27,10 +57,7 @@ import { PairingRequestsService } from './pairing-requests.service';
         >
           <svg sfIcon="check" [size]="14"></svg>{{ t('regie.pairing.knock.allow') }}
         </button>
-        <button class="c-btn c-btn--sm" type="button" [disabled]="busy()" (click)="deny()">
-          {{ t('regie.pairing.knock.deny') }}
-        </button>
-      </div>
+      </span>
     </div>
   `,
   styles: `
@@ -39,39 +66,78 @@ import { PairingRequestsService } from './pairing-requests.service';
     }
 
     .c-knock {
+      align-items: center;
       background: var(--blue-wash);
-      border-bottom: 1px solid var(--seam);
+      border-radius: var(--radius-lg);
+      column-gap: 10px;
       display: grid;
-      gap: 8px;
-      padding: 12px 14px;
+      grid-template-areas:
+        'icon head'
+        'icon check'
+        'row row';
+      grid-template-columns: 32px minmax(0, 1fr);
+      padding: 12px;
+      row-gap: 8px;
     }
 
-    // In the pairing dock the card spans the side column (prototype .pair-side .knock).
-    :host(.c-knock-card--side) .c-knock {
-      border-top: 1px solid var(--seam);
-      margin-inline: -14px;
+    .c-knock__icon {
+      align-self: start;
+      background: var(--float);
+      border-radius: 50%;
+      box-shadow: var(--shadow-raise);
+      color: var(--blue);
+      display: grid;
+      grid-area: icon;
+      height: 32px;
+      place-items: center;
+      width: 32px;
+    }
+
+    .c-knock__head {
+      display: grid;
+      gap: 1px;
+      grid-area: head;
+      min-width: 0;
     }
 
     .c-knock__title {
-      font-size: 14px;
+      color: var(--text);
+      font-size: var(--fs-body);
       font-weight: 600;
+      overflow-wrap: anywhere;
+    }
+
+    .c-knock__meta {
+      color: var(--muted);
+      font-size: var(--fs-footnote);
+    }
+
+    .c-knock__check {
+      align-items: baseline;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px 12px;
+      grid-area: check;
     }
 
     .c-knock__code {
       color: var(--text);
-      font: 600 24px / 1 var(--font-mono);
-      letter-spacing: 0.14em;
+      font: 600 22px / 1.1 var(--font-mono);
+      letter-spacing: 0.12em;
+      white-space: nowrap;
     }
 
     .c-knock__question {
       color: var(--text-2);
-      font-size: 12.5px;
+      font-size: var(--fs-footnote);
     }
 
     .c-knock__row {
       display: flex;
       flex-wrap: wrap;
-      gap: 8px;
+      gap: 6px;
+      grid-area: row;
+      justify-content: flex-end;
     }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -81,9 +147,20 @@ export class KnockCardComponent {
   readonly request = input.required<PairingRequestDto>();
 
   private readonly requests = inject(PairingRequestsService);
+  private readonly store = inject(ProductionStoreService);
+  private readonly clock = inject(ClockService);
 
   protected readonly t = t;
+  protected readonly icon = computed(() => KIND_ICON[this.request().kind] ?? 'laptop');
   protected readonly code = computed(() => formatCheckCode(this.request().checkCode));
+  /** "Laptop · Windows · Chrome · expires in 9 minutes". */
+  protected readonly meta = computed(() => {
+    const request = this.request();
+    const remaining = Date.parse(request.expiresAt) - this.store.serverNow(this.clock.now());
+    return [this.kindText(request.kind), request.platform, expiryText(remaining)]
+      .filter((part) => !!part)
+      .join(' · ');
+  });
   /** "Check code 4 7 1 2", read digit by digit (prototype). */
   protected readonly codeLabel = computed(() =>
     t('regie.pairing.knock.codeLabel', {
@@ -92,11 +169,40 @@ export class KnockCardComponent {
   );
   protected readonly busy = computed(() => this.requests.busy(this.request().id));
 
+  /** The right-click menu: the same answers as the two buttons. */
+  protected readonly menu = (): readonly ContextMenuEntry[] => [
+    {
+      label: t('regie.pairing.knock.allow'),
+      icon: 'check',
+      disabled: this.busy(),
+      run: () => this.approve(),
+    },
+    {
+      label: t('regie.pairing.knock.deny'),
+      icon: 'close',
+      disabled: this.busy(),
+      run: () => this.deny(),
+    },
+  ];
+
   protected approve(): void {
     void this.requests.approve(this.request());
   }
 
   protected deny(): void {
     void this.requests.deny(this.request());
+  }
+
+  private kindText(kind: PairingRequestDto['kind']): string {
+    switch (kind) {
+      case 'phone':
+        return t('regie.stations.kind.phone');
+      case 'laptop':
+        return t('regie.stations.kind.laptop');
+      case 'audioStation':
+        return t('regie.stations.kind.audioStation');
+      default:
+        return '';
+    }
   }
 }

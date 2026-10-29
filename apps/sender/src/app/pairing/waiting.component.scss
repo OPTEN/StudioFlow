@@ -5,18 +5,28 @@
   display: block;
 }
 
-.c-waiting__code-block {
-  border-block: 1px solid var(--seam);
+// The check code is the hero of the screen: large, mono, on a card of its own, with what to do right under it.
+.c-code-card {
+  background: var(--group);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 0 0 0.5px var(--seam);
   display: grid;
-  gap: $SPACE_MD;
+  gap: $SPACE_LG;
   justify-items: center;
-  padding: $SPACE_XL 0;
+  padding: $SPACE_XL $SPACE_STAGE;
+  text-align: center;
 }
 
-// Check code “47 12”: mono 24 px at least, letter spacing 0,14 em, always on one line (DESIGN “Mono pairing code”).
-.c-waiting__code {
-  @include mono;
-  font-size: clamp(36px, 14vw, 56px);
+.c-code-card__caption {
+  color: var(--muted);
+  font-size: var(--fs-subhead);
+  font-weight: 600;
+}
+
+// “47 12”: mono, 24 px at least, letter spacing 0.14 em, always on one line (docs/testing.md E2E-DEV-10).
+.c-code-card__code {
+  @include code;
+  font-size: clamp(40px, 16vw, 64px);
   font-weight: 600;
   letter-spacing: 0.14em;
   line-height: 1;
@@ -24,20 +34,34 @@
   white-space: nowrap;
 }
 
-.c-waiting__caption {
-  color: var(--muted);
-  font-size: 15px;
+.c-code-card__lead {
+  color: var(--text-2);
+  font-size: var(--fs-callout);
+  line-height: 1.45;
+  max-width: 38ch;
+  overflow-wrap: anywhere;
 }
 
 .c-waiting__status {
   align-items: center;
   color: var(--text-2);
   display: flex;
-  font-size: 15px;
+  font-size: var(--fs-callout);
   gap: $SPACE_LG;
+
+  &.is-trouble {
+    color: var(--amber);
+    font-weight: 600;
+  }
 }
 
 .c-waiting__expiry {
   color: var(--muted);
-  font-size: 14px;
+  font-size: var(--fs-footnote);
+
+  &.is-soon {
+    @include mono;
+    color: var(--amber);
+    font-weight: 600;
+  }
 }

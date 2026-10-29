@@ -1,79 +1,63 @@
-// Message strip (prototype .statusline, .sl-ok, .sl-label, .sl-log, .sl-entry, .sl-inc, .sl-target, .sl-where,
-// .sl-time) plus the connection banner.
+// The activity bar: one row of fixed height (--status-h) that never wraps. Health button with the issues popover, the
+// lead incident with its action and "+N more", the latest event and the link to the activity log. Every text segment
+// gives way with an ellipsis instead of growing the row.
 @use 'mixins' as *;
 
 :host {
-  align-items: stretch;
+  align-items: center;
   background: var(--panel);
   display: flex;
-  flex-wrap: wrap;
-  font-size: 13px;
-  min-height: 38px;
-  min-width: 0;
-  padding: 0 var(--gr) 0 var(--gl);
-
-  @include narrow {
-    flex-direction: column;
-  }
-}
-
-.c-status__ok {
-  align-items: center;
-  border-right: 1px solid var(--seam);
-  color: var(--text-2);
-  display: flex;
+  font-size: var(--fs-body);
   gap: 8px;
-  padding: 0 14px 0 0;
+  height: var(--status-h);
+  min-width: 0;
+  padding: 0 var(--gr) 0 calc(var(--gl) - 6px);
   white-space: nowrap;
+}
 
-  .c-icon {
-    color: var(--green);
+// Health: lamp and words in a quiet capsule that opens the issues popover.
+.c-status__health-wrap {
+  flex: none;
+}
+
+.c-status__health {
+  @include state-transition(background-color);
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-pill);
+  color: var(--text);
+  cursor: pointer;
+  display: inline-flex;
+  font-weight: 500;
+  gap: 8px;
+  height: 28px;
+  padding: 0 8px 0 10px;
+
+  &:hover,
+  &[aria-expanded='true'] {
+    background: var(--fill);
   }
 }
 
-.c-status__label {
-  @include label-text(11px);
-  align-items: center;
-  display: flex;
-  padding: 0 4px 0 14px;
-}
-
-.c-status__log {
-  align-items: stretch;
-  display: flex;
-  flex: 1 1 0;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.c-status__entry {
-  align-items: center;
-  border-right: 1px solid var(--seam);
+.c-status__chev {
   color: var(--muted);
-  display: flex;
-  gap: 8px;
-  padding: 0 14px;
-  white-space: nowrap;
-
-  &:last-child {
-    border-right: 0;
-  }
-
-  .u-mono {
-    font-size: 12px;
-  }
 }
 
-.c-status__inc,
-.c-status__net {
+// The lead incident (inline) and the rows of the popover share their parts.
+.c-status__lead,
+.c-status__inc {
   align-items: center;
-  border-right: 1px solid var(--seam);
   display: flex;
-  gap: 10px;
-  max-width: 100%;
-  min-height: 38px;
+  gap: 8px;
   min-width: 0;
-  padding: 5px 10px 5px 4px;
+}
+
+.c-status__lead {
+  border-radius: var(--radius-pill);
+  flex: 0 1 auto;
+  height: 28px;
+  padding: 0 4px 0 2px;
 
   &.is-warn {
     background: var(--amber-wash);
@@ -86,79 +70,220 @@
   &.is-ok {
     background: var(--green-wash);
   }
+
+  > strong,
+  > .c-status__where,
+  > .c-status__time {
+    flex: none;
+  }
+
+  .c-btn--sm {
+    border-radius: var(--radius-pill);
+    flex: none;
+  }
 }
 
-.c-status__net {
-  color: var(--text-2);
-  padding-left: 0;
-  padding-right: 14px;
+// A quiet audio channel: the look of a warning incident without its actions.
+.c-status__audio {
+  font-weight: 600;
+  margin: 0;
+  padding-inline: 8px 10px;
+
+  > svg {
+    color: var(--amber);
+    flex: none;
+  }
+
+  > .c-status__name {
+    @include ellipsis;
+    min-width: 0;
+  }
 }
 
 .c-status__target {
   align-items: center;
   background: transparent;
   border: 0;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-pill);
   color: var(--text);
   cursor: pointer;
   display: inline-flex;
+  flex: 0 1 auto;
   font-weight: 600;
-  gap: 8px;
-  height: 28px;
+  gap: 7px;
+  height: 26px;
   max-width: 100%;
   min-width: 0;
-  padding: 0 6px;
-  white-space: nowrap;
+  // Squeezed below its glyph and code, the button clips instead of drawing over the state word next to it.
+  overflow: hidden;
+  padding: 0 8px;
 
   &:hover {
-    background: color-mix(in srgb, var(--text) 6%, transparent);
-    text-decoration: underline;
-    text-underline-offset: 3px;
+    background: color-mix(in srgb, var(--text) 7%, transparent);
+  }
+
+  .c-icon,
+  .c-code {
+    flex: none;
   }
 }
 
-// A long device name is cut with an ellipsis inside the button, so the strip never grows wider than the viewport.
 .c-status__name {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  @include ellipsis;
 }
 
-.c-status__inc.is-warn .c-status__target > .c-icon {
+.is-warn > .c-status__target > .c-icon {
   color: var(--amber);
 }
 
-.c-status__inc.is-bad .c-status__target > .c-icon {
+.is-bad > .c-status__target > .c-icon {
   color: var(--red);
 }
 
-.c-status__inc.is-ok .c-status__target > .c-icon {
+.is-ok > .c-status__target > .c-icon {
   color: var(--green);
 }
 
 .c-status__where {
   color: var(--text-2);
-  white-space: nowrap;
 }
 
 .c-status__time {
   color: var(--text-2);
-  font: 500 12px var(--font-mono);
-  white-space: nowrap;
+  font-size: var(--fs-footnote);
+  font-weight: 600;
 }
 
-// ≤ 900 px: one segment per line; only the ok state and incidents.
-@include narrow {
-  .c-status__ok,
-  .c-status__inc,
-  .c-status__net {
-    border-bottom: 1px solid var(--seam);
-    border-right: 0;
-    flex-wrap: wrap;
+.c-status__more {
+  flex: none;
+}
+
+// Latest event: muted, one line, cut with an ellipsis; the full text is in the tooltip.
+.c-status__log {
+  color: var(--muted);
+  flex: 0 1 auto;
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.c-status__entry-time {
+  font-size: var(--fs-footnote);
+  margin-right: 8px;
+}
+
+.c-status__audit {
+  align-items: center;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  flex: none;
+  font-weight: 500;
+  gap: 2px;
+  padding: 4px 4px 4px 8px;
+}
+
+// Connection banner: takes the row first, cut with an ellipsis.
+.c-status__net {
+  align-items: center;
+  border-radius: var(--radius-pill);
+  color: var(--text);
+  display: flex;
+  flex: 0 1 auto;
+  gap: 8px;
+  height: 28px;
+  min-width: 0;
+  padding: 0 4px 0 12px;
+
+  &.is-warn {
+    background: var(--amber-wash);
   }
 
-  .c-status__log,
-  .c-status__label {
+  &.is-bad {
+    background: var(--red-wash);
+  }
+
+  .c-btn {
+    border-radius: var(--radius-pill);
+    flex: none;
+  }
+}
+
+.c-status__net-text {
+  @include ellipsis;
+}
+
+// The issues popover: every incident with its action, "Mark all as seen", "Open monitoring". It stays in the DOM while
+// closed, hidden.
+.c-status__issues {
+  white-space: normal;
+  width: 420px;
+
+  &[hidden] {
     display: none;
+  }
+}
+
+.c-status__issues-head {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  min-height: 34px;
+  padding: 4px 4px 4px 10px;
+}
+
+.c-status__issues-title {
+  @include heading-text;
+}
+
+.c-status__list {
+  display: grid;
+  gap: 2px;
+  list-style: none;
+  margin: 0;
+  max-height: min(360px, calc(100dvh - 220px));
+  overflow: auto;
+  padding: 0;
+}
+
+.c-status__inc {
+  border-radius: var(--radius-md);
+  flex-wrap: wrap;
+  padding: 4px 6px 4px 2px;
+  row-gap: 2px;
+
+  &.is-warn {
+    background: var(--amber-wash);
+  }
+
+  &.is-bad {
+    background: var(--red-wash);
+  }
+
+  &.is-ok {
+    background: var(--green-wash);
+  }
+
+  .c-btn--sm {
+    margin-left: auto;
+  }
+}
+
+.c-status__empty {
+  padding: 10px 10px 12px;
+}
+
+// Narrow windows: the latest event, the place and the timer give way; the lead incident keeps its code, its state word
+// (the name ellipsizes first) and its action.
+@include narrow {
+  .c-status__log,
+  .c-status__lead > .c-status__where,
+  .c-status__lead > .c-status__time {
+    display: none;
+  }
+
+  .c-status__issues {
+    width: min(420px, calc(100vw - 24px));
   }
 }

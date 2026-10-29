@@ -77,11 +77,11 @@ describe('SetupPageComponent', () => {
 
   afterEach(() => http.verify());
 
-  it('shows the first-run setup with the brand, an explanation and four labelled fields', async () => {
+  it('shows the first-run setup with the title, an explanation and four labelled fields', async () => {
     await setup();
-    expect(element.querySelector('h1')?.textContent).toContain('StudioFlow');
-    expect(element.querySelector('h2')?.textContent).toBe('First-run setup');
+    expect(element.querySelector('h1')?.textContent?.trim()).toBe('Create your account');
     expect(element.querySelector('.c-setup__intro')?.textContent).toContain('setup code');
+    expect(element.querySelector('.c-setup__intro')?.textContent).toContain('cannot be changed');
     const labels = Array.from(element.querySelectorAll<HTMLLabelElement>('form label')).map((l) =>
       l.textContent?.trim(),
     );
@@ -237,11 +237,29 @@ describe('SetupPageComponent', () => {
     expect(document.activeElement).toBe(input('setup-password'));
   });
 
-  it('says that the account is step 1 of 4 of the setup', async () => {
+  it('shows the account as the first of the labelled steps of the first run', async () => {
     await setup();
-    expect(element.querySelector('.c-setup__step')?.textContent?.replace(/\s+/g, ' ').trim()).toBe(
-      'Step 1 of 4 · Account',
-    );
+    const steps = element.querySelector('ol[aria-label="Setup steps"]')!;
+    expect(
+      Array.from(steps.querySelectorAll('.c-steps__label')).map((label) => label.textContent),
+    ).toEqual(['Account', 'Media server', 'Address', 'Embedding', 'Done']);
+    expect(steps.querySelector('[aria-current="step"]')?.textContent).toContain('Account');
+  });
+
+  it('shows both passwords on request', async () => {
+    await setup();
+    const reveal = element.querySelector<HTMLButtonElement>('.c-login__reveal')!;
+    expect(reveal.textContent?.trim()).toBe('Show passwords');
+    reveal.click();
+    await render();
+    expect(input('setup-password').type).toBe('text');
+    expect(input('setup-repeat').type).toBe('text');
+    expect(reveal.getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('shows the format of the setup code as a placeholder', async () => {
+    await setup();
+    expect(input('setup-code').placeholder).toBe('K7QM-3XD2');
   });
 
   it('creates the account with the trimmed values and continues with the server wizard', async () => {
@@ -385,7 +403,7 @@ describe('SetupPageComponent', () => {
     select.dispatchEvent(new Event('change'));
     await render();
     const de = tFor('de-CH');
-    expect(element.querySelector('h2')?.textContent).toBe(de('regie.setup.lead'));
+    expect(element.querySelector('h1')?.textContent?.trim()).toBe(de('regie.setup.heading'));
     expect(element.querySelector('button[type="submit"]')?.textContent?.trim()).toBe(
       de('regie.setup.submit'),
     );

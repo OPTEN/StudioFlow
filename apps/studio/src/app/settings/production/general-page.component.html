@@ -1,0 +1,127 @@
+<div class="c-page">
+  <sf-settings-page-head [title]="t('regie.settings.nav.general')" scope="production" />
+
+  @if (store.production(); as production) {
+    <div class="c-page__body">
+      <section class="c-group">
+        <div class="c-group__body">
+          @if (renaming()) {
+            <form class="c-group__row c-group__row--stack" novalidate (submit)="rename($event)">
+              <label class="c-group__label" for="production-name">{{
+                t('regie.header.production.name')
+              }}</label>
+              <div class="c-prod-page__inline">
+                <input
+                  id="production-name"
+                  class="c-input"
+                  type="text"
+                  autocomplete="off"
+                  aria-describedby="production-name-error"
+                  [maxlength]="nameMax"
+                  [formControl]="nameControl"
+                  [class.is-invalid]="nameControl.invalid && nameControl.touched"
+                  [attr.aria-invalid]="nameControl.invalid && nameControl.touched ? 'true' : null"
+                  (keydown.escape)="cancelRename()"
+                />
+                <button
+                  class="c-btn"
+                  type="button"
+                  [disabled]="savingName()"
+                  (click)="cancelRename()"
+                >
+                  {{ t('common.cancel') }}
+                </button>
+                <button class="c-btn c-btn--fill" type="submit" [disabled]="savingName()">
+                  {{
+                    savingName()
+                      ? t('regie.production.form.saving')
+                      : t('regie.production.name.save')
+                  }}
+                </button>
+              </div>
+              @if (nameControl.invalid && nameControl.touched) {
+                <p class="c-field-error" id="production-name-error" role="alert">
+                  {{ t('regie.production.name.invalid', { max: nameMax }) }}
+                </p>
+              }
+            </form>
+          } @else {
+            <div class="c-group__row">
+              <span class="c-group__label">{{ t('regie.header.production.name') }}</span>
+              <span class="c-prod-page__value">
+                <span class="c-prod-page__name" data-testid="production-name">{{
+                  production.name
+                }}</span>
+                <button
+                  class="c-btn c-btn--sm"
+                  type="button"
+                  data-rename
+                  [disabled]="!store.canCommand()"
+                  (click)="startRename()"
+                >
+                  <svg sfIcon="pencil"></svg>{{ t('common.rename') }}
+                </button>
+              </span>
+            </div>
+          }
+        </div>
+        <p class="c-group__footer">{{ t('regie.production.name.hint') }}</p>
+      </section>
+
+      <form
+        class="c-group"
+        novalidate
+        aria-labelledby="sf-general-canvas"
+        (submit)="saveCanvas($event)"
+      >
+        <h2 class="c-group__title" id="sf-general-canvas">{{ t('regie.canvas.title') }}</h2>
+        <div class="c-group__body">
+          @if (live()) {
+            <p class="c-group__row c-prod-page__notice" role="status">
+              <svg sfIcon="lock" aria-hidden="true"></svg>
+              <span>{{ t('regie.canvas.liveLocked') }}</span>
+            </p>
+          }
+          <sf-canvas-picker
+            class="c-prod-page__picker"
+            [format]="format()"
+            [resolution]="resolution()"
+            [disabled]="live() || savingCanvas() || !store.canCommand()"
+            (formatChange)="setFormat($event)"
+            (resolutionChange)="setResolution($event)"
+          />
+          @if (resolutionOnly() && !live()) {
+            <p class="c-group__row c-prod-page__notice">
+              <svg sfIcon="info" aria-hidden="true"></svg>
+              <span>{{ t('regie.canvas.resolutionOnly') }}</span>
+            </p>
+          }
+        </div>
+        <p class="c-group__footer">{{ t('regie.canvas.note') }}</p>
+        @if (!live()) {
+          @if (confirming()) {
+            <sf-confirm-box
+              [flush]="true"
+              [label]="t('regie.canvas.confirmButton')"
+              [message]="t('regie.canvas.confirm', { count: scenesWithElements() })"
+              [confirmLabel]="t('regie.canvas.confirmButton')"
+              [busy]="savingCanvas()"
+              (confirm)="applyCanvas()"
+              (cancel)="confirming.set(false)"
+            />
+          } @else {
+            <sf-form-actions
+              [submit]="true"
+              [dirty]="canvasChanged()"
+              [busy]="savingCanvas()"
+              [saveLabel]="t('regie.canvas.save')"
+              (discard)="discardCanvas()"
+            />
+          }
+        }
+      </form>
+    </div>
+  } @else {
+    <p class="c-empty">{{ t('common.loading') }}</p>
+  }
+</div>

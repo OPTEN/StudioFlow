@@ -8,7 +8,7 @@ import {
   type TransitionDto,
 } from '@studioflow/scene-model';
 import type { SceneRenderer } from '@studioflow/scene-renderer';
-import { noAccessSlate } from './slates';
+import { noAccessNotice, noAccessSlate } from './slates';
 
 /** The renderer calls the view makes. */
 export type ProgramRenderer = Pick<
@@ -121,7 +121,7 @@ export class ProgramView {
     }
     this.#denied = denied;
     if (denied) {
-      this.renderer.showSlate(noAccessSlate(), null);
+      this.renderer.showSlate(noAccessSlate(), null, noAccessNotice());
       this.renderer.show(null);
       this.renderer.setPreloadScenes([]);
       this.#scene = NOTHING;

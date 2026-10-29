@@ -227,7 +227,7 @@ test.describe('OUT resilience', () => {
       expect(connectedMs, 'the output reports again within T-RESTART-API (hard 15 s)').toBeLessThanOrEqual(THRESHOLD.restartApiClientsHardMs);
       expect(reportsAfter, 'reports resumed').toBeGreaterThan(0);
       expect(Math.max(...timed), 'T-SWITCH after the restart (hard 300 ms)').toBeLessThanOrEqual(300);
-      expect(lines.find((line) => line.startsWith('Hub')), 'overlay: hub connected').toBe('Hub connected · Sync up to date');
+      expect(lines.find((line) => line.startsWith('Server')), 'overlay: hub connected').toBe('Server connected · Data up to date');
       expect((await api.getSnapshot(production.id)).body.incidents.filter((incident) => incident.endedAt === null), 'no open incident').toEqual([]);
     },
   );

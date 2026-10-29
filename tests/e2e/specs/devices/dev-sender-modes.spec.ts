@@ -75,7 +75,7 @@ test.describe('DEV sender, modes', () => {
   );
 
   test(
-    'E2E-DEV-15 [ui, sender, dark mode] the text of the dark screen (slot code and “Tap for controls”) meets the contrast of WCAG AA (DEV-05)',
+    'E2E-DEV-15 [ui, sender, dark mode] the text of the screen-off cover (slot code and “Tap to show the controls”) meets the contrast of WCAG AA (DEV-05)',
     t.p1,
     async ({ openPhone, openLaptop, api, production, pairContext }, testInfo) => {
       knownDevBug('DEV-05', 'dark mode: the slot code and the hint are dim grey on black, below 4.5:1');
@@ -151,7 +151,7 @@ test.describe('DEV sender, modes', () => {
       const check = async (label: string, page: Page) => {
         await page.emulateMedia({ forcedColors: 'active' });
         const facts = await page.evaluate(() => {
-          const button = document.querySelector('.c-button') as HTMLElement | null;
+          const button = document.querySelector('.c-btn') as HTMLElement | null;
           const style = button ? getComputedStyle(button) : null;
           return {
             forced: matchMedia('(forced-colors: active)').matches,

@@ -61,9 +61,7 @@ describe('SourcesDockComponent with texts', () => {
   }
 
   async function openMenu(): Promise<HTMLElement> {
-    const trigger = Array.from(element.querySelectorAll<HTMLButtonElement>('.c-btn')).find(
-      (button) => text(button) === 'Source',
-    );
+    const trigger = element.querySelector<HTMLButtonElement>('button[aria-label="Add source"]');
     trigger?.click();
     await render();
     return element.querySelector('[role="menu"]') as HTMLElement;
@@ -113,18 +111,32 @@ describe('SourcesDockComponent with texts', () => {
     const menu = await openMenu();
 
     const groups = Array.from(menu.querySelectorAll('.c-add-pop__label')).map(text);
-    expect(groups).toEqual(['Texts', 'New text']);
+    expect(groups).toEqual(['Cameras', 'Texts', 'New text']);
     const items = Array.from(menu.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')).map(
       text,
     );
-    expect(items).toEqual(['T2Leo Lang', 'Lower third', 'Title', 'Note', 'Upload image or video…']);
+    expect(items).toEqual([
+      'K1Phone stage leftIn scene',
+      'T1Mia MeierIn scene',
+      'T2Leo Lang',
+      'Lower third',
+      'Title',
+      'Note',
+      'Upload image or video…',
+      'Media library…',
+    ]);
+    expect(text(menu.querySelector('.c-add-pop__hint'))).toBe(
+      'Added hidden, so you can write it first.',
+    );
   });
 
   it('adds an existing text hidden, in the rectangle of its style', async () => {
     await setup();
     const menu = await openMenu();
 
-    Array.from(menu.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'))[0].click();
+    Array.from(menu.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'))
+      .find((item) => text(item) === 'T2Leo Lang')
+      ?.click();
 
     const request = harness.http.expectOne(`${SCENE_B}/items`);
     expect(request.request.body.items.at(-1)).toMatchObject({

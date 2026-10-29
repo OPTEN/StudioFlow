@@ -56,7 +56,7 @@ test.describe('AUD monitoring', () => {
       await expect(channel.getByTestId('audio-pfl')).toHaveAttribute('aria-pressed', 'true');
       await waitForTone(page, STATION_HZ);
       await waitForPeak(page, -6);
-      await expect(audioDock(page).getByTestId('audio-monitor'), 'the Monitor button shows that something is being listened to').toHaveClass(/is-active/);
+      await expect(audioDock(page).getByTestId('audio-monitor'), 'the Headphones button shows that something is being listened to').toHaveClass(/is-active/);
       // Muted and with the fader down it is still heard in PFL: the operator checks the source, not the mix.
       expect((await api.setAudioChannels(production.id, { channels: [{ sourceId, gainDb: -30, muted: true, mode: 'always', syncOffsetMs: 0 }] })).status).toBe(200);
       await sleep(600);

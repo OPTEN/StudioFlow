@@ -1,98 +1,145 @@
+@let v = view();
 <div
   #station
   class="c-st"
-  [class.is-warn]="view().tone === 'is-warn'"
-  [class.is-bad]="view().tone === 'is-bad'"
+  [class.is-warn]="v.tone === 'is-warn'"
+  [class.is-bad]="v.tone === 'is-bad'"
   [class.is-open]="open()"
-  [attr.data-device]="view().id"
+  [attr.data-device]="v.id"
 >
-  <button
-    class="c-st__row"
-    type="button"
-    [attr.aria-expanded]="open()"
-    [attr.aria-controls]="detailId()"
-    (click)="toggle.emit()"
+  <div
+    class="c-st__head"
+    [sfContextMenu]="menu"
+    [sfContextMenuLabel]="t('regie.stations.menu.label', { name: v.name })"
   >
-    <span class="c-lamp" aria-hidden="true" [class]="view().lamp" [class.is-pulse]="pulse()"></span>
-    <span class="c-st__codes">
-      @for (code of view().codes; track code) {
-        <span class="c-code">{{ code }}</span>
-      }
-    </span>
-    <span class="c-st__main">
-      <span class="c-st__l1">
-        <span class="c-st__name">{{ view().name }}</span>
-        @if (view().tally === 'program') {
-          <span class="c-tag c-tag--pgm">PGM</span>
-        } @else if (view().tally === 'preview') {
-          <span class="c-tag c-tag--pvw">PVW</span>
-        }
-      </span>
-      <span class="c-st__l2">
-        @let line = view().line;
-        @switch (line.kind) {
-          @case ('state') {
-            @if (line.code) {
-              <span class="u-mono">{{ line.code }}</span>
-            }
-            <span [class]="toneClass(line.tone)">{{ line.word }}</span>
-            @if (line.since) {
-              <span class="u-mono" [sfElapsed]="line.since"></span>
-            }
-            @if (line.extra) {
-              <span>{{ line.extra }}</span>
-            }
-          }
-          @case ('recovered') {
-            <span class="c-state--ok">{{ t('regie.stations.line.back') }}</span>
-            @let gone = wasGone();
-            <span
-              >{{ gone.before }}<span class="u-mono">{{ line.seconds }}</span
-              >{{ gone.after }}</span
-            >
-          }
-          @case ('metrics') {
-            <span class="c-st__met"
-              ><b>{{ line.rate }}</b
-              >Mbit/s</span
-            >
-            <span class="c-st__met"
-              ><b>{{ line.rtt }}</b
-              >ms</span
-            >
-            @if (line.lowBattery !== null) {
-              <span class="c-state--warn">{{
-                t('regie.stations.line.battery', { percent: percentText(line.lowBattery) })
-              }}</span>
-            }
-            @if (line.cpuLimit) {
-              <span class="c-state--warn" [attr.title]="t('regie.load.cpuLimitHint')">{{
-                line.cpuLimit
-              }}</span>
-            }
-          }
-        }
-      </span>
-    </span>
-    @if (view().audioOnly) {
-      <span class="c-st__audio" aria-hidden="true"><svg sfIcon="mic" [size]="18"></svg></span>
+    @if (v.audioOnly) {
+      <span class="c-st__audio" aria-hidden="true"><svg sfIcon="mic" [size]="16"></svg></span>
     } @else {
-      <sf-station-thumb [sourceId]="view().thumbSourceId" [dimmed]="down()" />
+      <sf-station-thumb class="c-st__thumb" [sourceId]="v.thumbSourceId" [dimmed]="down()" />
     }
-    <svg class="c-st__chev" sfIcon="chev"></svg>
-  </button>
+    <div class="c-st__main">
+      <div class="c-st__l1">
+        <button
+          class="c-st__row"
+          type="button"
+          [attr.aria-expanded]="open()"
+          [attr.aria-controls]="detailId()"
+          [attr.aria-label]="v.ariaLabel"
+          [attr.aria-describedby]="lineId()"
+          aria-keyshortcuts="F2 Delete"
+          (click)="toggle.emit()"
+          (keydown)="onRowKeyDown($event)"
+        >
+          <span class="c-st__name">{{ v.name }}</span>
+        </button>
+        @if (v.tally === 'program') {
+          <span class="c-tag c-tag--pgm">{{ t('regie.stations.tag.live') }}</span>
+        } @else if (v.tally === 'preview') {
+          <span class="c-tag c-tag--pvw">{{ t('regie.stations.tag.preview') }}</span>
+        }
+      </div>
+      <div class="c-st__sub">
+        <span class="c-st__id" [attr.title]="kindText()">
+          <svg class="c-st__kind" [sfIcon]="kindIcon()" [size]="13"></svg>
+          <span class="c-st__codes">
+            @for (code of v.codes; track code) {
+              <span class="c-code">{{ code }}</span>
+            }
+          </span>
+        </span>
+        <span class="c-st__l2" [id]="lineId()">
+          <span
+            class="c-lamp"
+            aria-hidden="true"
+            [class]="v.lamp"
+            [class.is-pulse]="pulse()"
+          ></span>
+          @let line = v.line;
+          @switch (line.kind) {
+            @case ('state') {
+              @if (line.code) {
+                <span class="c-st__slot">{{ line.code }}</span
+                >&ngsp;
+              }
+              <span [class]="toneClass(line.tone)">{{ line.word }}</span>
+              @if (line.since) {
+                &ngsp;<span class="c-st__time" [sfElapsed]="line.since"></span>
+              }
+              @if (line.extra) {
+                &ngsp;<span class="c-st__dot">{{ line.extra }}</span>
+              }
+            }
+            @case ('recovered') {
+              <span class="c-state--ok">{{ t('regie.stations.line.back') }}</span
+              >&ngsp;
+              @let gone = wasGone();
+              <span class="c-st__dot"
+                >{{ gone.before }}<span class="u-mono">{{ line.seconds }}</span
+                >{{ gone.after }}</span
+              >
+            }
+            @case ('metrics') {
+              <span>{{ t('regie.stations.line.sending') }}</span
+              >&ngsp;
+              <span class="c-st__met c-st__dot" [attr.title]="t('regie.stations.line.rateTitle')"
+                ><b>{{ line.rate }}</b
+                >&ngsp;Mbit/s</span
+              >&ngsp;
+              <span class="c-st__met c-st__dot" [attr.title]="t('regie.stations.line.rttTitle')"
+                ><b>{{ line.rtt }}</b
+                >&ngsp;ms</span
+              >
+              @if (line.lowBattery !== null) {
+                &ngsp;<span class="c-state--warn c-st__dot">{{
+                  t('regie.stations.line.battery', { percent: percentText(line.lowBattery) })
+                }}</span>
+              }
+              @if (line.cpuLimit) {
+                &ngsp;<span
+                  class="c-state--warn c-st__dot"
+                  [attr.title]="t('regie.load.cpuLimitHint')"
+                  >{{ line.cpuLimit }}</span
+                >
+              }
+            }
+          }
+        </span>
+      </div>
+    </div>
+    <svg class="c-st__chev" sfIcon="chev" [size]="14"></svg>
+  </div>
 
-  @if (view().recovered.length > 0) {
-    <div class="c-st__ack">
-      <svg sfIcon="check" [size]="14"></svg>
-      <span class="u-spacer">{{ t('regie.stations.ack.text') }}</span>
+  @if (v.endedScreens.length > 0) {
+    <div class="c-st__strip">
+      @for (source of v.endedScreens; track source.id) {
+        <button
+          class="c-btn c-btn--sm c-btn--primary"
+          type="button"
+          [disabled]="busy('reshare:' + source.slot)"
+          (click)="reshare(source)"
+        >
+          <svg sfIcon="screen" [size]="14"></svg
+          >{{
+            v.endedScreens.length > 1
+              ? t('regie.stations.action.reshareCode', { code: source.code })
+              : t('regie.stations.action.reshare')
+          }}
+        </button>
+      }
+    </div>
+  }
+
+  @if (v.recovered.length > 0) {
+    <div class="c-st__ack c-st__strip">
+      <svg sfIcon="circle-check" [size]="15"></svg>
+      <span class="c-st__ack-text">{{ t('regie.stations.ack.text') }}</span>
       <button
-        class="c-btn c-btn--sm"
+        class="c-btn c-btn--sm c-btn--plain"
         type="button"
         [disabled]="busy('ack')"
         (click)="acknowledge()"
       >
-        {{ t('regie.stations.ack.seen') }}
+        {{ t('regie.stations.ack.dismiss') }}
       </button>
     </div>
   }
@@ -102,163 +149,196 @@
   <div class="c-st__detail" [id]="detailId()" [attr.inert]="open() ? null : ''">
     <div class="c-st__clip">
       <div class="c-st__detail-in">
-        <dl class="c-kv c-st__kv">
-          @for (entry of details(); track entry.label) {
-            <dt>{{ entry.label }}</dt>
-            <dd [class.u-mono]="entry.mono">{{ entry.value }}</dd>
-          }
-          @for (entry of decoding(); track entry.label) {
-            <dt>{{ entry.label }}</dt>
-            <dd [class.u-mono]="entry.mono">{{ entry.value }}</dd>
-          }
-          <dt>{{ t('regie.stations.detail.tech') }}</dt>
-          <dd class="c-st__tech">
-            @if (tech(); as lamps) {
-              @for (lamp of lamps; track lamp.label) {
-                <span class="c-st__tech-item">
-                  <span class="c-lamp" aria-hidden="true" [class]="lamp.lamp"></span>
-                  {{ lamp.label }} {{ lamp.word }}
-                </span>
-              }
-            } @else {
-              <span class="c-st__muted">{{ t('regie.stations.detail.techNotRun') }}</span>
-            }
-          </dd>
-        </dl>
+        @if (!online()) {
+          <p class="c-hint c-st__offline">{{ t('regie.stations.dock.offline') }}</p>
+        }
 
-        <div class="c-st__actions">
-          @for (source of view().endedScreens; track source.id) {
-            <button
-              class="c-btn c-btn--sm c-btn--primary"
-              type="button"
-              [disabled]="busy('reshare:' + source.slot)"
-              (click)="reshare(source)"
-            >
-              <svg sfIcon="send" [size]="14"></svg
-              >{{
-                view().endedScreens.length > 1
-                  ? t('regie.stations.action.reshareCode', { code: source.code })
-                  : t('regie.stations.action.reshare')
-              }}
-            </button>
-          }
-          @if (view().canSwitchCamera) {
-            <button
-              class="c-btn c-btn--sm"
-              type="button"
-              [disabled]="busy('camera')"
-              (click)="switchCamera()"
-            >
-              {{ t('regie.stations.action.switchCamera') }}
-            </button>
-          }
-          @if (view().canControlCamera) {
-            <button
-              class="c-btn c-btn--sm"
-              type="button"
-              data-testid="camera-open"
-              [attr.aria-expanded]="cameraOpen()"
-              [attr.aria-controls]="cameraPanelId()"
-              (click)="toggleCamera()"
-            >
-              {{ t('regie.camera.panel.open') }}
-            </button>
-          }
-          @if (!view().blocked) {
-            <button
-              class="c-btn c-btn--sm"
-              type="button"
-              [attr.aria-expanded]="composing()"
-              [disabled]="busy('message')"
-              (click)="toggleComposer()"
-            >
-              <svg sfIcon="send" [size]="14"></svg>{{ t('regie.stations.action.message') }}
-            </button>
-          }
-          <button
-            class="c-btn c-btn--sm"
-            type="button"
-            [disabled]="busy('rename')"
-            (click)="startRename()"
+        @let tab = currentTab();
+        @if (tabs().length > 1) {
+          <div
+            class="c-tabs c-st__tabs"
+            role="tablist"
+            [attr.aria-label]="t('regie.stations.tab.label', { name: v.name })"
+            (keydown)="onTabKeyDown($event)"
           >
-            {{ t('common.rename') }}
-          </button>
-          @if (view().blocked) {
-            <button
-              class="c-btn c-btn--sm"
-              type="button"
-              [disabled]="busy('unblock')"
-              (click)="unblock()"
-            >
-              {{ t('regie.stations.action.unblock') }}
-            </button>
+            @for (entry of tabs(); track entry.id) {
+              <button
+                class="c-tab"
+                type="button"
+                role="tab"
+                [id]="tabId(entry.id)"
+                [attr.data-testid]="entry.id === 'camera' ? 'camera-open' : null"
+                [attr.aria-selected]="tab === entry.id"
+                [attr.aria-controls]="tabPanelId()"
+                [attr.tabindex]="tab === entry.id ? 0 : -1"
+                (click)="selectTab(entry.id)"
+              >
+                <svg [sfIcon]="entry.icon" [size]="14"></svg>{{ tabLabel(entry.id) }}
+              </button>
+            }
+          </div>
+        }
+
+        <div
+          class="c-st__tabpanel"
+          [id]="tabPanelId()"
+          [attr.role]="tabs().length > 1 ? 'tabpanel' : null"
+          [attr.aria-labelledby]="tabs().length > 1 ? tabId(tab) : null"
+        >
+          @switch (tab) {
+            @case ('camera') {
+              @if (v.canSwitchCamera) {
+                <div class="c-st__actions">
+                  <button
+                    class="c-btn c-btn--sm"
+                    type="button"
+                    [disabled]="busy('camera')"
+                    (click)="switchCamera()"
+                  >
+                    <svg sfIcon="refresh" [size]="14"></svg
+                    >{{ t('regie.stations.action.switchCamera') }}
+                  </button>
+                </div>
+              }
+              <sf-camera-panel
+                class="c-st__panel"
+                [id]="cameraPanelId()"
+                [device]="device()"
+                [inProgram]="v.tally === 'program'"
+                [label]="label()"
+              />
+            }
+            @case ('message') {
+              <sf-message-composer
+                class="c-st__panel"
+                [id]="composerId()"
+                [device]="device()"
+                [autofocus]="composerFocus()"
+                (closed)="selectTab('details')"
+              />
+            }
+            @case ('details') {
+              <dl class="c-kv c-st__kv">
+                @for (entry of details(); track entry.label) {
+                  <dt>{{ entry.label }}</dt>
+                  <dd [class.u-mono]="entry.mono">{{ entry.value }}</dd>
+                }
+                @for (entry of decoding(); track entry.label) {
+                  <dt>{{ entry.label }}</dt>
+                  <dd [class.u-mono]="entry.mono">{{ entry.value }}</dd>
+                }
+                <dt>{{ t('regie.stations.detail.tech') }}</dt>
+                <dd class="c-st__tech">
+                  @if (tech(); as lamps) {
+                    @for (lamp of lamps; track lamp.label) {
+                      <span class="c-st__tech-item">
+                        <span class="c-lamp" aria-hidden="true" [class]="lamp.lamp"></span>
+                        {{ lamp.label }} {{ lamp.word }}
+                      </span>
+                    }
+                  } @else {
+                    <span class="c-st__muted">{{ t('regie.stations.detail.techNotRun') }}</span>
+                  }
+                </dd>
+              </dl>
+              @if (v.cpuLimited.length > 0) {
+                <p class="c-hint c-st__note">{{ t('regie.load.cpuLimitHint') }}</p>
+              }
+            }
           }
-          <span class="c-st__danger">
-            @if (view().blocked || view().offline) {
-              <button
-                class="c-btn c-btn--sm c-btn--danger"
-                type="button"
-                [disabled]="busy('remove')"
-                (click)="askConfirm('remove')"
-              >
-                {{ t('common.remove') }}
-              </button>
-            }
-            @if (!view().blocked) {
-              <button
-                class="c-btn c-btn--sm c-btn--danger"
-                type="button"
-                [disabled]="busy('block')"
-                (click)="askConfirm('block')"
-              >
-                {{ t('regie.stations.action.block') }}
-              </button>
-            }
-          </span>
         </div>
 
-        @if (confirm() === 'block') {
-          <sf-confirm-box
-            [label]="t('regie.stations.action.block')"
-            [confirmLabel]="t('regie.stations.confirm.blockNow')"
-            [flush]="true"
-            [message]="t('regie.stations.confirm.blockMessage', { label: label() })"
-            [busy]="busy('block')"
-            (confirm)="block()"
-            (cancel)="confirm.set(null)"
-          />
-        }
-        @if (confirm() === 'remove') {
-          <sf-confirm-box
-            [label]="t('regie.stations.confirm.removeLabel')"
-            [confirmLabel]="t('common.remove')"
-            [flush]="true"
-            [message]="t('regie.stations.confirm.removeMessage', { name: view().name })"
-            [busy]="busy('remove')"
-            (confirm)="remove()"
-            (cancel)="confirm.set(null)"
-          />
-        }
-        @if (cameraOpen() && view().canControlCamera) {
-          <sf-camera-panel
-            [id]="cameraPanelId()"
-            [device]="device()"
-            [inProgram]="view().tally === 'program'"
-            [label]="label()"
-          />
-        }
-        @if (composing()) {
-          <sf-message-composer [device]="device()" (closed)="composing.set(false)" />
-        }
-        @if (renaming()) {
-          <sf-inline-edit
-            [label]="t('regie.stations.nameLabel')"
-            [value]="device().name"
-            [maxLength]="maxNameLength"
-            (save)="rename($event)"
-            (cancel)="renaming.set(false)"
-          />
-        }
+        <div
+          class="c-st__section c-st__manage"
+          role="group"
+          [attr.aria-label]="t('regie.stations.action.manage')"
+        >
+          @if (panel() === 'rename') {
+            <div class="c-st__rename">
+              <span class="c-st__rename-label" aria-hidden="true">{{
+                t('regie.stations.nameLabel')
+              }}</span>
+              <sf-inline-edit
+                [label]="t('regie.stations.nameLabel')"
+                [value]="device().name"
+                [maxLength]="maxNameLength"
+                (save)="rename($event)"
+                (cancel)="closePanel()"
+              />
+              <span class="c-hint">{{ t('regie.stations.nameHint') }}</span>
+            </div>
+          } @else {
+            <div class="c-st__actions">
+              <button
+                class="c-btn c-btn--sm"
+                type="button"
+                aria-keyshortcuts="F2"
+                [disabled]="busy('rename')"
+                [attr.title]="t('regie.stations.hint.rename')"
+                (click)="togglePanel('rename')"
+              >
+                <svg sfIcon="pencil" [size]="14"></svg>{{ t('common.rename') }}
+              </button>
+              @if (v.blocked) {
+                <button
+                  class="c-btn c-btn--sm"
+                  type="button"
+                  [disabled]="busy('unblock')"
+                  (click)="unblock()"
+                >
+                  <svg sfIcon="unlock" [size]="14"></svg>{{ t('regie.stations.action.unblock') }}
+                </button>
+              }
+              <span class="c-st__danger">
+                @if (!v.blocked) {
+                  <button
+                    class="c-btn c-btn--sm c-btn--danger"
+                    type="button"
+                    [attr.aria-expanded]="panel() === 'block'"
+                    [disabled]="busy('block')"
+                    (click)="togglePanel('block')"
+                  >
+                    {{ t('regie.stations.action.block') }}
+                  </button>
+                }
+                <button
+                  class="c-btn c-btn--sm c-btn--danger"
+                  type="button"
+                  aria-keyshortcuts="Delete"
+                  [attr.aria-expanded]="panel() === 'remove'"
+                  [disabled]="busy('remove')"
+                  [attr.title]="t('regie.stations.hint.remove')"
+                  (click)="togglePanel('remove')"
+                >
+                  {{ t('common.remove') }}
+                </button>
+              </span>
+            </div>
+          }
+
+          @if (panel() === 'block') {
+            <sf-confirm-box
+              [label]="t('regie.stations.action.block')"
+              [confirmLabel]="t('regie.stations.confirm.blockNow')"
+              [flush]="true"
+              [message]="t('regie.stations.confirm.blockMessage', { label: label() })"
+              [busy]="busy('block')"
+              (confirm)="block()"
+              (cancel)="closePanel()"
+            />
+          }
+          @if (panel() === 'remove') {
+            <sf-confirm-box
+              [label]="t('regie.stations.confirm.removeLabel')"
+              [confirmLabel]="t('common.remove')"
+              [flush]="true"
+              [message]="t('regie.stations.confirm.removeMessage', { name: v.name })"
+              [busy]="busy('remove')"
+              (confirm)="remove()"
+              (cancel)="closePanel()"
+            />
+          }
+        </div>
       </div>
     </div>
   </div>

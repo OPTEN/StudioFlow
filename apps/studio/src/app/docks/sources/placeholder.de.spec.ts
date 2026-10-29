@@ -24,7 +24,7 @@ describe('placeholder texts in German', () => {
     expect(row.name).toBe('entfernte Quelle');
     expect(row.state?.word).toBe('Quelle fehlt');
     expect(t('regie.placeholders.remove.message', { name: 'K1', count: 1 })).toBe(
-      'Das 1 Element, das K1 zeigt, wird aus seiner Szene entfernt.',
+      'Die eine Stelle in einer Szene, die K1 zeigt, wird entfernt.',
     );
     expect(t('regie.placeholders.offer.useAs', { name: 'K1 · Bühne links' })).toBe(
       'Verwenden als K1 · Bühne links',

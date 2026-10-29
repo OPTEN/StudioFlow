@@ -1,16 +1,37 @@
-// Audio dock: the list of channels and the notes around it.
+// Audio dock: the notes, the channels as rounded rows with 2 px gaps, and the shortcut hint.
+.c-audio-dock {
+  display: grid;
+  gap: 4px;
+  padding: 6px;
+}
+
 .c-audio-dock__list {
   align-content: start;
   display: grid;
+  gap: 2px;
 }
 
 .c-audio-dock__note {
+  align-items: flex-start;
+  display: flex;
+  gap: 6px;
   margin: 0;
-  padding: 8px 10px;
+  padding: 4px 8px;
+
+  .c-icon {
+    flex: none;
+    margin-top: 1px;
+  }
 }
 
-// The monitor button reads as on while the operator listens to something.
-.c-btn.is-active {
-  background: var(--raised-2);
-  box-shadow: var(--shadow-selected);
+.c-audio-dock__foot {
+  margin: 0;
+  padding: 4px 8px 2px;
+}
+
+// The headphones button says what plays; while something does, it takes the accent tint.
+.c-audio-dock__phones.is-active {
+  background: var(--blue-wash);
+  color: var(--blue);
+  font-weight: 600;
 }

@@ -38,13 +38,30 @@ describe('EmbeddingSectionComponent', () => {
     await fixture.whenStable();
   }
 
-  function textarea(): HTMLTextAreaElement {
-    return element.querySelector<HTMLTextAreaElement>('#embedding-origins')!;
+  function fields(): HTMLInputElement[] {
+    return Array.from(element.querySelectorAll<HTMLInputElement>('input[id^="embedding-origin-"]'));
   }
 
-  function type(value: string): void {
-    textarea().value = value;
-    textarea().dispatchEvent(new Event('input'));
+  function type(index: number, value: string): void {
+    fields()[index].value = value;
+    fields()[index].dispatchEvent(new Event('input'));
+  }
+
+  function button(label: string): HTMLButtonElement {
+    const found = Array.from(element.querySelectorAll<HTMLButtonElement>('button')).find(
+      (candidate) =>
+        candidate.textContent?.trim() === label || candidate.getAttribute('aria-label') === label,
+    );
+    if (!found) {
+      throw new Error(`no button "${label}"`);
+    }
+    return found;
+  }
+
+  async function add(value: string): Promise<void> {
+    button('Add website').click();
+    await render();
+    type(fields().length - 1, value);
   }
 
   async function submit(): Promise<void> {
@@ -54,78 +71,113 @@ describe('EmbeddingSectionComponent', () => {
     fixture.detectChanges();
   }
 
-  function errorText(): string {
-    return element.querySelector('#embedding-origins-error')?.textContent?.trim() ?? '';
+  function errorOf(field: HTMLInputElement): string {
+    return element.querySelector(`#${field.id}-error`)?.textContent?.trim() ?? '';
+  }
+
+  /** Answers the save and the poll for Caddy. */
+  async function accept(origins: string[]): Promise<void> {
+    const request = http.expectOne('/api/settings/embedding');
+    expect(request.request.method).toBe('PUT');
+    expect(request.request.body).toEqual({ origins });
+    request.flush(configuredSettingsFixture());
+    await flushMicrotasks();
+    http.expectOne('/api/settings/status').flush(appliedStatusFixture());
+    await render();
   }
 
   afterEach(() => http.verify());
 
-  it('shows the saved origins, one per line', async () => {
+  it('shows the saved websites, one row each with its own label and remove button', async () => {
     await setup(['https://proxy.example.ch', 'https://*.example.com']);
-    expect(textarea().value).toBe('https://proxy.example.ch\nhttps://*.example.com');
-    expect(element.querySelector('label')?.textContent).toContain('Allowed origins, one per line');
+    expect(fields().map((field) => field.value)).toEqual([
+      'https://proxy.example.ch',
+      'https://*.example.com',
+    ]);
+    expect(fields().map((field) => field.getAttribute('aria-label'))).toEqual([
+      'Website 1',
+      'Website 2',
+    ]);
+    expect(button('Remove website 2')).toBeDefined();
+    expect(element.querySelector('h2')?.textContent?.trim()).toBe('Allowed websites');
   });
 
-  it('saves the lines as typed and waits for Caddy', async () => {
+  it('says that no website may show the output, and offers to add one', async () => {
     await setup();
-    type('https://proxy.example.ch\n\nhttps://*.example.com');
-    await submit();
-    const request = http.expectOne('/api/settings/embedding');
-    expect(request.request.method).toBe('PUT');
-    expect(request.request.body).toEqual({
-      origins: ['https://proxy.example.ch', '', 'https://*.example.com'],
-    });
-    request.flush(configuredSettingsFixture());
-    await flushMicrotasks();
-    http.expectOne('/api/settings/status').flush(appliedStatusFixture());
+    expect(fields()).toEqual([]);
+    expect(element.textContent).toContain('No website may show the output yet.');
+    button('Add website').click();
     await render();
+    expect(fields()).toHaveLength(1);
+    expect(document.activeElement).toBe(fields()[0]);
+  });
+
+  it('saves the filled rows trimmed, ignores empty ones and waits for Caddy', async () => {
+    await setup();
+    await add(' https://proxy.example.ch ');
+    await add('');
+    await add('https://*.example.com');
+    await submit();
+    await accept(['https://proxy.example.ch', 'https://*.example.com']);
     expect(saved).toHaveBeenCalledOnce();
+    expect(fields().map((field) => field.value)).toEqual([
+      'https://proxy.example.ch',
+      'https://*.example.com',
+    ]);
   });
 
   it('allows none', async () => {
     await setup(['https://proxy.example.ch']);
-    type('');
-    await submit();
-    const request = http.expectOne('/api/settings/embedding');
-    expect(request.request.body).toEqual({ origins: [''] });
-    request.flush(configuredSettingsFixture());
-    await flushMicrotasks();
-    http.expectOne('/api/settings/status').flush(appliedStatusFixture());
+    button('Remove website 1').click();
     await render();
+    expect(document.activeElement?.textContent?.trim()).toBe('Add website');
+    await submit();
+    await accept([]);
     expect(saved).toHaveBeenCalledOnce();
   });
 
-  it('names the line that is not an origin', async () => {
+  it('checks a row as soon as it is left and names the row that is not a website', async () => {
     await setup();
-    type('https://proxy.example.ch\nproxy.example.ch');
-    await submit();
-    expect(errorText()).toBe(
-      'Line 2 is not an origin. Use https://host or https://*.host, optionally with a port.',
+    await add('https://proxy.example.ch');
+    await add('proxy.example.ch');
+    fields()[1].dispatchEvent(new Event('blur'));
+    await render();
+    expect(errorOf(fields()[1])).toBe(
+      'This is not a website address. Use https://host or https://*.host, optionally with a port.',
     );
-    expect(textarea().getAttribute('aria-invalid')).toBe('true');
-    expect(document.activeElement).toBe(textarea());
+    expect(fields()[1].getAttribute('aria-invalid')).toBe('true');
+    expect(errorOf(fields()[0])).toBe('');
+
+    await submit();
+    await render();
+    expect(document.activeElement).toBe(fields()[1]);
     http.expectNone('/api/settings/embedding');
   });
 
-  it('clears the message when the text is edited', async () => {
+  it('clears the message when the row is edited', async () => {
     await setup();
-    type('nope');
+    await add('nope');
     await submit();
-    type('https://proxy.example.ch');
     await render();
-    expect(errorText()).toBe('');
+    expect(errorOf(fields()[0])).not.toBe('');
+    type(0, 'https://proxy.example.ch');
+    await render();
+    expect(errorOf(fields()[0])).toBe('');
   });
 
-  it('refuses more origins than the server takes', async () => {
-    await setup();
-    type(Array.from({ length: 21 }, (_, index) => `https://h${index}.example.ch`).join('\n'));
-    await submit();
-    expect(errorText()).toBe('At most 20 origins are possible.');
+  it('stops adding at the number of websites the server takes, and says why', async () => {
+    await setup(Array.from({ length: 20 }, (_, index) => `https://h${index}.example.ch`));
+    const addButton = button('Add website');
+    expect(addButton.disabled).toBe(true);
+    expect(
+      element.querySelector(`#${addButton.getAttribute('aria-describedby')}`)?.textContent,
+    ).toContain('At most 20 websites are possible.');
   });
 
-  it('shows the line the server refused', async () => {
+  it('shows the row the server refused', async () => {
     await setup();
-    type('https://proxy.example.ch\nhttps://a.example.ch');
+    await add('https://proxy.example.ch');
+    await add('https://a.example.ch');
     await submit();
     http
       .expectOne('/api/settings/embedding')
@@ -134,7 +186,8 @@ describe('EmbeddingSectionComponent', () => {
         { status: 400, statusText: 'Bad Request' },
       );
     await render();
-    expect(errorText()).toContain('Line 2 is not an origin');
+    expect(errorOf(fields()[1])).toContain('This is not a website address');
+    expect(errorOf(fields()[0])).toBe('');
   });
 
   it('names the step in the wizard', async () => {

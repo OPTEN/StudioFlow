@@ -1,21 +1,22 @@
 @use 'mixins' as *;
 @use 'tokens' as *;
 
-// Slot code chip (K1, S2): mono on raised-2.
+// Slot code badge (K1, S2, A1): tabular figures on a quiet fill, as in the Regie.
 .c-code {
   @include mono;
-  background: var(--raised-2);
-  border-radius: $RADIUS_XS;
-  color: var(--text);
+  background: var(--fill);
+  border-radius: var(--radius-xs);
+  color: var(--text-2);
   display: inline-block;
-  font-size: 14px;
+  flex: none;
+  font-size: var(--fs-caption);
   font-weight: 600;
   line-height: 1;
-  padding: 5px 7px;
+  padding: 4px 6px;
   white-space: nowrap;
 }
 
-// Lamps: green ok, muted idle, amber reconnecting (halo), red down (halo).
+// Status lamp: green ok, muted idle, orange attention, red failure (attention and failure grow a soft halo).
 .c-lamp {
   background: var(--green);
   border-radius: 50%;
@@ -23,103 +24,111 @@
   flex: none;
   height: 9px;
   width: 9px;
+
+  &.is-idle {
+    background: var(--muted);
+    opacity: 0.7;
+  }
+
+  &.is-warn {
+    background: var(--amber);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--amber) 24%, transparent);
+  }
+
+  &.is-bad {
+    background: var(--red);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--red) 26%, transparent);
+  }
 }
 
-.c-lamp--idle {
-  background: var(--muted);
-}
-
-.c-lamp--warn {
-  background: var(--amber);
-  height: 11px;
-  outline: 3px solid var(--amber-halo);
-  width: 11px;
-}
-
-.c-lamp--bad {
-  background: var(--red);
-  height: 12px;
-  outline: 3px solid var(--red-halo);
-  width: 12px;
-}
-
-// Tally tags on slot rows.
+// Live / Preview capsules: filled red while on air, green tint in the preview (the Regie's tags, at touch size).
 .c-tag {
-  border-radius: $RADIUS_XS;
+  align-items: center;
+  border-radius: var(--radius-pill);
   display: inline-flex;
   flex: none;
-  font: 700 14px/1 var(--font-ui);
-  letter-spacing: 0.08em;
-  padding: 4px 7px;
-  text-transform: uppercase;
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  gap: 5px;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  padding: 5px 9px;
   white-space: nowrap;
 }
 
-.c-tag--program {
-  background: var(--red-wash);
-  color: var(--red);
+.c-tag--pgm {
+  background: var(--red);
+  color: var(--on-state);
 }
 
-.c-tag--preview {
+.c-tag--pvw {
   background: var(--green-wash);
   color: var(--green);
 }
 
-// Notices: a wash tints the whole block, the icon carries the colour (The Wash Rule).
+.c-tag--warn {
+  background: var(--amber-wash);
+  color: var(--amber);
+}
+
+// Inline notice: a wash tints the block, the icon carries the hue, the text stays primary.
 .c-notice {
   align-items: flex-start;
-  background: var(--raised);
-  border-radius: $RADIUS_LG;
+  background: var(--fill);
+  border-radius: var(--radius-lg);
   color: var(--text);
   display: flex;
-  font-size: 15px;
+  font-size: var(--fs-callout);
   gap: $SPACE_LG;
-  line-height: 1.45;
+  line-height: 1.4;
   padding: $SPACE_LG $SPACE_GUTTER;
+
+  > sf-icon {
+    --icon-size: 20px;
+    color: var(--text-2);
+    margin-top: 1px;
+  }
 }
 
 .c-notice--ok {
   background: var(--green-wash);
+
+  > sf-icon {
+    color: var(--green);
+  }
 }
 
 .c-notice--warn {
   background: var(--amber-wash);
+
+  > sf-icon {
+    color: var(--amber);
+  }
 }
 
 .c-notice--bad {
   background: var(--red-wash);
-}
 
-.c-notice__icon {
-  flex: none;
-  margin-top: 2px;
-}
-
-.c-notice--ok .c-notice__icon {
-  color: var(--green);
-}
-
-.c-notice--warn .c-notice__icon {
-  color: var(--amber);
-}
-
-.c-notice--bad .c-notice__icon {
-  color: var(--red);
+  > sf-icon {
+    color: var(--red);
+  }
 }
 
 .c-notice__body {
   display: grid;
-  gap: $SPACE_SM;
+  flex: 1 1 auto;
+  gap: $SPACE_XS;
   min-width: 0;
 }
 
 .c-notice__title {
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .c-notice__text {
-  color: var(--text-2);
+  color: var(--text);
   margin: 0;
+  overflow-wrap: anywhere;
 }
 
 // Waiting indicator: three muted dots breathing; static when the OS asks for reduced motion.
@@ -130,22 +139,19 @@
 }
 
 .c-pulse__dot {
+  animation: c-pulse-breathe var(--dur-pulse) var(--ease) infinite;
   background: var(--muted);
   border-radius: 50%;
   height: 7px;
   opacity: 0.45;
   width: 7px;
 
-  @media (prefers-reduced-motion: no-preference) {
-    animation: c-pulse-breathe 1.8s var(--ease) infinite;
+  &:nth-child(2) {
+    animation-delay: 0.3s;
+  }
 
-    &:nth-child(2) {
-      animation-delay: 0.3s;
-    }
-
-    &:nth-child(3) {
-      animation-delay: 0.6s;
-    }
+  &:nth-child(3) {
+    animation-delay: 0.6s;
   }
 }
 

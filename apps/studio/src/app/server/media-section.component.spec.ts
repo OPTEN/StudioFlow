@@ -1,5 +1,6 @@
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { signal } from '@angular/core';
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
 import type { MediaTestResult } from '@studioflow/media-client';
 import { flushMicrotasks } from '../../testing/fake-studio-hub';
@@ -10,6 +11,7 @@ import {
 } from '../../testing/settings-fixtures';
 import { csrfInterceptor } from '../core/api/csrf.interceptor';
 import { MediaTestService } from '../core/media/media-test.service';
+import { ProductionStoreService } from '../core/state/production-store.service';
 import { ServerSettingsService } from '../core/state/server-settings.service';
 import { MediaSectionComponent } from './media-section.component';
 
@@ -30,6 +32,7 @@ describe('MediaSectionComponent', () => {
       fromHost: null,
       interfaces: [],
     },
+    broadcast: 'idle' | 'live' = 'idle',
   ): Promise<void> {
     mediaTest.run.mockReset();
     mediaTest.end.mockReset().mockResolvedValue(undefined);
@@ -39,6 +42,7 @@ describe('MediaSectionComponent', () => {
         provideHttpClient(withInterceptors([csrfInterceptor])),
         provideHttpClientTesting(),
         { provide: MediaTestService, useValue: mediaTest },
+        { provide: ProductionStoreService, useValue: { broadcast: signal(broadcast) } },
       ],
     });
     http = TestBed.inject(HttpTestingController);
@@ -67,8 +71,18 @@ describe('MediaSectionComponent', () => {
     field().dispatchEvent(new Event('input'));
   }
 
-  function buttons(): HTMLButtonElement[] {
-    return Array.from(element.querySelectorAll<HTMLButtonElement>('.c-srv__actions button'));
+  /** "Test connection" in the group of the test, and the submit button at the end of the form. */
+  function buttons(): [HTMLButtonElement, HTMLButtonElement] {
+    return [
+      element.querySelector<HTMLButtonElement>(
+        'section[aria-labelledby="media-test-heading"] button',
+      )!,
+      element.querySelector<HTMLButtonElement>('.c-srv__actions button[type="submit"]')!,
+    ];
+  }
+
+  function suggestionButtons(): HTMLButtonElement[] {
+    return Array.from(element.querySelectorAll<HTMLButtonElement>('.c-suggest button'));
   }
 
   async function submit(): Promise<void> {
@@ -93,6 +107,26 @@ describe('MediaSectionComponent', () => {
       'Test connection',
       'Save',
     ]);
+    expect(element.querySelector('#media-test-note')?.textContent).toContain(
+      'Restarts the media server',
+    );
+    expect(buttons()[0].getAttribute('aria-describedby')).toBe('media-test-note');
+  });
+
+  it('cannot test or save while the broadcast is on air, and says why', async () => {
+    await setup(
+      configuredSettingsFixture({ media: { address: '192.168.1.50' } }),
+      undefined,
+      'live',
+    );
+    expect(buttons().map((button) => button.disabled)).toEqual([true, true]);
+    // One hint, next to the save button; the test button points at it too.
+    expect(element.querySelector('#media-live-note')).toBeNull();
+    expect(buttons()[0].getAttribute('aria-describedby')).toBe('media-test-note media-save-note');
+    expect(element.querySelector('#media-save-note')?.textContent).toContain(
+      'Not possible while the broadcast is on air. End the broadcast first.',
+    );
+    expect(element.textContent?.split('Not possible while the broadcast is on air').length).toBe(2);
   });
 
   it('shows the saved address', async () => {
@@ -103,13 +137,18 @@ describe('MediaSectionComponent', () => {
   it('takes the address the page was opened with when there is none yet, and offers the interfaces', async () => {
     await setup(serverSettingsFixture(), { fromHost: '192.168.1.50', interfaces: ['10.0.0.7'] });
     expect(field().value).toBe('192.168.1.50');
-    const suggestions = Array.from(element.querySelectorAll('.c-srv__suggestions button')).map(
-      (button) => button.textContent?.trim(),
-    );
-    expect(suggestions).toEqual(['Use 192.168.1.50', 'Use 10.0.0.7']);
-    (element.querySelectorAll('.c-srv__suggestions button')[1] as HTMLButtonElement).click();
+    expect(suggestionButtons().map((button) => button.getAttribute('aria-label'))).toEqual([
+      'Use 192.168.1.50 (Address of this page)',
+      'Use 10.0.0.7 (Network of the server)',
+    ]);
+    expect(suggestionButtons().map((button) => button.getAttribute('aria-pressed'))).toEqual([
+      'true',
+      'false',
+    ]);
+    suggestionButtons()[1].click();
     await render();
     expect(field().value).toBe('10.0.0.7');
+    expect(suggestionButtons()[1].getAttribute('aria-pressed')).toBe('true');
   });
 
   it('keeps the saved address when the page was opened with another one', async () => {
@@ -150,7 +189,7 @@ describe('MediaSectionComponent', () => {
       expect(mediaTest.run).toHaveBeenCalledWith('192.168.1.50');
       const result = element.querySelector('.c-srv__result')!;
       expect(result.textContent).toContain('192.168.1.50 (round trip 18 ms)');
-      expect(result.classList).not.toContain('c-srv__result--bad');
+      expect(result.querySelector('.c-lamp.is-bad')).toBeNull();
     });
 
     it('says what to check for each place the test can stop', async () => {
@@ -167,7 +206,7 @@ describe('MediaSectionComponent', () => {
         await render();
         const result = element.querySelector('.c-srv__result')!;
         expect(result.textContent).toContain(text);
-        expect(result.classList).toContain('c-srv__result--bad');
+        expect(result.querySelector('.c-lamp.is-bad')).not.toBeNull();
       }
     });
 
@@ -179,7 +218,7 @@ describe('MediaSectionComponent', () => {
       buttons()[0].click();
       await render();
       expect(buttons()[0].disabled).toBe(true);
-      expect(buttons()[0].textContent?.trim()).toBe('Testing …');
+      expect(buttons()[0].textContent?.trim()).toBe('Testing…');
       expect(buttons()[1].disabled).toBe(true);
       finish({ ok: true, roundTripMs: 1 });
       await render();
@@ -194,7 +233,7 @@ describe('MediaSectionComponent', () => {
       await render();
       type('192.168.1.51');
       await render();
-      expect(element.querySelector('.c-srv__result')?.textContent?.trim()).toBe('');
+      expect(element.querySelector('.c-srv__result')).toBeNull();
     });
 
     it('says so when a broadcast is live and the address cannot be tested', async () => {
@@ -231,7 +270,7 @@ describe('MediaSectionComponent', () => {
       fixture.componentInstance.saved.subscribe(saved);
       type(' 192.168.1.50 ');
       await submit();
-      expect(buttons()[1].textContent?.trim()).toBe('Saving …');
+      expect(buttons()[1].textContent?.trim()).toBe('Saving…');
       await flushSave();
       expect(mediaTest.markSaved).toHaveBeenCalled();
       expect(saved).toHaveBeenCalledOnce();

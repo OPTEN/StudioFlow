@@ -2,13 +2,14 @@ import type { Page } from '@playwright/test';
 import { expectNoSeriousAxe } from '../../support/a11y/axe';
 import { openBusyRegie } from '../../support/a11y/regie-setup';
 import { newUiContext } from '../../support/ui';
+import { openAppearanceSettings } from '../../support/regie/kit';
 import { PixelImage } from '../../support/ui/pixels';
 import { expect, test } from '../../support/ui/fixtures';
 import { t } from '../../support/tags';
 
 /**
  * E2E-DEV-23 (docs/testing.md 2.8): the appearance of the Regie. Dark is the default even when the system prefers
- * light; Dark | Light | System in the settings popover applies at once, survives a reload without a flash (the
+ * light; Dark | Light | System in the settings window (Appearance and language) applies at once, survives a reload without a flash (the
  * `theme-init.js` script alone sets it), is followed by other tabs and by System live, and is shared by the login page
  * and /monitoring. In both themes axe finds no serious violation (colour contrast included), the picture areas stay
  * dark, and an incident still shows lamp and wash. The texts are not asserted: the controls are found by their ids.
@@ -19,16 +20,16 @@ const VIEWPORT = { width: 1440, height: 900 };
 const STORAGE_KEY = 'studioflow.theme';
 const THEMES = ['dark', 'light'] as const;
 
-const SETTINGS_BUTTON = '[aria-controls="sf-pop-settings"]';
 const THEME_SEGMENTS = '[aria-labelledby="sf-theme-label"] button';
 const SEGMENT = { dark: 0, light: 1, system: 2 } as const;
 
 /** Panel colours of the two themes (DESIGN.md "Themes"), as the browser reports them. */
-const PANEL = { dark: 'rgb(21, 26, 34)', light: 'rgb(243, 245, 248)' } as const;
+const PANEL = { dark: 'rgb(30, 30, 33)', light: 'rgb(247, 247, 249)' } as const;
 
+/** Picks a segment of the appearance setting; opens the settings window through the gear first when needed. */
 async function chooseTheme(page: Page, theme: keyof typeof SEGMENT): Promise<void> {
   if (!(await page.locator(THEME_SEGMENTS).first().isVisible())) {
-    await page.locator(SETTINGS_BUTTON).click();
+    await openAppearanceSettings(page);
   }
   await page.locator(THEME_SEGMENTS).nth(SEGMENT[theme]).click();
 }
@@ -49,7 +50,7 @@ const bodyBackground = (page: Page): Promise<string> =>
 
 test.describe('Regie appearance', () => {
   test(
-    'E2E-DEV-23 [theme] dark by default, Light and System from the settings popover, kept across a reload, followed by other tabs',
+    'E2E-DEV-23 [theme] dark by default, Light and System from the settings window, kept across a reload, followed by other tabs',
     tags,
     async ({ regie }) => {
       const { page } = regie;
@@ -84,7 +85,7 @@ test.describe('Regie appearance', () => {
       await chooseTheme(page, 'light');
       await page.reload();
       await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-      await page.locator(SETTINGS_BUTTON).click();
+      // The reload stays on the appearance page of the settings window.
       await expect(page.locator(THEME_SEGMENTS).nth(SEGMENT.light)).toHaveAttribute('aria-pressed', 'true');
       expect(regie.problems.pageErrors, 'no uncaught error').toEqual([]);
       expect(regie.problems.cspViolations, 'no CSP violation').toEqual([]);
@@ -139,17 +140,17 @@ test.describe('Regie appearance', () => {
 for (const theme of THEMES) {
   test.describe(`${theme} theme`, () => {
     test(
-      `E2E-DEV-23 [theme, axe, ${theme}] login, Regie with an incident and the settings popover, and /monitoring have no serious violation`,
+      `E2E-DEV-23 [theme, axe, ${theme}] login, Regie with an incident, the appearance settings and /monitoring have no serious violation`,
       tags,
       async ({ openRegie, pairContext, onCleanup, browser }) => {
         test.setTimeout(150_000);
         const { regie } = await openBusyRegie({ openRegie, pairContext, onCleanup }, { viewport: VIEWPORT, incident: 'reconnecting', studio: true });
         const { page } = regie;
         await startIn(page, theme);
-        await expect(page.locator('.c-status__inc.is-warn')).toBeVisible();
+        await expect(page.locator('.c-status__lead.is-warn')).toBeVisible();
         await expectNoSeriousAxe(page, `regie-${theme}`);
 
-        await page.locator(SETTINGS_BUTTON).click();
+        await openAppearanceSettings(page);
         await expect(page.locator(THEME_SEGMENTS).first()).toBeVisible();
         await expectNoSeriousAxe(page, `regie-settings-${theme}`);
 
@@ -191,9 +192,10 @@ for (const theme of THEMES) {
         }
 
         // The incident: an amber lamp with its halo and a wash that differs from the panel on screen.
+        // (the redesign draws the halo as a box-shadow ring; the amber is the theme's --amber, #ff9f0a / #9a4700)
         const lamp = row.locator('.c-lamp');
-        await expect(lamp).toHaveCSS('outline-style', 'solid');
-        const amber = theme === 'dark' ? 'rgb(227, 179, 65)' : 'rgb(138, 88, 0)';
+        await expect(lamp).not.toHaveCSS('box-shadow', 'none');
+        const amber = theme === 'dark' ? 'rgb(255, 159, 10)' : 'rgb(154, 71, 0)';
         await expect(lamp).toHaveCSS('background-color', amber);
         const panel = PixelImage.fromPng(await page.locator('.c-dock-frame__body').first().screenshot());
         const wash = PixelImage.fromPng(await row.screenshot());

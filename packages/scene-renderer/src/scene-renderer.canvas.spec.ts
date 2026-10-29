@@ -224,20 +224,20 @@ describe('scene renderer: canvas of the production', () => {
     it('sets the text for a 1080 pixel short side on 1920 × 1080 and on a portrait canvas', () => {
       mounted = mount();
       mounted.renderer.showSlate(slate);
-      expect(fontSizes()).toEqual(['24px', '72px', '36px']);
+      expect(fontSizes()).toEqual(['28px', '80px', '36px']);
       mounted.renderer.destroy();
       mounted.container.remove();
 
       mounted = mount({ canvas: PORTRAIT });
       mounted.renderer.showSlate(slate);
-      expect(fontSizes()).toEqual(['24px', '72px', '36px']);
+      expect(fontSizes()).toEqual(['28px', '80px', '36px']);
     });
 
     it('scales the text with the short side of a 720p canvas', () => {
       mounted = mount({ canvas: canvasSize('widescreen', 'p720') });
       mounted.renderer.showSlate(slate);
 
-      expect(fontSizes()).toEqual(['16px', '48px', '24px']);
+      expect(fontSizes()).toEqual(['19px', '53px', '24px']);
     });
 
     it('follows a canvas change while the slate is shown', () => {
@@ -246,7 +246,7 @@ describe('scene renderer: canvas of the production', () => {
 
       mounted.renderer.setCanvas(SQUARE);
 
-      expect(fontSizes()).toEqual(['16px', '48px', '24px']);
+      expect(fontSizes()).toEqual(['19px', '53px', '24px']);
     });
 
     it('applies the canvas that was set before the slate appears', () => {
@@ -255,7 +255,20 @@ describe('scene renderer: canvas of the production', () => {
 
       mounted.renderer.showSlate(slate);
 
-      expect(fontSizes()).toEqual(['16px', '48px', '24px']);
+      expect(fontSizes()).toEqual(['19px', '53px', '24px']);
+    });
+
+    it('scales a notice of the page the same way, in its smaller sizes', () => {
+      const notice = { note: 'This page tries again by itself every 30 seconds.' };
+      mounted = mount();
+      mounted.renderer.showSlate(slate, null, notice);
+      const note = (): string | undefined =>
+        mounted.container.querySelector<HTMLElement>('.sf-r-slate-note')?.style.fontSize;
+      expect([...fontSizes(), note()]).toEqual(['20px', '48px', '30px', '24px']);
+
+      mounted.renderer.setCanvas(SQUARE);
+
+      expect([...fontSizes(), note()]).toEqual(['13px', '32px', '20px', '16px']);
     });
   });
 

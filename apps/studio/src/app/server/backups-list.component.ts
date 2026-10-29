@@ -6,30 +6,62 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { formatDateTime, t } from '@studioflow/i18n';
+import { formatDateTime, msg, t } from '@studioflow/i18n';
 import { formatBytes, type BackupsDto } from '@studioflow/scene-model';
 import { ApiError, toUserMessage } from '../core/api/api-error';
 import { ServerSettingsService } from '../core/state/server-settings.service';
+import { ClipboardService } from '../core/ui/clipboard.service';
+import {
+  ContextMenuDirective,
+  ContextMenuService,
+  type ContextMenuEntry,
+} from '../core/ui/context-menu';
+import { IconComponent } from '../core/ui/icon.component';
 import { ToastService } from '../core/ui/toast.service';
+import type { LampTone } from '../docks/shared/source-view';
+import type { ServerProblem } from './apply-messages';
+import { ServerProblemComponent } from './server-problem.component';
+import { TechnicalDetailsComponent } from './technical-details.component';
 
 /** How often the list looks for a new backup while the page is open. */
 export const BACKUPS_REFRESH_MS = 5000;
 
+/** The restore command of the backup service; `<folder>` is the name of a backup. */
+export function restoreCommand(folder: string): string {
+  return `docker compose run --rm backup restore ${folder}`;
+}
+
+/** The template of the restore command, for the explanation under the list. */
+export const RESTORE_TEMPLATE = restoreCommand('<folder>');
+
+/** The status line above the list: a lamp and one sentence. */
+interface StatusLine {
+  readonly lamp: LampTone;
+  readonly text: string;
+}
+
 /**
- * The latest backups of the backup service and "Back up now" (issue #27). Restoring is a command on the server (it
- * replaces the database and needs the stack stopped), so the list only shows the folder names that command takes.
+ * The latest backups of the backup service and "Back up now" (issue #27): a status line with the button next to it, a
+ * table with column headers (backup, kind, size, finished) and, per row, a button that copies its restore command.
+ * Restoring is a command on the server (it replaces the database and needs the stack stopped), so the page offers the
+ * command instead of a button. A row's menu (right click, the context-menu key or its ⋯ button) copies its restore
+ * command or its folder name. Polled every {@link BACKUPS_REFRESH_MS}.
  */
 @Component({
   selector: 'sf-backups-list',
+  imports: [ContextMenuDirective, IconComponent, ServerProblemComponent, TechnicalDetailsComponent],
   templateUrl: './backups-list.component.html',
-  styleUrl: './server-section.scss',
+  styleUrls: ['./server-section.scss', './backups-list.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class BackupsListComponent {
   private readonly settings = inject(ServerSettingsService);
   private readonly toasts = inject(ToastService);
+  private readonly clipboard = inject(ClipboardService);
+  private readonly menus = inject(ContextMenuService);
 
   protected readonly t = t;
+  protected readonly restoreTemplate = RESTORE_TEMPLATE;
   protected readonly state = signal<BackupsDto | null>(null);
   protected readonly loadFailed = signal(false);
   protected readonly requesting = signal(false);
@@ -47,6 +79,38 @@ export class BackupsListComponent {
       time: formatDateTime(new Date(backup.at)),
     })),
   );
+  protected readonly status = computed<StatusLine>(() => {
+    const backups = this.state();
+    if (!backups) {
+      return this.loadFailed()
+        ? { lamp: 'is-bad', text: t('regie.server.backup.listLoadError') }
+        : { lamp: 'is-idle', text: t('regie.server.loading') };
+    }
+    if (!backups.serviceSeen) {
+      return { lamp: 'is-warn', text: t('regie.server.backup.listNotSeen') };
+    }
+    if (backups.postponed) {
+      return { lamp: 'is-warn', text: t('regie.server.backup.listPostponed') };
+    }
+    if (backups.running) {
+      return { lamp: 'is-warn', text: t('regie.server.backup.listRunning') };
+    }
+    if (this.requested()) {
+      return { lamp: 'is-idle', text: t('regie.server.backup.listRequested') };
+    }
+    return { lamp: '', text: t('regie.server.backup.listIdle') };
+  });
+  /** The last run failed: the operator's sentence, and the service's reason for whoever runs the server. */
+  protected readonly failure = computed<ServerProblem | null>(() => {
+    const error = this.state()?.lastError;
+    return error
+      ? {
+          message: msg('regie.server.backup.listFailed'),
+          command: 'docker compose logs backup',
+          detail: error,
+        }
+      : null;
+  });
 
   constructor() {
     void this.refresh();
@@ -69,6 +133,49 @@ export class BackupsListComponent {
     } finally {
       this.requesting.set(false);
     }
+  }
+
+  protected copyRestore(name: string): void {
+    void this.clipboard.copy(restoreCommand(name));
+  }
+
+  protected copyName(name: string): void {
+    void this.clipboard.copy(name);
+  }
+
+  protected menuLabel(name: string): string {
+    return t('regie.server.backup.listMenu', { name });
+  }
+
+  /** The builder `[sfContextMenu]` calls when the menu of a row opens. */
+  protected menuOf(name: string): () => readonly ContextMenuEntry[] {
+    return () => this.rowMenu(name);
+  }
+
+  /** The commands of a backup: copy its restore command or its folder name. */
+  protected rowMenu(name: string): readonly ContextMenuEntry[] {
+    return [
+      {
+        label: t('regie.server.backup.listCopyCommand'),
+        icon: 'copy',
+        run: () => this.copyRestore(name),
+      },
+      { label: t('regie.server.backup.listCopyName'), run: () => this.copyName(name) },
+    ];
+  }
+
+  /** Opens the menu of a row under its ⋯ button. */
+  protected openMenu(name: string, button: HTMLElement): void {
+    const rect = button.getBoundingClientRect();
+    this.menus.open(
+      this.rowMenu(name),
+      { x: rect.right - 220, y: rect.bottom + 4 },
+      { label: this.menuLabel(name), returnFocus: button },
+    );
+  }
+
+  protected copyTemplate(element: HTMLElement): void {
+    void this.clipboard.copy(RESTORE_TEMPLATE, { selectElement: element });
   }
 
   private async refresh(): Promise<void> {

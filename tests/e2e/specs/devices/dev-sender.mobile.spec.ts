@@ -47,7 +47,7 @@ test.describe('DEV sender, mobile projects', () => {
           return { covers: box.width >= window.innerWidth - 1 && box.height >= window.innerHeight - 1, shadow: getComputedStyle(element).boxShadow };
         });
         expect(frame.covers, `the tally frame covers ${size.width}x${size.height}`).toBe(true);
-        expect(frame.shadow).toContain('rgb(248, 81, 73)');
+        expect(frame.shadow).toContain('rgb(255, 105, 97)');
         await expectNoOverflow(phone.page, `${testInfo.project.name} ${size.width}x${size.height}`);
         expect(await phone.cameraState(), 'the camera keeps sending through the rotation').toBe('live');
       }

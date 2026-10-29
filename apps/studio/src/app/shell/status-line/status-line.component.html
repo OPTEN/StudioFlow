@@ -3,6 +3,7 @@
     class="c-status__net"
     [class.is-warn]="banner.tone === 'warn'"
     [class.is-bad]="banner.tone === 'bad'"
+    [title]="banner.text"
   >
     <span
       class="c-lamp"
@@ -11,7 +12,7 @@
       [class.is-warn]="banner.tone === 'warn'"
       [class.is-bad]="banner.tone === 'bad'"
     ></span>
-    <span>{{ banner.text }}</span>
+    <span class="c-status__net-text">{{ banner.text }}</span>
     @if (banner.action === 'media') {
       <button class="c-btn c-btn--sm" type="button" (click)="media.restart()">
         {{ t('regie.statusline.banner.mediaReconnect') }}
@@ -20,45 +21,165 @@
   </div>
 }
 
-@for (row of rows(); track row.incident.id) {
-  @if (row.recovered) {
-    <div class="c-status__inc is-ok">
+<div class="c-pop-wrap c-status__health-wrap">
+  <button
+    class="c-status__health"
+    type="button"
+    aria-haspopup="dialog"
+    [sfPopoverTrigger]="issuesPopover"
+  >
+    <span
+      class="c-lamp"
+      aria-hidden="true"
+      [class.is-idle]="health().tone === 'idle'"
+      [class.is-warn]="health().tone === 'warn'"
+      [class.is-bad]="health().tone === 'bad'"
+    ></span>
+    <span class="c-status__health-text">{{ health().text }}</span>
+    <svg class="c-status__chev" sfIcon="chev" [size]="12"></svg>
+  </button>
+
+  <!-- The issues popover stays in the DOM while closed (hidden), like a disclosure. -->
+  <div
+    class="c-status__issues"
+    role="dialog"
+    aria-labelledby="sf-issues-title"
+    [class.c-pop]="issuesOpen()"
+    [class.c-pop--left]="issuesOpen()"
+    [hidden]="!issuesOpen()"
+    [sfPopover]="issuesPopover"
+    [popoverFocus]="false"
+  >
+    <div class="c-status__issues-head">
+      <h2 class="c-status__issues-title" id="sf-issues-title">
+        {{ t('regie.statusline.issues.title') }}
+      </h2>
+      @if (recovered().length > 0) {
+        <button
+          class="c-btn c-btn--sm c-btn--plain"
+          type="button"
+          [disabled]="pending().has('all')"
+          (click)="acknowledgeAll()"
+        >
+          {{ t('regie.statusline.issues.markAll') }}
+        </button>
+      }
+    </div>
+    @if (rows().length > 0) {
+      <ul class="c-status__list">
+        @for (row of rows(); track row.incident.id) {
+          <li>
+            <ng-container
+              *ngTemplateOutlet="incident; context: { $implicit: row, kind: 'c-status__inc' }"
+            />
+          </li>
+        }
+      </ul>
+    } @else {
+      <p class="c-empty c-status__empty">
+        <strong>{{ t('regie.statusline.issues.emptyTitle') }}</strong>
+        {{
+          health().tone === 'idle'
+            ? t('regie.statusline.issues.noDevices')
+            : t('regie.statusline.issues.empty')
+        }}
+      </p>
+    }
+    <div class="c-menu-sep"></div>
+    <a class="c-menu-item" routerLink="/monitoring">
+      <svg sfIcon="pulse"></svg>{{ t('regie.statusline.issues.monitoring') }}
+    </a>
+  </div>
+</div>
+
+@if (!banner()) {
+  @if (lead(); as row) {
+    <ng-container
+      *ngTemplateOutlet="incident; context: { $implicit: row, kind: 'c-status__lead' }"
+    />
+    @if (more() > 0) {
       <button
-        class="c-status__target"
+        class="c-btn c-btn--sm c-btn--plain c-status__more"
         type="button"
-        [attr.aria-label]="t('regie.statusline.incident.show', { code: row.code, name: row.name })"
-        (click)="show(row)"
+        aria-haspopup="dialog"
+        [attr.aria-expanded]="issuesOpen()"
+        [attr.aria-controls]="issuesId"
+        (click)="openIssues()"
       >
-        <svg sfIcon="check"></svg><span class="c-code">{{ row.code }}</span
-        >&ngsp;<span class="c-status__name">{{ row.name }}</span>
+        {{ t('regie.statusline.issues.more', { count: more() }) }}
       </button>
+    }
+  } @else if (audioWarning(); as warning) {
+    <!-- A quiet audio channel is a warning, not an incident: it takes the incident's place only while there is none. -->
+    <p class="c-status__lead c-status__audio is-warn">
+      <svg sfIcon="alert"></svg>
+      <span class="c-code">{{ warning.code }}</span
+      >&ngsp;<span class="c-status__name">{{ warning.name }}</span>
+      <strong class="c-state--warn">{{ t('regie.audio.state.silent') }}</strong>
+      @if (warning.more > 0) {
+        <span class="c-status__where">{{
+          t('regie.statusline.issues.more', { count: warning.more })
+        }}</span>
+      }
+    </p>
+  }
+
+  <span class="u-spacer"></span>
+
+  @if (latest(); as entry) {
+    <p class="c-status__log" [title]="entry.time + ' ' + entry.text">
+      <span class="u-sr-only">{{ t('regie.statusline.latest') }}: </span>
+      <span class="c-status__entry"
+        ><span class="c-status__entry-time u-mono">{{ entry.time }}</span
+        >&ngsp;<span class="c-status__entry-text">{{ entry.text }}</span></span
+      >
+    </p>
+  }
+}
+
+<a class="c-status__audit" routerLink="/audit">
+  {{ t('regie.statusline.audit') }}<svg sfIcon="chev-right" [size]="13"></svg>
+</a>
+
+<!-- One incident: the lead one inline (c-status__lead) and every one in the issues popover (c-status__inc). -->
+<ng-template #incident let-row let-kind="kind">
+  <div
+    [class]="kind"
+    [class.is-ok]="row.recovered"
+    [class.is-bad]="!row.recovered && row.bad"
+    [class.is-warn]="!row.recovered && !row.bad"
+    [sfContextMenu]="menuFor(row)"
+    [sfContextMenuLabel]="row.code + ' ' + row.name"
+  >
+    <button
+      class="c-status__target"
+      type="button"
+      [title]="t('regie.statusline.incident.show')"
+      (click)="show(row)"
+    >
+      <svg [sfIcon]="row.recovered ? 'check' : 'alert'"></svg>
+      <span class="c-code">{{ row.code }}</span
+      >&ngsp;<span class="c-status__name">{{ row.name }}</span>
+    </button>
+    @if (row.recovered) {
       <strong class="c-state--ok">{{ t('regie.statusline.incident.back') }}</strong>
       <span class="c-status__where">{{ row.downFor }}</span>
       <button
         class="c-btn c-btn--sm"
         type="button"
-        [disabled]="pending().has(row.incident.id)"
+        [disabled]="pending().has(row.incident.id) || pending().has('all')"
         (click)="acknowledge(row)"
       >
-        {{ t('regie.statusline.incident.seen') }}
+        {{ t('regie.statusline.incident.dismiss') }}
       </button>
-    </div>
-  } @else {
-    <div class="c-status__inc" [class.is-bad]="row.bad" [class.is-warn]="!row.bad">
-      <button
-        class="c-status__target"
-        type="button"
-        [attr.aria-label]="t('regie.statusline.incident.show', { code: row.code, name: row.name })"
-        (click)="show(row)"
-      >
-        <svg sfIcon="alert"></svg><span class="c-code">{{ row.code }}</span
-        >&ngsp;<span class="c-status__name">{{ row.name }}</span>
-      </button>
+    } @else {
       <strong [class.c-state--bad]="row.bad" [class.c-state--warn]="!row.bad">{{
         row.word
       }}</strong>
       <span class="c-status__where">{{ placeWord(row.place) }}</span>
-      <span class="c-status__time">{{ timer(row.incident) }}</span>
+      <span class="c-status__time u-mono" [title]="t('regie.statusline.incident.timer')">{{
+        timer(row.incident)
+      }}</span>
       @if (row.reshare) {
         <button
           class="c-btn c-btn--sm"
@@ -69,19 +190,6 @@
           <svg sfIcon="send" [size]="13"></svg>{{ t('regie.statusline.incident.reshare') }}
         </button>
       }
-    </div>
-  }
-} @empty {
-  <span class="c-status__ok"><svg sfIcon="check"></svg>{{ t('regie.statusline.none') }}</span>
-  @if (logEntries().length > 0) {
-    <span class="c-status__label">{{ t('regie.statusline.log') }}</span>
-    <span class="c-status__log">
-      @for (entry of logEntries(); track entry.key) {
-        <span class="c-status__entry"
-          ><span class="u-mono">{{ entry.time }}</span
-          >{{ entry.text }}</span
-        >
-      }
-    </span>
-  }
-}
+    }
+  </div>
+</ng-template>

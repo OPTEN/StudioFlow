@@ -3,12 +3,12 @@ import type { CanvasSize } from '@studioflow/scene-model';
 /**
  * Sizing of the Preview and Program monitors on the stage (prototype `.mon { --mon-w: … }`, DESIGN.md "Stage").
  *
- * The stage holds the monitors on the left and the fixed control column (172 px, 20 px gap) on the right. Monitors
+ * The stage holds the monitors on the left and the fixed control column (176 px, 20 px gap) on the right. Monitors
  * have the shape of the canvas (16:9 by default, narrow for 9:16) and are sized from the stage's width AND height, so
  * they never overflow:
- * - Studio Mode off: Program = min(width − 192, (height − 56) × width/height of the canvas), right-aligned against the
+ * - Studio Mode off: Program = min(width − 196, (height − 56) × width/height of the canvas), right-aligned against the
  *   control column.
- * - Studio Mode on: the width minus 212 px (column, gap and the 20 px split) is shared by the split value
+ * - Studio Mode on: the width minus 216 px (column, gap and the 20 px split) is shared by the split value
  *   (Preview share 0.3–0.7); each monitor is additionally limited by the height.
  * - ≤ 1180 px (stacked): the stage grows with its content, so only the width counts; a monitor is at most
  *   {@link MAX_STACKED_MONITOR_HEIGHT_PX} high, which keeps a portrait monitor from filling the page.
@@ -17,8 +17,8 @@ import type { CanvasSize } from '@studioflow/scene-model';
  * 56 px of vertical chrome = 12 px padding above and below, the 24 px monitor header and its 8 px gap.
  */
 
-/** Width of the control column (DESIGN.md: 172 px). */
-export const CONTROL_COLUMN_PX = 172;
+/** Width of the control column (`--control-column` in styles/_tokens.scss: 176 px). */
+export const CONTROL_COLUMN_PX = 176;
 /** Gap between the monitors and the control column. */
 export const STAGE_GAP_PX = 20;
 /** Width of the resizable split between Preview and Program. */

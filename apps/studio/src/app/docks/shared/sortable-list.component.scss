@@ -32,7 +32,7 @@
 
   // The held row floats above the list (DESIGN.md: a shadow only for what floats, like the dock-drag ghost).
   &.is-lifted {
-    background: var(--raised-2);
+    background: var(--float);
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-pop);
     z-index: 3;

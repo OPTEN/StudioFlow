@@ -1,0 +1,41 @@
+// Settings › Production › Slates: one tab per slate (standby | end), each a group with the live picture on the left and
+// its fields on the right.
+@use 'mixins' as *;
+@use './production-page';
+
+.c-slates__tabs {
+  max-width: 420px;
+}
+
+.c-slates__panel[hidden] {
+  display: none;
+}
+
+// Unsaved changes of a slate: a small accent dot in its tab (with words for screen readers and a tooltip).
+.c-slates__dot {
+  background: var(--blue);
+  border-radius: 50%;
+  height: 6px;
+  width: 6px;
+}
+
+.c-slates__row {
+  align-items: start;
+  gap: 16px 20px;
+  grid-template-columns: 320px minmax(0, 1fr);
+  padding: 14px;
+
+  @include narrow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.c-slates__preview {
+  justify-self: center;
+}
+
+.c-slates__fields {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}

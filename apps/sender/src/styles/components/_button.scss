@@ -1,126 +1,162 @@
 @use 'mixins' as *;
 @use 'tokens' as *;
 
-// Buttons: quiet outlines on the surface, fills only for the action that matters (DESIGN.md “Buttons”).
-.c-button {
+// Buttons: a quiet filled push button by default; tinted (primary), filled (fill), red (danger) and plain variants,
+// as in the Regie. Every button is at least 44 px high; the border stays transparent so forced colours can draw it.
+.c-btn {
   @include touch-target;
+  @include state-transition(background-color, box-shadow, color, transform);
   align-items: center;
-  background: transparent;
-  border: 1px solid var(--seam-strong);
-  border-radius: $RADIUS_MD;
+  background: var(--fill);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
   color: var(--text);
   cursor: pointer;
   display: inline-flex;
-  font: 600 15px/1.2 var(--font-ui);
+  font-size: var(--fs-callout);
+  font-weight: 500;
   gap: $SPACE_MD;
   justify-content: center;
+  line-height: 1.2;
   padding: 0 $SPACE_GUTTER;
   text-align: center;
+  text-decoration: none;
   user-select: none;
 
-  @media (prefers-reduced-motion: no-preference) {
-    transition:
-      background-color 0.15s var(--ease),
-      border-color 0.15s var(--ease),
-      color 0.15s var(--ease);
-  }
-
   &:hover {
-    background: var(--raised);
-    border-color: var(--seam-hover);
+    background: var(--fill-hover);
+    text-decoration: none;
   }
 
   &:active {
-    background: var(--raised-2);
+    transform: scale(0.98);
   }
 
-  &[disabled] {
+  &:disabled,
+  &[aria-disabled='true'] {
     cursor: not-allowed;
-    opacity: 0.45;
+    opacity: 0.4;
+    transform: none;
   }
 
-  &[aria-pressed='true'] {
-    background: var(--blue-wash);
-    border-color: var(--blue);
-    box-shadow: inset 0 -2px 0 var(--blue);
-    color: var(--blue);
+  sf-icon {
+    --icon-size: 18px;
   }
 }
 
-.c-button--primary {
-  border-color: var(--blue);
-  color: var(--blue);
-
-  &:hover {
-    background: var(--blue-fill);
-    border-color: var(--blue-fill);
-    color: var(--on-fill);
-  }
-}
-
-.c-button--fill {
-  background: var(--blue-fill);
-  border-color: var(--blue-fill);
-  color: var(--on-fill);
-
-  &:hover {
-    background: var(--blue-fill-hover);
-    border-color: var(--blue-fill-hover);
-  }
-
-  &:active {
-    background: var(--blue-fill-hover);
-    transform: translateY(1px);
-  }
-}
-
-.c-button--go {
-  background: var(--green);
-  border-color: var(--green);
-  color: var(--on-state);
-
-  &:hover {
-    background: var(--green-hover);
-    border-color: var(--green-hover);
-  }
-}
-
-// Risky actions: dashed red outline, always apart from other actions.
-.c-button--danger {
-  border: 1px dashed var(--red);
-  color: var(--red);
-
-  &:hover {
-    background: var(--red-wash);
-    border-color: var(--red);
-  }
-}
-
-.c-button--danger-fill {
-  background: var(--red);
-  border-color: var(--red);
-  color: var(--on-state);
-
-  &:hover {
-    background: var(--red);
-    border-color: var(--red);
-  }
-}
-
-// The one large action of a screen (“Share again”, “Continue”).
-.c-button--large {
-  font-size: 17px;
-  min-height: 56px;
+// The one action of a screen (“Continue”, “Share screen”, “Share again”).
+.c-btn--lg {
+  border-radius: var(--radius-lg);
+  font-size: var(--fs-headline);
+  font-weight: 600;
+  min-height: var(--control-h-lg);
   padding: 0 $SPACE_XL;
 }
 
-.c-button--block {
+.c-btn--block {
   width: 100%;
 }
 
-// Borderless, for controls on top of the camera picture.
-.c-button--overlay {
-  backdrop-filter: blur(6px);
-  background: var(--scrim);
-  border-color: var(--seam-strong);
+// Tinted: an accent action that is not the one completing action.
+.c-btn--primary {
+  background: var(--blue-wash);
+  color: var(--blue);
+  font-weight: 600;
+
+  &:hover {
+    background: color-mix(in srgb, var(--blue) 24%, transparent);
+  }
+}
+
+// Filled: the one action that completes a step.
+.c-btn--fill {
+  background: var(--blue-fill);
+  box-shadow: var(--shadow-raise);
+  color: var(--on-fill);
+  font-weight: 600;
+
+  &:hover {
+    background: var(--blue-fill-hover);
+  }
+}
+
+// Destructive: red text on a quiet fill; the confirmation uses the filled variant.
+.c-btn--danger {
+  color: var(--red);
+  font-weight: 600;
+
+  &:hover {
+    background: var(--red-wash);
+  }
+}
+
+.c-btn--danger-fill {
+  background: var(--red);
+  color: var(--on-state);
+  font-weight: 600;
+
+  &:hover {
+    background: color-mix(in srgb, var(--red) 88%, var(--text));
+  }
+}
+
+// Plain: a text button without a fill (secondary actions next to a primary one).
+.c-btn--plain {
+  background: transparent;
+  color: var(--blue);
+  padding: 0 $SPACE_MD;
+
+  &:hover {
+    background: var(--blue-wash);
+  }
+}
+
+// Icon button: a 44 px square, quiet until hovered.
+.c-ibtn {
+  @include touch-target;
+  @include state-transition(background-color, color);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  color: var(--text-2);
+  cursor: pointer;
+  display: inline-grid;
+  flex: none;
+  height: $TOUCH_TARGET;
+  padding: 0;
+  place-items: center;
+  width: $TOUCH_TARGET;
+
+  &:hover,
+  &[aria-expanded='true'] {
+    background: var(--fill);
+    color: var(--text);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+  }
+
+  sf-icon {
+    --icon-size: 20px;
+  }
+}
+
+// The key that triggers a button (“↵”, “esc”) as a small chip inside it: only on a laptop with a fine pointer, where a
+// keyboard is at hand; phones never show it.
+.c-btn__key {
+  display: none;
+
+  @include desktop {
+    @include code;
+    border-radius: var(--radius-xs);
+    box-shadow: inset 0 0 0 1px currentcolor;
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1;
+    opacity: 0.7;
+    padding: 3px 5px;
+  }
 }

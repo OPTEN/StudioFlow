@@ -1,35 +1,88 @@
 <form class="c-srv" novalidate (submit)="save($event)">
-  <p class="c-srv__intro">{{ t('regie.server.embedding.intro') }}</p>
-
-  <div class="c-srv__field">
-    <label class="c-srv__label" for="embedding-origins">{{
-      t('regie.server.embedding.label')
-    }}</label>
-    <textarea
-      id="embedding-origins"
-      class="c-input c-srv__textarea c-srv__mono"
-      rows="4"
-      autocomplete="off"
-      autocapitalize="off"
-      spellcheck="false"
-      [formControl]="origins"
-      aria-describedby="embedding-origins-hint embedding-origins-error"
-      [class.is-invalid]="problemText()"
-      [attr.aria-invalid]="problemText() ? 'true' : null"
-    ></textarea>
-    <p class="c-hint" id="embedding-origins-hint">{{ t('regie.server.embedding.hint') }}</p>
-    @if (problemText(); as text) {
-      <p class="c-field-error" id="embedding-origins-error" role="alert">{{ text }}</p>
+  <section class="c-group" aria-labelledby="embedding-heading">
+    <h2 class="c-group__title" id="embedding-heading">{{ t('regie.server.embedding.heading') }}</h2>
+    <div class="c-group__body">
+      @for (row of rows(); track row.id; let index = $index) {
+        <div class="c-group__row c-origin">
+          <input
+            class="c-input c-srv__code"
+            type="url"
+            inputmode="url"
+            autocomplete="off"
+            autocapitalize="off"
+            spellcheck="false"
+            maxlength="255"
+            placeholder="https://proxy.example.ch"
+            [id]="'embedding-origin-' + row.id"
+            [value]="row.value"
+            [attr.aria-label]="t('regie.server.embedding.row', { index: index + 1 })"
+            [attr.aria-describedby]="
+              rowError(row.id) ? 'embedding-origin-' + row.id + '-error' : null
+            "
+            [attr.aria-invalid]="rowError(row.id) ? 'true' : null"
+            [class.is-invalid]="rowError(row.id)"
+            (input)="edit(row.id, $any($event.target).value)"
+            (blur)="leave(row.id)"
+          />
+          <button
+            class="c-ibtn"
+            type="button"
+            [attr.aria-label]="t('regie.server.embedding.remove', { index: index + 1 })"
+            [attr.title]="t('regie.server.embedding.remove', { index: index + 1 })"
+            (click)="remove(row.id)"
+          >
+            <svg sfIcon="minus"></svg>
+          </button>
+          @if (rowError(row.id); as message) {
+            <p
+              class="c-field-error c-origin__error"
+              [id]="'embedding-origin-' + row.id + '-error'"
+              role="alert"
+            >
+              {{ message }}
+            </p>
+          }
+        </div>
+      } @empty {
+        <div class="c-group__row">
+          <span class="c-group__label c-origin__empty">{{
+            t('regie.server.embedding.empty')
+          }}</span>
+        </div>
+      }
+      <div class="c-group__row c-origin__add">
+        <button
+          class="c-btn c-btn--plain"
+          type="button"
+          data-add
+          [disabled]="atLimit()"
+          [attr.aria-describedby]="atLimit() ? 'embedding-limit' : null"
+          (click)="add()"
+        >
+          <svg sfIcon="plus"></svg>{{ t('regie.server.embedding.add') }}
+        </button>
+        @if (atLimit()) {
+          <span class="c-hint" id="embedding-limit">{{
+            t('regie.server.embedding.tooMany', { max: max })
+          }}</span>
+        }
+      </div>
+    </div>
+    @if (listProblemText(); as text) {
+      <p class="c-field-error c-origin__list-error" id="embedding-list-error" role="alert">
+        {{ text }}
+      </p>
     }
-  </div>
+    <p class="c-group__footer">{{ t('regie.server.embedding.hint') }}</p>
+  </section>
 
-  @if (errorText(); as text) {
-    <p class="c-srv__result c-srv__result--bad" role="alert">
-      <span class="c-lamp is-bad" aria-hidden="true"></span><span>{{ text }}</span>
-    </p>
-  }
+  <sf-server-problem [problem]="problem()" />
+
+  <ng-content select="[sfSectionNote]" />
 
   <div class="c-srv__actions">
+    <ng-content select="[sfSectionStart]" />
+    <ng-content />
     <button class="c-btn c-btn--fill" type="submit" [disabled]="saving()">
       @if (saving()) {
         {{ t('regie.server.saving') }}

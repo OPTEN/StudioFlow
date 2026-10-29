@@ -18,14 +18,16 @@ import { t } from '../../support/tags';
 const tags = (priority: 'p0' | 'p1' | 'p2') => t.with(`@${priority}`, '@a11y', '@keyboard');
 const VIEWPORT = { width: 1440, height: 900 };
 
-/** Where a tab stop belongs, in the order the plan expects: header, strip, monitors + control column, docks in zone order. */
+/** Where a tab stop belongs, in the order the plan expects: toolbar, activity bar, monitors + control column, docks in zone order. */
 function areaRank(info: FocusInfo): number {
   if (info.area === 'header') return 0;
-  if (info.area === 'region:Messages') return 1;
-  if (/^(group:Items of the scene|section:Monitors|group:Transition type|group:Fade duration)/.test(info.area)) return 2;
+  if (info.area === 'region:Activity') return 1;
+  if (/^(group:Items of the scene|section:Monitors|region:Preview$|region:Program$|group:Transition type|group:Fade duration)/.test(info.area)) return 2;
   if (info.role === 'separator' && info.name === 'Height of the docks at the bottom') return 3;
-  const dock = /^region:(Scenes|Sources of the scene|Properties|Pair device|Stations|Audio)$/.exec(info.area)?.[1];
-  if (dock) return { Scenes: 4, 'Sources of the scene': 5, Properties: 6, 'Pair device': 6, Stations: 7, Audio: 8 }[dock]!;
+  // a toast's Dismiss is a transient stop wherever the toast host sits; a labelled group counts for its dock
+  if (info.area === 'status') return -1;
+  const dock = /^region:(Scenes|Sources of the scene|Properties|Add device|Devices|Audio)$/.exec(info.area)?.[1] ?? /^(Scenes|Sources of the scene|Properties|Add device|Devices|Audio)$/.exec(info.region ?? '')?.[1];
+  if (dock) return { Scenes: 4, 'Sources of the scene': 5, Properties: 6, 'Add device': 6, Devices: 7, Audio: 8 }[dock]!;
   return 99;
 }
 
@@ -60,12 +62,16 @@ test.describe('Keyboard-only Regie', () => {
     await page.keyboard.press('Control+A');
     await page.keyboard.type(config.admin.password);
     await page.keyboard.press('Tab');
-    expect((await focused(page)).name, 'third stop is the submit button').toBe('Sign in');
+    expect((await focused(page)).name, 'third stop shows the password').toBe('Show password');
+    await page.keyboard.press('Tab');
+    expect((await focused(page)).name, 'fourth stop explains a forgotten password').toBe('Forgot your password?');
+    await page.keyboard.press('Tab');
+    expect((await focused(page)).name, 'fifth stop is the submit button').toBe('Sign in');
     const ring = (await describeActiveSettled(page))!.ring;
     expect(ring.kind, 'the submit button shows the focus outline').toBe('outline');
     await page.keyboard.press('Space');
     await page.waitForURL((url) => !url.pathname.startsWith('/login'));
-    await expect(page.getByRole('button', { name: 'Docks and layout' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Layout', exact: true })).toBeVisible();
   });
 
   test('E2E-DEV-13 [tab order] every control is reachable in a logical order with a visible focus indicator, closed station details and hidden docks are skipped, there is no trap', tags('p0'), async ({ openRegie, pairContext, onCleanup }) => {
@@ -87,11 +93,12 @@ test.describe('Keyboard-only Regie', () => {
     expect(stops.filter((stop) => stop.info.name.trim() === '').map((stop) => `${stop.info.role} (${stop.info.area}) ${stop.info.className}`), 'every tab stop has an accessible name').toEqual([]);
     expect(stops.filter((stop) => !stop.info.inViewport).map((stop) => labelOf(stop.info)), 'every tab stop is inside the viewport').toEqual([]);
 
-    // logical order: header -> strip -> monitors/control column -> docks in zone order
-    const ranks = stops.map((stop) => areaRank(stop.info));
+    // logical order: toolbar -> activity bar -> monitors/control column -> docks in zone order
+    const ranked = stops.filter((stop) => areaRank(stop.info) >= 0);
+    const ranks = ranked.map((stop) => areaRank(stop.info));
     expect(ranks.filter((rank) => rank === 99), 'every stop belongs to a known area').toEqual([]);
-    const decreasing = ranks.flatMap((rank, index) => (index > 0 && rank < ranks[index - 1]! ? [`${labelOf(stops[index - 1]!.info)} -> ${labelOf(stops[index]!.info)}`] : []));
-    expect(decreasing, 'the tab order follows header, strip, monitors and controls, then the docks left to right').toEqual([]);
+    const decreasing = ranks.flatMap((rank, index) => (index > 0 && rank < ranks[index - 1]! ? [`${labelOf(ranked[index - 1]!.info)} -> ${labelOf(ranked[index]!.info)}`] : []));
+    expect(decreasing, 'the tab order follows toolbar, activity bar, monitors and controls, then the docks left to right').toEqual([]);
 
     // the controls of the control column come after the monitor overlay, Take last
     const names = stops.map((stop) => stop.info.name);
@@ -99,7 +106,7 @@ test.describe('Keyboard-only Regie', () => {
     expect(names.findIndex((name) => /^Take/i.test(name)), 'Take follows the duration stepper').toBeGreaterThan(names.indexOf('Longer fade'));
 
     // closed station details are inert: none of their buttons is a stop
-    expect(names.filter((name) => /^(Camera|Send message|Rename|Block device|Switch camera)$/.test(name)), 'collapsed station details are not focusable').toEqual([]);
+    expect(names.filter((name) => /^(Camera|Message|Details|Rename|Block device|Remove|Switch camera)$/.test(name)), 'collapsed station details are not focusable').toEqual([]);
 
     // Shift+Tab walks back over the same stops
     await focusTop(page);
@@ -119,16 +126,16 @@ test.describe('Keyboard-only Regie', () => {
     await expect(row).toHaveAttribute('aria-expanded', 'true');
     await page.keyboard.press('Tab');
     const inside = (await describeActive(page))!;
-    expect(inside.area, 'the next Tab enters the opened station detail').toBe('region:Stations');
-    expect(inside.name, 'the first control of the opened detail').toMatch(/^(Camera|Send message|Rename|Switch camera|Ask to share again|Block device)$/);
+    expect(inside.area, 'the next Tab enters the opened device detail').toBe('region:Devices');
+    expect(inside.name, 'the first control of the opened detail').toMatch(/^(Camera|Message|Details|Rename|Ask to share again|Block device)$/);
     await page.keyboard.press('Shift+Tab');
     await page.keyboard.press('Enter');
     await expect(row).toHaveAttribute('aria-expanded', 'false');
 
-    // hidden docks are never focusable: hide “Sources” in “Docks and layout” by keyboard
-    await page.getByRole('button', { name: 'Docks and layout' }).focus();
+    // hidden docks are never focusable: hide “Sources” in “Layout” by keyboard
+    await page.getByRole('button', { name: 'Layout', exact: true }).focus();
     await page.keyboard.press('Enter');
-    const sources = page.getByRole('checkbox', { name: 'Sources' });
+    const sources = page.getByRole('switch', { name: 'Sources' });
     await sources.focus();
     await page.keyboard.press('Space');
     await expect(sources).not.toBeChecked();
@@ -234,8 +241,9 @@ test.describe('Keyboard-only Regie', () => {
     const cases: Array<{ name: string; trigger: () => ReturnType<Page['getByRole']>; popover: string; focusInside: boolean; key: 'Enter' | 'Space' }> = [
       { name: 'production menu', trigger: () => page.getByRole('button', { name: /^Production .*, menu$/ }), popover: '[role=dialog][aria-label=Production]', focusInside: true, key: 'Enter' },
       { name: 'output chip', trigger: () => page.getByRole('button', { name: /^Output/ }), popover: '[role=dialog][aria-label=Output]', focusInside: false, key: 'Space' },
-      { name: 'Docks and layout', trigger: () => page.getByRole('button', { name: 'Docks and layout' }), popover: '[role=dialog][aria-label="Docks and layout"]', focusInside: true, key: 'Enter' },
-      { name: '+ Source', trigger: () => page.getByRole('button', { name: 'Source', exact: true }), popover: '[role=menu][aria-label="Add source"]', focusInside: true, key: 'Space' },
+      { name: 'Layout', trigger: () => page.getByRole('button', { name: 'Layout', exact: true }), popover: '[role=dialog][aria-label="Layout"]', focusInside: true, key: 'Enter' },
+      { name: 'issues', trigger: () => page.getByRole('region', { name: 'Activity' }).getByRole('button', { name: /^\d+ issues?$/ }), popover: '#sf-pop-issues', focusInside: true, key: 'Enter' },
+      { name: '+ Source', trigger: () => page.getByRole('button', { name: 'Add source', exact: true }), popover: '[role=menu][aria-label="Add source"]', focusInside: true, key: 'Space' },
       { name: 'scene menu', trigger: () => page.getByRole('button', { name: 'Actions for scene Break' }), popover: '[role=menu][aria-label="Scene Break"]', focusInside: true, key: 'Enter' },
     ];
     for (const entry of cases) {
@@ -255,7 +263,8 @@ test.describe('Keyboard-only Regie', () => {
         expect(inside.name, `${entry.name}: the trigger keeps the focus`).toBe((await trigger.getAttribute('aria-label')) ?? inside.name);
       }
       // the popover has an accessible name and is the only one open
-      expect(await page.locator('.c-pop').count(), `${entry.name}: exactly one popover is open`).toBe(1);
+      // (the ⋯ menus of the redesign are the shared context menu, .c-ctx, not a .c-pop)
+      expect(await page.locator('.c-pop, .c-ctx').count(), `${entry.name}: exactly one popover is open`).toBe(1);
       await page.keyboard.press('Escape');
       await expect(popover, `${entry.name}: Escape closes it`).toBeHidden();
       await expect(trigger, `${entry.name}: aria-expanded is false again`).toHaveAttribute('aria-expanded', 'false');
@@ -264,13 +273,13 @@ test.describe('Keyboard-only Regie', () => {
     }
 
     // no keyboard trap: from inside an open popover Tab leaves it (the popover stays open or closes, the page stays operable)
-    await page.getByRole('button', { name: 'Docks and layout' }).focus();
+    await page.getByRole('button', { name: 'Layout', exact: true }).focus();
     await page.keyboard.press('Enter');
-    const leave = await tabTo(page, (info) => !info.area.startsWith('dialog'), { limit: 20, what: 'a stop outside the Docks and layout popover' });
+    const leave = await tabTo(page, (info) => !info.area.startsWith('dialog'), { limit: 20, what: 'a stop outside the Layout popover' });
     expect(leave, 'Tab leaves the popover').not.toBeNull();
     await page.keyboard.press('Escape');
 
-    // the pairing dock: “Pair device” is a disclosure (aria-expanded, aria-controls), Escape closes it, the focus returns
+    // the pairing dock: “Add device” is a disclosure (aria-expanded, aria-controls), Escape closes it, the focus returns
     const pair = regie.pairButton();
     await pair.focus();
     await expect(pair).toHaveAttribute('aria-expanded', 'false');
@@ -280,21 +289,32 @@ test.describe('Keyboard-only Regie', () => {
     await page.keyboard.press('Escape');
     await expect(regie.pairingTab('phone')).toBeHidden();
     await expect(pair).toHaveAttribute('aria-expanded', 'false');
-    expect(await pair.evaluate((element) => element === document.activeElement), 'the focus returns to “Pair device” after Escape').toBe(true);
+    expect(await pair.evaluate((element) => element === document.activeElement), 'the focus returns to “Add device” after Escape').toBe(true);
     expect(regie.problems.pageErrors).toEqual([]);
   });
 
-  test('E2E-DEV-13 [popovers, confirmations] “End broadcast” and the station confirmations open by keyboard with the focus on “Cancel”; Escape closes the broadcast popover and returns the focus; the media popover opens from the add-source menu', tags('p1'), async ({ openRegie, pairContext, onCleanup, production }) => {
+  test('E2E-DEV-13 [popovers, confirmations] “Start broadcast”, “End broadcast” and the station confirmations open by keyboard with the focus on “Cancel”; Escape closes the broadcast popover and returns the focus; the media popover opens from the add-source menu', tags('p1'), async ({ openRegie, pairContext, onCleanup, production }) => {
     test.setTimeout(150_000);
     const { regie } = await openBusyRegie({ openRegie, pairContext, onCleanup }, { viewport: VIEWPORT, incident: null, studio: false, stations: 2 });
     const { page } = regie;
-    // on air: the header offers “End broadcast” with a confirmation popover
+    // off air: “Start broadcast” asks first, with the pre-flight check; the focus is on “Cancel”
+    const start = page.getByRole('button', { name: 'Start broadcast' });
+    await start.focus();
+    await page.keyboard.press('Enter');
+    const preflight = page.getByRole('dialog', { name: 'Start the broadcast?' });
+    await expect(preflight, 'the pre-flight popover opens').toBeVisible();
+    expect(await preflight.getByRole('button', { name: 'Cancel' }).evaluate((element) => element === document.activeElement), 'the focus is on “Cancel”').toBe(true);
+    await page.keyboard.press('Escape');
+    await expect(preflight).toBeHidden();
+    expect(await start.evaluate((element) => element === document.activeElement), 'Escape returns the focus to “Start broadcast”').toBe(true);
+    expect((await regie.requireAdmin().getSnapshot(production.id)).body.production.broadcast, 'nothing started').toBe('standby');
+    // on air: the toolbar offers “End broadcast” with a confirmation popover
     expect((await regie.requireAdmin().startBroadcast(production.id)).status).toBe(200);
     const end = page.getByRole('button', { name: 'End broadcast' }).first();
     await expect(end).toBeVisible();
     await end.focus();
     await page.keyboard.press('Enter');
-    const dialog = page.getByRole('dialog', { name: 'End broadcast' });
+    const dialog = page.getByRole('dialog', { name: 'End the broadcast?' });
     await expect(dialog, 'the confirmation popover opens').toBeVisible();
     await expect(end).toHaveAttribute('aria-expanded', 'true');
     const cancel = dialog.getByRole('button', { name: 'Cancel' });
@@ -327,7 +347,7 @@ test.describe('Keyboard-only Regie', () => {
     expect((await regie.requireAdmin().getSnapshot(production.id)).body.devices.some((device) => device.state === 'blocked')).toBe(false);
 
     // the add-source popover leads to the media popover: keyboard open, Escape closes, the focus returns to “Source”
-    const add = page.getByRole('button', { name: 'Source', exact: true });
+    const add = page.getByRole('button', { name: 'Add source', exact: true });
     await add.focus();
     await page.keyboard.press('Enter');
     const menu = page.getByRole('menu', { name: 'Add source' });
@@ -350,7 +370,7 @@ test.describe('Keyboard-only Regie', () => {
     // select an element of the Preview scene with the keyboard: the “Select” button of its Sources row
     await page.keyboard.press('2');
     await expect.poll(() => previewSceneId(regie, production.id)).toBe(seeded.scenes[1]!.id);
-    const pick = page.locator('.c-src__select').first();
+    const pick = page.getByRole('button', { name: /^Select: / }).first();
     await pick.focus();
     await page.keyboard.press('Enter');
     const selected = page.locator('.c-edit-box.is-sel');
@@ -359,13 +379,13 @@ test.describe('Keyboard-only Regie', () => {
     await regie.pairButton().focus();
     await page.keyboard.press('Enter');
     await expect(regie.pairingTab('phone')).toBeVisible();
-    const layout = page.getByRole('button', { name: 'Docks and layout' });
+    const layout = page.getByRole('button', { name: 'Layout', exact: true });
     await layout.focus();
     await page.keyboard.press('Enter');
-    await expect(page.locator('[role=dialog][aria-label="Docks and layout"]')).toBeVisible();
+    await expect(page.locator('[role=dialog][aria-label="Layout"]')).toBeVisible();
 
     await page.keyboard.press('Escape');
-    await expect(page.locator('[role=dialog][aria-label="Docks and layout"]'), 'first Escape: the popover').toBeHidden();
+    await expect(page.locator('[role=dialog][aria-label="Layout"]'), 'first Escape: the popover').toBeHidden();
     await expect(regie.pairingTab('phone'), 'the pairing dock is still open').toBeVisible();
     await expect(selected, 'the selection is still there').toHaveCount(1);
     await page.keyboard.press('Escape');
@@ -400,7 +420,7 @@ test.describe('Keyboard-only Regie', () => {
     await expect.poll(() => previewSceneId(regie, production.id)).toBe(seeded.scenes[1]!.id);
     const sceneId = seeded.scenes[1]!.id;
     const items = async () => (await api.getSnapshot(production.id)).body.scenes.find((scene) => scene.id === sceneId)!.items;
-    const row = page.locator('.c-src__select').first();
+    const row = page.getByRole('button', { name: /^Select: / }).first();
     await row.focus();
     await page.keyboard.press('Space');
     await expect(page.locator('.c-edit-box.is-sel')).toHaveCount(1);
@@ -420,7 +440,7 @@ test.describe('Keyboard-only Regie', () => {
 test.describe('Dock moves and splitters by keyboard', () => {
   const zoneOf = (page: Page, name: string) => page.locator(`sf-dock-slot[aria-label="${name}"]`).evaluate((dock) => dock.closest('[data-zone]')?.getAttribute('data-zone') ?? null);
 
-  test('E2E-DEV-14 [grip] the grip arrows move a dock step by step through left, bottom and right with a toast and “Reset layout”; the focus stays on the grip, no move beyond the ends, persisted', tags('p1'), async ({ openRegie, pairContext, onCleanup }) => {
+  test('E2E-DEV-14 [grip] the grip arrows move a dock step by step through left, bottom and right with a toast and “Undo”; the focus stays on the grip, no move beyond the ends, persisted', tags('p1'), async ({ openRegie, pairContext, onCleanup }) => {
     test.setTimeout(120_000);
     const { regie } = await openBusyRegie({ openRegie, pairContext, onCleanup }, { viewport: VIEWPORT, incident: null, studio: false, stations: 2 });
     const { page } = regie;
@@ -430,13 +450,13 @@ test.describe('Dock moves and splitters by keyboard', () => {
     const bottomOrder = () => page.locator('[data-zone=bottom] sf-dock-slot').evaluateAll((docks) => docks.map((dock) => dock.getAttribute('aria-label')));
     await grip.focus();
     expect(await zoneOf(page, 'Scenes')).toBe('bottom');
-    expect(await bottomOrder(), 'default order').toEqual(['Scenes', 'Sources of the scene', 'Properties', 'Stations', 'Audio']);
+    expect(await bottomOrder(), 'default order').toEqual(['Scenes', 'Sources of the scene', 'Properties', 'Devices', 'Audio']);
 
     // ArrowLeft at the start of the bottom zone continues in the left zone
     await page.keyboard.press('ArrowLeft');
     await expect.poll(() => zoneOf(page, 'Scenes'), { message: 'ArrowLeft: left zone' }).toBe('left');
     await expect(toast).toContainText('Scenes is docked on the left');
-    await expect(toast.getByRole('button', { name: 'Reset layout' }), 'the toast offers “Reset layout”').toBeVisible();
+    await expect(toast.getByRole('button', { name: 'Undo' }), 'the toast offers “Undo”').toBeVisible();
     await expect.poll(focusIsOnGrip, { message: 'the focus stays on the grip' }).toBe(true);
     // no move beyond the left end: nothing changes
     await page.keyboard.press('ArrowUp');
@@ -481,16 +501,16 @@ test.describe('Dock moves and splitters by keyboard', () => {
     await page.reload();
     await regie.waitReady();
     expect(await zoneOf(page, 'Scenes'), 'the layout survives a reload').toBe('right');
-    // “Reset layout” from the toast by keyboard
+    // “Undo” from the toast by keyboard puts the dock back where it was before the last move
     await page.getByRole('button', { name: 'Move dock Scenes with the arrow keys' }).focus();
     await page.keyboard.press('ArrowLeft');
     await expect.poll(() => zoneOf(page, 'Scenes')).toBe('bottom');
-    const reset = regie.toast().first().getByRole('button', { name: 'Reset layout' });
-    await expect(reset).toBeVisible();
-    await reset.focus();
+    const undo = regie.toast().first().getByRole('button', { name: 'Undo' });
+    await expect(undo).toBeVisible();
+    await undo.focus();
     await page.keyboard.press('Enter');
-    await expect(regie.toast().first()).toContainText('Layout reset');
-    expect(await bottomOrder(), 'the default order is back').toEqual(['Scenes', 'Sources of the scene', 'Properties', 'Stations', 'Audio']);
+    await expect(regie.toast().first()).toContainText('Move of Scenes undone');
+    await expect.poll(() => zoneOf(page, 'Scenes'), { message: 'the move is undone' }).toBe('right');
   });
 
   test('E2E-DEV-14 [splitters] separators are named and oriented; arrows move them 16 px (Shift 64 px) within their bounds, Enter resets, the change persists', tags('p1'), async ({ openRegie, pairContext, onCleanup }) => {
@@ -499,7 +519,7 @@ test.describe('Dock moves and splitters by keyboard', () => {
     const { page } = regie;
     const splitters = await page.getByRole('separator').evaluateAll((elements) => elements.map((element) => ({ name: element.getAttribute('aria-label'), orientation: element.getAttribute('aria-orientation'), tabindex: element.getAttribute('tabindex') })));
     expect(splitters.map((entry) => entry.name).sort(), 'the separators of the default layout').toEqual(
-      ['Size of Stations and Audio', 'Size of Properties and Stations', 'Size of Preview and Program', 'Size of Sources and Properties', 'Size of Scenes and Sources', 'Height of the docks at the bottom'].sort(),
+      ['Size of Devices and Audio', 'Size of Properties and Devices', 'Size of Preview and Program', 'Size of Sources and Properties', 'Size of Scenes and Sources', 'Height of the docks at the bottom'].sort(),
     );
     for (const entry of splitters) {
       expect(entry.orientation, `${entry.name}: aria-orientation`).toBe(entry.name === 'Height of the docks at the bottom' ? 'horizontal' : 'vertical');
@@ -561,11 +581,11 @@ test.describe('Dock moves and splitters by keyboard', () => {
 
   test('E2E-DEV-14 [splitters, edge docks] the seams next to the outer docks move by exactly 16 px (Shift 64 px) per arrow key', tags('p1'), async ({ openRegie, pairContext, onCleanup }) => {
     test.setTimeout(150_000);
-    knownBug('A11Y-13', 'the seam between Scenes and Sources moves 20.3 px and the seam between Stations and Audio (the outer docks) 11.6 px per ArrowRight instead of 16 px (the dock at the window edge carries a 16 px gutter inside its flex weight); same finding as REGIE-02 of the regie area');
+    knownBug('A11Y-13', 'the seam between Scenes and Sources moves 20.3 px and the seam between Devices and Audio (the outer docks) 11.6 px per ArrowRight instead of 16 px (the dock at the window edge carries a 16 px gutter inside its flex weight); same finding as REGIE-02 of the regie area');
     const { regie } = await openBusyRegie({ openRegie, pairContext, onCleanup }, { viewport: VIEWPORT, incident: null, studio: false, stations: 2 });
     const { page } = regie;
     const problems: string[] = [];
-    for (const name of ['Size of Scenes and Sources', 'Size of Stations and Audio']) {
+    for (const name of ['Size of Scenes and Sources', 'Size of Devices and Audio']) {
       const seam = page.getByRole('separator', { name });
       await seam.focus();
       const x = async () => (await boxOf(seam))!.x;

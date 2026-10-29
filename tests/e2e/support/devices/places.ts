@@ -3,8 +3,9 @@ import { pollUntil } from '../helpers';
 import type { RegiePage } from '../ui/regie';
 
 /**
- * The “six places” of the outage language (docs/testing.md 0.3, DESIGN.md): header health chip, message strip, monitor
- * element (Program / Preview), scene list row, Sources dock row and Stations dock row. One DOM read gives all of them,
+ * The “six places” of the outage language (docs/testing.md 0.3, DESIGN.md): the health button of the activity bar, the
+ * incidents of the activity bar (its issues list, which stays in the DOM while the popover is closed), monitor element
+ * (Program / Preview), scene list row, Sources dock row and Devices dock row. One DOM read gives all of them,
  * so a test can poll them at 100 ms and measure when the last one changed (T-DETECT-*).
  *
  * The Regie has no data-testid hooks; the class names are the ones of apps/studio (c-status__inc, c-src, c-st, c-scene)
@@ -63,8 +64,7 @@ export async function readPlaces(page: Page): Promise<Places> {
       return style.display !== 'none' && style.visibility !== 'hidden';
     };
 
-    const chips = [...document.querySelectorAll('header.c-header .c-header__right button.c-chipbtn')];
-    const health = chips.find((chip) => !chip.querySelector('.c-header__out-label'));
+    const health = document.querySelector('sf-status-line .c-status__health');
     const healthLamp = health?.querySelector('.c-lamp');
 
     const strip = [...document.querySelectorAll('sf-status-line .c-status__inc')].map((row) => {
@@ -93,7 +93,7 @@ export async function readPlaces(page: Page): Promise<Places> {
       readAt: Date.now(),
       header: { text: text(health), lamp: healthLamp ? [...healthLamp.classList].filter((name) => name.startsWith('is-')).join(' ') : '' },
       strip,
-      stripCalm: text(document.querySelector('sf-status-line .c-status__ok')) || null,
+      stripCalm: document.querySelector('sf-status-line .c-status__inc') ? null : text(health) || null,
       program: alerts('.c-monitor--program'),
       preview: alerts('.c-monitor--preview'),
       scenes: [...document.querySelectorAll('button.c-scene[aria-pressed]')].map((button) => ({
@@ -113,7 +113,7 @@ export async function readPlaces(page: Page): Promise<Places> {
         codes: [...row.querySelectorAll('.c-st__codes .c-code')].map((code) => text(code)),
         line: text(row.querySelector('.c-st__l2')),
         tone: (row.classList.contains('is-bad') ? 'bad' : row.classList.contains('is-warn') ? 'warn' : '') as 'bad' | 'warn' | '',
-        lamp: [...(row.querySelector('.c-st__row .c-lamp')?.classList ?? [])].filter((name) => name.startsWith('is-')).join(' '),
+        lamp: [...(row.querySelector('.c-st__l2 .c-lamp')?.classList ?? [])].filter((name) => name.startsWith('is-')).join(' '),
         tag: text(row.querySelector('.c-st__l1 .c-tag')),
         recoveredBox: text(row.querySelector('.c-st__ack')) || null,
         expanded: row.querySelector('.c-st__row')?.getAttribute('aria-expanded') === 'true',
@@ -169,12 +169,12 @@ export function checkOutage(places: Places, code: string, kind: OutageKind, opti
 
   const wantsHeader = kind !== 'blocked';
   const headerLamp = kind === 'reconnecting' ? 'is-warn' : 'is-bad';
-  const header = !wantsHeader || (/^\d+ incidents?$/.test(places.header.text) && places.header.lamp.includes(headerLamp));
+  const header = !wantsHeader || (/^\d+ issues?$/.test(places.header.text) && places.header.lamp.includes(headerLamp));
   detail['header'] = `${places.header.text} [${places.header.lamp}]`;
 
   const monitorWord = (text: string): boolean => {
     if (!text.startsWith(`${code} · `)) return false;
-    if (kind === 'reconnecting') return wide ? /· Freeze frame \d+:\d\d$/.test(text) : /· \d+:\d\d$/.test(text);
+    if (kind === 'reconnecting') return wide ? /· Freeze frame \d+:\d\d$/.test(text) : /· Frozen \d+:\d\d$/.test(text);
     if (kind === 'ended') return wide ? text.endsWith(`· ${word}`) : text.endsWith('· ended');
     return text.endsWith(`· ${word}`);
   };
@@ -237,7 +237,7 @@ export async function waitForOutage(
   return { elapsedMs: last!.places.readAt - startedAt, check: last!.check, places: last!.places };
 }
 
-/** The recovered state in the places that keep it until “Seen”: strip entry, station line and box. */
+/** The recovered state in the places that keep it until “Dismiss”: strip entry, device line and its strip. */
 export function checkRecovered(places: Places, code: string, seconds?: { min: number; max: number }): { ok: boolean; detail: string; seconds: number | null } {
   const strip = places.strip.find((entry) => entry.code === code && entry.recovered);
   const station = places.stations.find((row) => row.codes.includes(code));
@@ -246,10 +246,10 @@ export function checkRecovered(places: Places, code: string, seconds?: { min: nu
   const ok = Boolean(
     strip &&
       strip.word === 'back' &&
-      strip.actions.includes('Seen') &&
+      strip.actions.includes('Dismiss') &&
       station &&
       /back\s*was gone \d+ s/.test(station.line) &&
-      station.recoveredBox?.includes('The station is back. Confirm to dismiss the message.') &&
+      station.recoveredBox?.includes('The device is back.') &&
       inRange,
   );
   return {
@@ -259,7 +259,7 @@ export function checkRecovered(places: Places, code: string, seconds?: { min: nu
   };
 }
 
-/** Waits for the recovered state of `code` (strip entry “back” with “Seen”, station box) and returns the seconds. */
+/** Waits for the recovered state of `code` (strip entry “back” with “Dismiss”, station box) and returns the seconds. */
 export async function waitForRecovered(
   regie: RegiePage,
   code: string,
@@ -297,7 +297,7 @@ export async function waitForRecovered(
 /** Expect helper for the calm state: no open incidents anywhere. */
 export async function expectNoIncidents(regie: RegiePage): Promise<void> {
   await expect
-    .poll(async () => (await readPlaces(regie.page)).strip.length, { message: 'the message strip holds no incident', timeout: 15_000 })
+    .poll(async () => (await readPlaces(regie.page)).strip.length, { message: 'the activity bar holds no incident', timeout: 15_000 })
     .toBe(0);
 }
 

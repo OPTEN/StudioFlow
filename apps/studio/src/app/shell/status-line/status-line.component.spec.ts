@@ -9,8 +9,10 @@ import {
   sourceFixture,
 } from '../../../testing/fixtures';
 import { startStore, studioTestProviders, type StoreHarness } from '../../../testing/store-harness';
+import { ContextMenuService, type ContextMenuItem } from '../../core/ui/context-menu';
+import { PopoverService } from '../../core/ui/popover.directive';
 import { StationFocusService } from '../station-focus.service';
-import { StatusLineComponent } from './status-line.component';
+import { ISSUES_POPOVER, StatusLineComponent } from './status-line.component';
 
 describe('StatusLineComponent', () => {
   let hub: FakeStudioHub;
@@ -33,66 +35,95 @@ describe('StatusLineComponent', () => {
     await fixture.whenStable();
   }
 
-  function segments(): string[] {
-    return Array.from(element.querySelectorAll('.c-status__inc')).map((segment) =>
-      (segment.textContent ?? '').replace(/\s+/g, ' ').trim(),
-    );
+  function clean(node: Element | null): string {
+    return (node?.textContent ?? '').replace(/\s+/g, ' ').trim();
   }
+
+  /** Every incident of the issues popover (in the DOM while closed, hidden). */
+  function rows(): string[] {
+    return Array.from(element.querySelectorAll('.c-status__inc')).map(clean);
+  }
+
+  function health(): HTMLButtonElement {
+    return element.querySelector<HTMLButtonElement>('.c-status__health')!;
+  }
+
+  function issues(): HTMLElement {
+    return element.querySelector<HTMLElement>('.c-status__issues')!;
+  }
+
+  const threeIncidents = () => {
+    const now = Date.now();
+    return snapshotFixture({
+      sources: [
+        sourceFixture('dev_aaaaaaaaaaaaaaaa', 'camera', 'K1', {
+          label: 'Phone stage left',
+          status: 'reconnecting',
+        }),
+        sourceFixture('dev_bbbbbbbbbbbbbbbb', 'screen-1', 'S1', {
+          label: 'Laptop Lea · Slides',
+          status: 'ended',
+        }),
+        sourceFixture('dev_cccccccccccccccc', 'camera', 'K2', { label: 'Phone wide' }),
+      ],
+      scenes: defaultScenes(),
+      incidents: [
+        incidentFixture('inc_1', 'dev_aaaaaaaaaaaaaaaa/camera', 'K1', {
+          kind: 'reconnecting',
+          startedAt: new Date(now - 8000).toISOString(),
+        }),
+        incidentFixture('inc_2', 'dev_cccccccccccccccc/camera', 'K2', {
+          kind: 'reconnecting',
+          startedAt: new Date(now - 60000).toISOString(),
+          endedAt: new Date(now - 51000).toISOString(),
+        }),
+        incidentFixture('inc_3', 'dev_bbbbbbbbbbbbbbbb/screen-1', 'S1', {
+          kind: 'ended',
+          startedAt: new Date(now - 3000).toISOString(),
+        }),
+      ],
+    });
+  };
 
   afterEach(() => harness?.http.verify());
 
-  it('shows "No open messages" and the last four log entries', async () => {
+  it('is the "Activity" region with the device health, the latest event and the activity log', async () => {
     await setup(
       snapshotFixture({
         recentLog: ['e', 'd', 'c', 'b', 'a'].map((text) => logFixture(`Event ${text}`)),
       }),
     );
-    expect(element.querySelector('.c-status__ok')?.textContent?.trim()).toBe('No open messages');
-    expect(element.querySelector('.c-status__label')?.textContent?.trim()).toBe('Recent events');
-    const entries = Array.from(element.querySelectorAll('.c-status__entry')).map((entry) =>
-      entry.textContent?.trim(),
-    );
-    expect(entries).toHaveLength(4);
-    // The text comes from the code and its parameters, in the language of the Regie.
-    expect(entries[0]).toContain('Scene “Event e” is live');
-    expect(entries[0]).toMatch(/^\d\d:\d\d/);
+    expect(element.getAttribute('aria-label')).toBe('Activity');
+    expect(clean(health())).toBe('All 2 devices OK');
+    expect(health().querySelector('.c-lamp')?.className).not.toMatch(/is-(idle|warn|bad)/);
+    expect(element.querySelector('.c-status__lead')).toBeNull();
+    // One line: the latest event only, from its code and parameters, in the language of the Regie.
+    const entries = Array.from(element.querySelectorAll('.c-status__entry')).map(clean);
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatch(/^\d\d:\d\d Scene “Event e” is live$/);
+    expect(element.querySelector('a.c-status__audit')?.getAttribute('href')).toBe('/audit');
+    expect(clean(element.querySelector('a.c-status__audit'))).toBe('Activity log');
   });
 
-  it('lists incidents sorted with state word, place, timer and actions', async () => {
-    const now = Date.now();
-    await setup(
-      snapshotFixture({
-        sources: [
-          sourceFixture('dev_aaaaaaaaaaaaaaaa', 'camera', 'K1', {
-            label: 'Phone stage left',
-            status: 'reconnecting',
-          }),
-          sourceFixture('dev_bbbbbbbbbbbbbbbb', 'screen-1', 'S1', {
-            label: 'Laptop Lea · Slides',
-            status: 'ended',
-          }),
-          sourceFixture('dev_cccccccccccccccc', 'camera', 'K2', { label: 'Phone wide' }),
-        ],
-        scenes: defaultScenes(),
-        incidents: [
-          incidentFixture('inc_1', 'dev_aaaaaaaaaaaaaaaa/camera', 'K1', {
-            kind: 'reconnecting',
-            startedAt: new Date(now - 8000).toISOString(),
-          }),
-          incidentFixture('inc_2', 'dev_cccccccccccccccc/camera', 'K2', {
-            kind: 'reconnecting',
-            startedAt: new Date(now - 60000).toISOString(),
-            endedAt: new Date(now - 51000).toISOString(),
-          }),
-          incidentFixture('inc_3', 'dev_bbbbbbbbbbbbbbbb/screen-1', 'S1', {
-            kind: 'ended',
-            startedAt: new Date(now - 3000).toISOString(),
-          }),
-        ],
-      }),
-    );
-    expect(element.querySelector('.c-status__ok')).toBeNull();
-    const [first, second, third] = segments();
+  it('never shows a green lamp without devices', async () => {
+    await setup(snapshotFixture({ devices: [], sources: [] }));
+    expect(clean(health())).toBe('No devices yet');
+    expect(health().querySelector('.c-lamp')?.classList).toContain('is-idle');
+  });
+
+  it('shows the most severe incident inline with "+N more" and lists every incident in the issues popover', async () => {
+    await setup(threeIncidents());
+    expect(clean(health())).toBe('2 issues');
+    expect(health().querySelector('.c-lamp')?.classList).toContain('is-bad');
+
+    const lead = element.querySelector('.c-status__lead');
+    expect(lead?.classList).toContain('is-bad');
+    expect(clean(lead)).toContain('S1 Laptop Lea · Slides');
+    expect(clean(lead)).toContain('sharing stopped');
+    expect(clean(lead)).toContain('Ask to share again');
+    expect(clean(element.querySelector('.c-status__more'))).toBe('+2 more');
+
+    const [first, second, third] = rows();
     expect(first).toContain('S1 Laptop Lea · Slides');
     expect(first).toContain('sharing stopped');
     expect(first).toContain('not live');
@@ -104,7 +135,7 @@ describe('StatusLineComponent', () => {
     expect(second).not.toContain('Ask to share again');
     expect(third).toContain('back');
     expect(third).toContain('was gone for 9 s');
-    expect(third).toContain('Seen');
+    expect(third).toContain('Dismiss');
     const classes = Array.from(element.querySelectorAll('.c-status__inc')).map(
       (segment) => segment.className,
     );
@@ -113,7 +144,27 @@ describe('StatusLineComponent', () => {
     expect(classes[2]).toContain('is-ok');
   });
 
-  it('asks for a reshare and acknowledges recovered incidents', async () => {
+  it('opens the issues popover from the health button and from "+N more"', async () => {
+    await setup(threeIncidents());
+    expect(issues().hidden).toBe(true);
+    expect(issues().classList).not.toContain('c-pop');
+    health().click();
+    await render();
+    expect(issues().hidden).toBe(false);
+    expect(issues().classList).toContain('c-pop');
+    expect(health().getAttribute('aria-expanded')).toBe('true');
+    expect(issues().querySelector('a[href="/monitoring"]')?.textContent?.trim()).toBe(
+      'Open monitoring',
+    );
+    TestBed.inject(PopoverService).close(ISSUES_POPOVER);
+    await render();
+    expect(issues().hidden).toBe(true);
+    element.querySelector<HTMLButtonElement>('.c-status__more')?.click();
+    await render();
+    expect(issues().hidden).toBe(false);
+  });
+
+  it('asks for a reshare and dismisses recovered incidents', async () => {
     const now = Date.now();
     await setup(
       snapshotFixture({
@@ -148,6 +199,75 @@ describe('StatusLineComponent', () => {
     await render();
   });
 
+  it('offers "Show device", "Ask to share again" and "Dismiss" on a right click of an incident', async () => {
+    const now = Date.now();
+    await setup(
+      snapshotFixture({
+        incidents: [
+          incidentFixture('inc_3', 'dev_bbbbbbbbbbbbbbbb/screen-1', 'S1', { kind: 'ended' }),
+          incidentFixture('inc_2', 'dev_aaaaaaaaaaaaaaaa/camera', 'K1', {
+            startedAt: new Date(now - 60000).toISOString(),
+            endedAt: new Date(now - 51000).toISOString(),
+          }),
+        ],
+      }),
+    );
+    const menus = TestBed.inject(ContextMenuService);
+    const open = (row: Element): ContextMenuItem[] => {
+      row.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+      return (menus.current()?.entries ?? []).filter(
+        (entry): entry is ContextMenuItem => entry !== 'separator',
+      );
+    };
+    const [active, recovered] = Array.from(element.querySelectorAll('.c-status__inc'));
+    const activeItems = open(active);
+    expect(activeItems.map((item) => [item.label, item.disabled ?? false])).toEqual([
+      ['Show device', false],
+      ['Ask to share again', false],
+      ['Dismiss (once it is back)', true],
+    ]);
+    const focus = vi.spyOn(TestBed.inject(StationFocusService), 'showSource');
+    menus.run(activeItems[0]);
+    expect(focus).toHaveBeenCalledWith('dev_bbbbbbbbbbbbbbbb/screen-1');
+
+    const recoveredItems = open(recovered);
+    expect(recoveredItems.map((item) => item.label)).toEqual(['Show device', 'Dismiss']);
+    menus.run(recoveredItems[1]);
+    harness.http
+      .expectOne(`/api/productions/${PRODUCTION_ID}/incidents/inc_2/ack`)
+      .flush(null, { status: 204, statusText: 'No Content' });
+    await render();
+  });
+
+  it('marks every recovered incident as seen at once', async () => {
+    const now = Date.now();
+    const recovered = (id: string, device: string, code: string) =>
+      incidentFixture(id, `${device}/camera`, code, {
+        startedAt: new Date(now - 60000).toISOString(),
+        endedAt: new Date(now - 51000).toISOString(),
+      });
+    await setup(
+      snapshotFixture({
+        incidents: [
+          recovered('inc_1', 'dev_aaaaaaaaaaaaaaaa', 'K1'),
+          recovered('inc_2', 'dev_bbbbbbbbbbbbbbbb', 'K2'),
+        ],
+      }),
+    );
+    const markAll = Array.from(issues().querySelectorAll('button')).find(
+      (button) => button.textContent?.trim() === 'Mark all as seen',
+    );
+    markAll?.click();
+    harness.http
+      .expectOne(`/api/productions/${PRODUCTION_ID}/incidents/inc_1/ack`)
+      .flush(null, { status: 204, statusText: 'No Content' });
+    await flushMicrotasks();
+    harness.http
+      .expectOne(`/api/productions/${PRODUCTION_ID}/incidents/inc_2/ack`)
+      .flush(null, { status: 204, statusText: 'No Content' });
+    await render();
+  });
+
   it('names an ended camera "camera stopped" and offers "Ask to share again" only for screens', async () => {
     await setup(
       snapshotFixture({
@@ -157,28 +277,37 @@ describe('StatusLineComponent', () => {
         ],
       }),
     );
-    const [camera, screen] = segments();
+    const [camera, screen] = rows();
     expect(camera).toContain('camera stopped');
     expect(camera).not.toContain('Ask to share again');
     expect(screen).toContain('sharing stopped');
     expect(screen).toContain('Ask to share again');
   });
 
-  it('points at the station of an incident', async () => {
+  it('points at the device of an incident and names it in the accessible name', async () => {
     await setup(
       snapshotFixture({
         incidents: [incidentFixture('inc_1', 'dev_aaaaaaaaaaaaaaaa/camera', 'K1')],
       }),
     );
-    element.querySelector<HTMLButtonElement>('.c-status__target')?.click();
+    const target = element.querySelector<HTMLButtonElement>('.c-status__lead .c-status__target')!;
+    // The visible text is the name (WCAG 2.5.3); the tooltip says where it leads.
+    expect(target.hasAttribute('aria-label')).toBe(false);
+    expect(target.getAttribute('title')).toBe('Show in the Devices dock');
+    target.click();
     expect(TestBed.inject(StationFocusService).request()).toMatchObject({
       deviceId: 'dev_aaaaaaaaaaaaaaaa',
       sourceId: 'dev_aaaaaaaaaaaaaaaa/camera',
     });
   });
 
-  it('shows a calm banner while the server connection is lost', async () => {
-    await setup();
+  it('gives the row to a calm banner while the server connection is lost', async () => {
+    await setup(
+      snapshotFixture({
+        incidents: [incidentFixture('inc_1', 'dev_aaaaaaaaaaaaaaaa/camera', 'K1')],
+        recentLog: [logFixture('Event a')],
+      }),
+    );
     expect(element.querySelector('.c-status__net')).toBeNull();
     hub.drop();
     await render();
@@ -187,8 +316,12 @@ describe('StatusLineComponent', () => {
     expect(banner?.textContent).toContain(
       'No connection to the server, the control room is reconnecting',
     );
+    expect(element.querySelector('.c-status__lead')).toBeNull();
+    expect(element.querySelector('.c-status__entry')).toBeNull();
+    expect(element.querySelector('.c-status__health')).not.toBeNull();
     hub.connect();
     await render();
     expect(element.querySelector('.c-status__net')).toBeNull();
+    expect(element.querySelector('.c-status__lead')).not.toBeNull();
   });
 });

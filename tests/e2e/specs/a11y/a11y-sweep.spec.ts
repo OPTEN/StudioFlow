@@ -35,6 +35,12 @@ async function loadedFonts(page: Page): Promise<string[]> {
   });
 }
 
+/** The computed font stack of the page body: the redesign uses the platform's UI font (REDESIGN-SPEC §2), no web font. */
+async function uiFont(page: Page): Promise<string> {
+  return page.evaluate(() => getComputedStyle(document.body).fontFamily);
+}
+const SYSTEM_UI = /-apple-system|system-ui/;
+
 async function verify(label: string, watch: ContextWatch, origin: string): Promise<void> {
   const external = watch.external(origin);
   const csp = await watch.cspViolations();
@@ -75,22 +81,21 @@ test.describe('CSP and external hosts', () => {
     const regie = new RegiePage(page, config);
     await page.goto('/login');
     await expect(page.getByLabel('Username')).toBeVisible();
-    expect(await loadedFonts(page), 'the UI font of the login page is loaded').toContain('Sofia Sans Semi Condensed');
+    expect(await uiFont(page), 'the login page uses the system UI font').toMatch(SYSTEM_UI);
     expect(await regie.submitLoginForm({ username: 'nobody', password: 'wrong-password-123' })).toBe(401);
     await regie.loginViaUi();
     await regie.waitReady();
     await expect(regie.station('Phone Entrance')).toBeVisible();
 
     // the Regie in its states
-    const fonts = await loadedFonts(page);
-    expect(fonts, 'Sofia Sans Semi Condensed and JetBrains Mono are loaded in the Regie').toEqual(expect.arrayContaining(['Sofia Sans Semi Condensed', 'JetBrains Mono']));
+    expect(await uiFont(page), 'the Regie uses the system UI font').toMatch(SYSTEM_UI);
     await regie.transitionOption('Cut').click(); // a fade ignores a second switch while it runs
     await regie.clickScene('Break');
     await expect(regie.scene('Break')).toHaveAttribute('aria-pressed', 'true');
     await regie.clickScene('Welcome');
     await expect(regie.scene('Welcome')).toHaveAttribute('aria-pressed', 'true');
     await regie.setStudioMode(true);
-    for (const trigger of [page.getByRole('button', { name: /^Output/ }), page.getByRole('button', { name: 'Docks and layout' }), page.getByRole('button', { name: /^Production .*, menu$/ }), page.getByRole('button', { name: 'Source', exact: true })]) {
+    for (const trigger of [page.getByRole('button', { name: /^Output/ }), page.getByRole('button', { name: 'Layout', exact: true }), page.getByRole('button', { name: /^Production .*, menu$/ }), page.getByRole('button', { name: 'Add source', exact: true })]) {
       await trigger.click();
       await expect(page.locator('.c-pop').first()).toBeVisible();
       await page.keyboard.press('Escape');
@@ -100,11 +105,12 @@ test.describe('CSP and external hosts', () => {
     await regie.openPairing('link');
     await regie.closePairing();
     await page.locator('.c-st__row').first().click();
-    await page.locator('.c-src__select').first().click();
+    await page.getByRole('button', { name: /Select: / }).first().click();
     await page.getByRole('button', { name: 'Start broadcast' }).click();
+    await page.getByRole('dialog', { name: 'Start the broadcast?' }).getByRole('button', { name: 'Start broadcast' }).click();
     await expect(page.getByRole('button', { name: 'End broadcast' }).first()).toBeVisible();
     expect((await api.endBroadcast(production.id)).status).toBe(200);
-    await expect(page.getByText('ENDED')).toBeVisible();
+    await expect(page.locator('.c-live b')).toHaveText('Ended');
     await page.goto('/monitoring');
     await expect(page.getByRole('table')).toBeVisible();
     // every font request went to the stack
@@ -124,7 +130,7 @@ test.describe('CSP and external hosts', () => {
     const laptopWatch = await watchContext(laptopContext);
     const laptop = await LaptopSender.inContext(laptopContext, 'desktop');
     await pairLaptopViaKnock(regie, laptop, 'Laptop Sweep');
-    expect(await loadedFonts(laptop.page), 'the sender UI font is loaded').toContain('Sofia Sans Semi Condensed');
+    expect(await uiFont(laptop.page), 'the sender uses the system UI font').toMatch(SYSTEM_UI);
     await laptop.shareScreen();
     await laptop.waitForSlot('screen-1', 'live');
     await verify('sender-laptop', laptopWatch, origin);

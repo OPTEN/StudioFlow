@@ -1,7 +1,8 @@
-// One monitor of the stage (prototype .mon, .mon-h, .tally, .mon-name, .mon-meta, .live-edit, .screen, .live-note).
+// One monitor of the stage: a header (tally lamp, name, note, meta) above the picture with its tally outline.
 @use 'mixins' as *;
 
 :host {
+  container: monitor / inline-size;
   display: flex;
   flex: 0 1 auto;
   flex-direction: column;
@@ -19,26 +20,31 @@
   width: var(--sf-program-w, 100%);
 }
 
+// Header: tally and name on the left, the note and the quiet facts on the right (24 px, part of the 56 px vertical
+// chrome of monitor-layout.ts).
 .c-monitor__head {
   align-items: center;
   display: flex;
   gap: 10px;
   min-height: 24px;
   min-width: 0;
+  position: relative;
 }
 
 .c-monitor__tally {
-  @include label-text;
   align-items: center;
   display: inline-flex;
-  gap: 7px;
+  flex: none;
+  font-size: var(--fs-body);
+  font-weight: 600;
+  gap: 6px;
+}
 
-  i {
-    background: currentColor;
-    border-radius: 50%;
-    height: 8px;
-    width: 8px;
-  }
+.c-monitor__lamp {
+  background: currentColor;
+  border-radius: 50%;
+  height: 8px;
+  width: 8px;
 }
 
 :host(.c-monitor--preview) .c-monitor__tally {
@@ -51,31 +57,125 @@
 
 .c-monitor__name {
   @include ellipsis;
-  font-size: 15px;
+  color: var(--text);
+  font-size: var(--fs-headline);
   font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-right: auto;
 }
 
-.c-monitor__live-edit {
-  color: var(--red);
-  font-size: 12px;
-  font-weight: 700;
+// Mode notes: a quiet capsule. "Changes go live immediately" turns red only while the broadcast is on air.
+.c-monitor__live-edit,
+.c-monitor__live-note {
+  @include state-transition(background-color, color);
+  align-items: center;
+  background: var(--fill);
+  border-radius: var(--radius-pill);
+  color: var(--text-2);
+  display: inline-flex;
+  flex: none;
+  font-size: var(--fs-footnote);
+  font-weight: 500;
+  gap: 5px;
+  height: 22px;
+  padding: 0 9px 0 8px;
   white-space: nowrap;
+
+  .c-icon {
+    color: var(--muted);
+  }
+}
+
+.c-monitor__live-edit.is-on-air {
+  background: var(--red-wash);
+  color: var(--red);
+  font-weight: 600;
+
+  .c-icon {
+    color: currentColor;
+  }
+}
+
+.c-monitor__live-note {
+  cursor: help;
 }
 
 .c-monitor__meta {
-  color: var(--muted);
-  font-size: 12.5px;
-  margin-left: auto;
-  white-space: nowrap;
-}
-
-.c-monitor__meta--mono {
   @include mono;
-  font-size: 11.5px;
+  color: var(--muted);
+  flex: none;
+  font-size: var(--fs-footnote);
+  white-space: nowrap;
+
+  &:empty {
+    display: none;
+  }
 }
 
-// The well with the tally outline (2 px; the Program flashes on a switch, see MonitorComponent). It has the shape of
-// the canvas, which the component sets; 16:9 until it is known.
+// ⋯ at the end of the header: the monitor's menu (24 px, so the header keeps its height).
+.c-monitor__more {
+  height: 24px;
+  margin-left: -4px;
+  width: 24px;
+}
+
+// A narrow monitor keeps the note and drops the facts; a very narrow one (a portrait canvas) shows the note as its
+// icon, with the words as tooltip and for screen readers.
+@container monitor (max-width: 520px) {
+  .c-monitor__live-edit ~ .c-monitor__meta,
+  .c-monitor__live-note ~ .c-monitor__meta {
+    display: none;
+  }
+}
+
+@container monitor (max-width: 380px) {
+  .c-monitor__live-edit,
+  .c-monitor__live-note {
+    justify-content: center;
+    padding: 0;
+    width: 26px;
+  }
+
+  .c-monitor__note-text {
+    clip-path: inset(50%);
+    height: 1px;
+    overflow: hidden;
+    position: absolute;
+    white-space: nowrap;
+    width: 1px;
+  }
+}
+
+// Progress of a running fade: a thin red line in the gap under the header, from left to right.
+.c-monitor__fade {
+  animation: c-monitor-fade linear both;
+  background: var(--red);
+  border-radius: 1px;
+  bottom: -5px;
+  height: 2px;
+  left: 0;
+  pointer-events: none;
+  position: absolute;
+  right: 0;
+  transform-origin: left center;
+
+  @include reduced-motion {
+    animation: none;
+  }
+}
+
+@keyframes c-monitor-fade {
+  from {
+    transform: scaleX(0);
+  }
+
+  to {
+    transform: scaleX(1);
+  }
+}
+
+// The picture with the tally outline (2 px; the Program flashes on a switch, see MonitorComponent). It has the shape
+// of the canvas, which the component sets; 16:9 until it is known.
 .c-monitor__screen {
   aspect-ratio: 16 / 9;
   background: var(--well);
@@ -98,27 +198,37 @@
   position: absolute;
 }
 
-.c-monitor__empty {
-  color: var(--pic-muted);
-  display: grid;
-  font-size: 12.5px;
-  inset: 0;
-  place-items: center;
+// "Show safe area": the dashed guide of the safe margin, all the time (the overlay shows it only while editing).
+.c-monitor__safe {
+  border: 1px dashed color-mix(in srgb, var(--pic-muted) 60%, transparent);
+  bottom: var(--sf-safe-y, 3.704%);
+  left: var(--sf-safe-x, 2.083%);
   pointer-events: none;
   position: absolute;
+  right: var(--sf-safe-x, 2.083%);
+  top: var(--sf-safe-y, 3.704%);
 }
 
-.c-monitor__live-note {
-  background: var(--pic-scrim);
-  border: 1px solid color-mix(in srgb, var(--pic-red) 50%, transparent);
-  border-radius: var(--radius-md);
-  bottom: 10px;
-  color: var(--pic-text);
-  font-size: 13px;
-  left: 10px;
-  padding: 8px 10px;
+// Empty picture: what is missing and where to fix it, quiet on the well.
+.c-monitor__empty {
+  align-content: center;
+  color: var(--pic-muted);
+  display: grid;
+  font-size: var(--fs-footnote);
+  gap: 3px;
+  inset: 0;
+  justify-items: center;
+  margin: 0;
+  padding: 12px;
+  pointer-events: none;
   position: absolute;
-  right: 10px;
+  text-align: center;
+
+  strong {
+    color: var(--pic-text);
+    font-size: var(--fs-body);
+    font-weight: 600;
+  }
 }
 
 // ≤ 900 px: full width (a tall portrait monitor is limited and centred), priority order Program (1), controls (2),
@@ -141,10 +251,24 @@
 
   .c-monitor__head {
     flex-wrap: wrap;
-    row-gap: 2px;
+    row-gap: 4px;
   }
 
   .c-monitor__meta {
     display: none;
+  }
+
+  // The page scrolls here, so the header may wrap: the note keeps its words even on a phone.
+  .c-monitor__live-edit,
+  .c-monitor__live-note {
+    padding: 0 9px 0 8px;
+    width: auto;
+  }
+
+  .c-monitor__note-text {
+    clip-path: none;
+    height: auto;
+    position: static;
+    width: auto;
   }
 }

@@ -5,11 +5,13 @@ export const regieAccount: Translation<typeof en> = {
   'regie.account.change.current': 'Aktuelles Passwort',
   'regie.account.change.currentRequired': 'Bitte das aktuelle Passwort eingeben.',
   'regie.account.change.done': 'Passwort geändert. Alle anderen Sitzungen wurden abgemeldet.',
-  'regie.account.change.hint': 'Alle anderen Sitzungen werden abgemeldet.',
+  'regie.account.change.hint':
+    'Jeder andere Browser, der mit diesem Konto angemeldet ist, wird abgemeldet. Dieser bleibt angemeldet.',
   'regie.account.change.menu': 'Passwort ändern',
   'regie.account.change.new': 'Neues Passwort',
   'regie.account.change.repeat': 'Neues Passwort wiederholen',
-  'regie.account.change.submit': 'Passwort ändern',
+  'regie.account.change.submit': 'Passwort aktualisieren',
+  'regie.account.change.submitting': 'Wird aktualisiert …',
   'regie.account.password.equalsUsername':
     'Das Passwort muss sich vom Benutzernamen unterscheiden.',
   'regie.account.password.hint':

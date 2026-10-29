@@ -60,15 +60,15 @@ test.describe('OUT media and reports', () => {
 
       const sceneName = (await api.getSnapshot(production.id)).body.scenes.find((scene) => scene.id === production.sceneIds[0])!.name;
       await expect
-        .poll(async () => (await output.debugLines()).length, { message: 'overlay lines (scene, revision, canvas, hub, livekit, latency, source)', timeout: 15_000 })
+        .poll(async () => (await output.debugLines()).length, { message: 'overlay lines (scene, revision, canvas, server, media server, latency, source)', timeout: 15_000 })
         .toBeGreaterThanOrEqual(7);
       const lines = await output.debugLines();
       expect(lines[0], 'production and scene').toBe(`${production.name} · Scene “${sceneName}”`);
       expect(lines[1], 'revision and broadcast').toMatch(/^Revision \d+ · Broadcast live$/);
       expect(lines[2], 'canvas of the production').toBe('Canvas 1920 × 1080 · 16:9 · 1080p');
-      expect(lines[3], 'hub and sync state').toBe('Hub connected · Sync up to date');
-      expect(lines[4], 'LiveKit state').toBe('LiveKit connected');
-      expect(lines[5], 'latency estimate and renderer fps').toMatch(/^Latency ≈ \d+ ms · Renderer \d+ fps$/);
+      expect(lines[3], 'server (hub) and data (sync) state').toBe('Server connected · Data up to date');
+      expect(lines[4], 'media server (LiveKit) state').toBe('Media server connected');
+      expect(lines[5], 'latency estimate and renderer fps').toMatch(/^Latency ≈ \d+ ms · Picture \d+ fps$/);
       // A stream that the browser decodes in software says so at the end of its line (issue #12; most computers do it in hardware).
       expect(lines[6], 'per source: code, name, size, fps, bitrate, loss, buffer, software decoding if it is')
         .toMatch(new RegExp(`^${camera.code} Camera One · \\d+×\\d+ · \\d+ fps · [\\d.]+ Mbit/s · Loss [\\d.]+% · Buffer \\d+ ms(?: · software decoding)?$`));
@@ -469,13 +469,13 @@ test.describe('OUT media and reports', () => {
       await goLive(api, production);
       const chip = regie.page.getByRole('button', { name: /^Output/ });
       const lamp = chip.locator('.c-lamp');
-      // Connected means a green lamp. A lamp that is amber while the output is connected has exactly one other reason, the
-      // chip saying “drops frames” (the computer cannot keep up, issue #12): a loaded machine, or a page that was blocked.
+      // Connected means a green lamp. A lamp that is amber while the output is connected names its reason in the capsule:
+      // “Drops frames” (the computer cannot keep up, issue #12) or “Audio blocked” (the page waits for a click).
       const expectConnectedLamp = async (message: string) => {
         await expect(async () => {
           const classes = (await lamp.getAttribute('class')) ?? '';
           expect(classes, message).not.toMatch(/is-idle/);
-          if (/is-warn/.test(classes)) expect(await chip.innerText(), `${message}: amber only for dropped frames`).toContain('drops frames');
+          if (/is-warn/.test(classes)) expect(await chip.innerText(), `${message}: amber only with a named reason`).toMatch(/Drops frames|Audio blocked/);
         }).toPass({ timeout: 8000 });
       };
       await expect(chip).toBeVisible();
@@ -483,10 +483,10 @@ test.describe('OUT media and reports', () => {
       await chip.click();
       const popover = regie.page.getByRole('dialog', { name: 'Output' });
       await expect(popover.locator('dd').first()).toHaveText('not connected');
-      // The link is masked; “Copy” puts the full URL with the real key into the clipboard.
-      await expect(popover.locator('.c-linkbox__text')).toContainText('?k=');
-      expect(await popover.locator('.c-linkbox__text').innerText(), 'the key is masked').not.toContain(production.outputKey);
-      await popover.getByRole('button', { name: 'Copy' }).click();
+      // The link is masked; its copy button puts the full URL with the real key into the clipboard.
+      await expect(popover.locator('.c-output-pop__url')).toContainText('?k=');
+      expect(await popover.locator('.c-output-pop__url').innerText(), 'the key is masked').not.toContain(production.outputKey);
+      await popover.getByRole('button', { name: 'Copy link “Proxy”' }).click();
       await expect.poll(() => regie.page.evaluate(() => navigator.clipboard.readText()), { timeout: 5000 }).toContain(production.outputKey);
       expect(await regie.page.evaluate(() => navigator.clipboard.readText())).toBe(production.outputUrl);
 
@@ -498,9 +498,11 @@ test.describe('OUT media and reports', () => {
       await expect(popover.locator('dd').first()).toHaveText('connected, 1 consumer', { timeout: 8000 });
       await recordMeasurement(test.info(), 'out-15-chip', { connectedMs: Date.now() - connectedAfter }, `output opened -> chip connected after ${Date.now() - connectedAfter} ms`);
       expect(Date.now() - connectedAfter, 'chip within 5 s').toBeLessThanOrEqual(5000 + 3000);
-      await expect(popover.locator('dd').nth(1), 'the address of the consumer').not.toHaveText('–');
-      await expect(popover.locator('dd').nth(2)).toHaveText('1920 × 1080 · 16:9 · 30 fps');
-      await expect(popover.locator('dd').nth(3)).toContainText('measured');
+      // The value next to its label (the popover lists state, latency, addresses and format in that order).
+      const value = (label: string) => popover.locator(`dt:text-is("${label}") + dd`);
+      await expect(value('Connected from'), 'the address of the consumer').not.toHaveText('–');
+      await expect(value('Format')).toHaveText('1920 × 1080 · 16:9 · 30 fps');
+      await expect(value('Latency')).toContainText('measured');
 
       const second = await openProbedOutput({ browser, onCleanup }, production, {}, { viewport: { width: 640, height: 360 } });
       await second.output.waitForPlayingVideos(1, { minFps: 5, timeout: 45_000 });

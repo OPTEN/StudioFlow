@@ -57,10 +57,54 @@ describe('LoginPageComponent', () => {
 
   afterEach(() => http.verify());
 
-  it('shows the console look with the brand and the “Sign in” button', async () => {
+  it('shows the card with the mark, the title, the two fields and “Sign in”', async () => {
     await setup();
-    expect(element.querySelector('h1')?.textContent).toContain('StudioFlow');
+    expect(element.querySelector('h1')?.textContent?.trim()).toBe('Sign in to StudioFlow');
+    expect(element.querySelector('.c-login__lead')?.textContent).toBe(
+      'Use the account of this control room.',
+    );
+    const labels = Array.from(element.querySelectorAll('label.c-login__label')).map((label) =>
+      label.textContent?.trim(),
+    );
+    expect(labels).toEqual(['Username', 'Password']);
     expect(element.querySelector('button[type="submit"]')?.textContent?.trim()).toBe('Sign in');
+  });
+
+  it('shows the password on request and hides it again', async () => {
+    await setup();
+    const password = element.querySelectorAll('input')[1] as HTMLInputElement;
+    const reveal = element.querySelector<HTMLButtonElement>('.c-login__reveal')!;
+    expect(password.type).toBe('password');
+    expect(reveal.getAttribute('aria-pressed')).toBe('false');
+    expect(reveal.textContent?.trim()).toBe('Show password');
+    reveal.click();
+    await render();
+    expect(password.type).toBe('text');
+    expect(reveal.getAttribute('aria-pressed')).toBe('true');
+    reveal.click();
+    await render();
+    expect(password.type).toBe('password');
+  });
+
+  it('explains how a forgotten password is reset on the server', async () => {
+    await setup();
+    const forgot = Array.from(element.querySelectorAll('button')).find(
+      (button) => button.textContent?.trim() === 'Forgot your password?',
+    )!;
+    expect(forgot.getAttribute('aria-expanded')).toBe('false');
+    expect(element.querySelector('#login-forgot')).toBeNull();
+    forgot.click();
+    await render();
+    expect(forgot.getAttribute('aria-expanded')).toBe('true');
+    expect(element.querySelector('#login-forgot code')?.textContent).toContain('reset-admin');
+  });
+
+  it('names the sponsor below the card', async () => {
+    await setup();
+    const sponsor = element.querySelector<HTMLAnchorElement>('[data-testid="login-sponsor"]')!;
+    expect(sponsor.textContent?.replace(/\s+/g, ' ').trim()).toBe('Sponsored by OPTEN');
+    expect(sponsor.getAttribute('href')).toBe('https://www.opten.ch');
+    expect(sponsor.getAttribute('rel')).toBe('noopener');
   });
 
   it('asks for both fields before sending anything', async () => {
@@ -109,9 +153,9 @@ describe('LoginPageComponent', () => {
       );
     await render();
     expect(errorText()).toBe('Too many failed attempts. Please try again in 14 minutes.');
-    expect((element.querySelector('button[type="submit"]') as HTMLButtonElement).disabled).toBe(
-      true,
-    );
+    const button = element.querySelector('button[type="submit"]') as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    expect(button.getAttribute('aria-describedby')).toBe('login-error');
   });
 
   it('reports a missing server', async () => {
@@ -157,7 +201,7 @@ describe('LoginPageComponent', () => {
       tFor('de-CH')('regie.login.submit'),
     );
     expect(element.querySelector('.c-login__lead')?.textContent).toBe(
-      tFor('de-CH')('regie.login.brandLead'),
+      tFor('de-CH')('regie.login.lead'),
     );
     resetLocaleForTests('en');
   });

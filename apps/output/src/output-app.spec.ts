@@ -3,7 +3,7 @@ import type { ResilientHubOptions } from '@studioflow/realtime-client';
 import type { SceneRendererOptions } from '@studioflow/scene-renderer';
 import { ACCESS_RETRY_MS } from './access-guard';
 import type { OutputConfig, OutputFlags } from './config';
-import { noAccessSlate } from './slates';
+import { noAccessNotice, noAccessSlate } from './slates';
 import {
   REMOVAL_RESTART_MS,
   startInvalidLinkPage,
@@ -337,6 +337,7 @@ describe('output app: “No access”', () => {
     await flush(1);
     expect(hub.restarts).toBe(2);
     expect(renderer.currentSlate()).toEqual(noAccessSlate());
+    expect(renderer.currentNotice()).toEqual(noAccessNotice());
   });
 
   it('recovers by itself when the link works again (IP rule fixed)', async () => {
@@ -347,7 +348,20 @@ describe('output app: “No access”', () => {
     hub.connect();
     await flush();
     expect(renderer.summary()).toEqual(['show scn_a', 'slate Starting soon']);
+    // The production's slate again, not the notice look.
+    expect(renderer.currentNotice()).toBeNull();
     expect(media.session.restarts).toBe(1);
+  });
+
+  it('names the production in the document title, and “No access” while refused', async () => {
+    const { hub } = await boot();
+    expect(document.title).toBe('Webinar · StudioFlow output');
+    hub.refuse();
+    expect(document.title).toBe('No access · StudioFlow output');
+    await flush(ACCESS_RETRY_MS);
+    hub.connect();
+    await flush();
+    expect(document.title).toBe('Webinar · StudioFlow output');
   });
 
   it('shows “No access” when the token endpoint refuses the link and retries LiveKit every 30 s', async () => {
@@ -517,8 +531,8 @@ describe('output app: optional parts', () => {
     expect(text).toContain('Webinar · Scene “Scene A”');
     expect(text).toContain('Revision 100');
     expect(text).toContain('Canvas 1920 × 1080 · 16:9 · 1080p');
-    expect(text).toContain('Hub connected');
-    expect(text).toContain('LiveKit connected');
+    expect(text).toContain('Server connected');
+    expect(text).toContain('Media server connected');
     expect(text).toContain('K1 Handy Lea · 1280×720 · 30 fps · 1.5 Mbit/s');
   });
 
@@ -586,6 +600,10 @@ describe('invalid link page', () => {
     );
     await flush(60_000);
     expect((renderer as FakeRenderer | null)?.summary()).toEqual(['slate No access']);
+    // The link cannot work: it says so, and that nothing is retried.
+    expect((renderer as FakeRenderer | null)?.currentSlate()).toEqual(noAccessSlate('incomplete'));
+    expect((renderer as FakeRenderer | null)?.currentNotice()).toEqual({ note: null });
+    expect(document.title).toBe('No access · StudioFlow output');
     expect(document.documentElement.classList.contains('is-transparent')).toBe(true);
     expect(fetchSpy).not.toHaveBeenCalled();
     stop();
@@ -605,7 +623,11 @@ describe('invalid link page', () => {
     );
     await flush(400);
     expect(root.textContent).toContain('No access');
-    expect(root.textContent).toContain('The output link is invalid or has expired.');
+    expect(root.textContent).toContain(
+      'This link is incomplete. Copy the whole output link from the control room again.',
+    );
+    expect(root.textContent).not.toContain('tries again');
+    expect(root.querySelector('.sf-r-stage')?.getAttribute('aria-label')).toBe('Program');
     stop();
     root.remove();
   });

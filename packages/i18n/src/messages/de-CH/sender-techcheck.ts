@@ -2,10 +2,17 @@ import type { Translation } from '../../types';
 import type { senderTechcheck as en } from '../en/sender-techcheck';
 
 export const senderTechcheck: Translation<typeof en> = {
+  'sender.techcheck.advice.bandwidth': 'Beende andere Uploads und Videoanrufe in diesem Netz.',
+  'sender.techcheck.advice.camera': 'Prüfe die Kamera: Die Station sagt, was nicht stimmt.',
+  'sender.techcheck.advice.network': 'Geh näher an den WLAN-Router oder verwende ein Kabel.',
   'sender.techcheck.again': 'Erneut prüfen',
   'sender.techcheck.busy': 'Prüft …',
   'sender.techcheck.checkedAt': 'Geprüft um {time}',
   'sender.techcheck.close': 'Technik-Check schliessen',
+  'sender.techcheck.device': 'Dieses Gerät',
+  'sender.techcheck.device.name': 'Gerätename',
+  'sender.techcheck.device.production': 'Produktion',
+  'sender.techcheck.device.version': 'App-Version',
   'sender.techcheck.level.bad': 'ungenügend',
   'sender.techcheck.level.ok': 'gut',
   'sender.techcheck.level.unknown': 'nicht geprüft',
@@ -20,5 +27,7 @@ export const senderTechcheck: Translation<typeof en> = {
   'sender.techcheck.summary.ok': 'Alles bereit für die Sendung.',
   'sender.techcheck.summary.unknown': 'Noch nicht geprüft.',
   'sender.techcheck.summary.warn': 'Es geht, aber mit Einschränkungen.',
+  'sender.techcheck.tab.check': 'Prüfung',
+  'sender.techcheck.tab.label': 'Teile des Technik-Checks',
   'sender.techcheck.title': 'Technik-Check',
 };

@@ -1,0 +1,260 @@
+@use 'mixins' as *;
+@use 'tokens';
+
+// The settings window (DESIGN.md "Settings"): a sidebar of section tiles grouped by scope, and a scrolling page on the
+// grouped surface. Below 900 px the sidebar becomes a horizontal strip above the page.
+:host {
+  display: block;
+  height: 100%;
+}
+
+.c-settings {
+  background: var(--grouped);
+  display: grid;
+  grid-template-columns: tokens.$layout-settings-sidebar minmax(0, 1fr);
+  height: 100dvh;
+  min-height: 0;
+
+  @include narrow {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+}
+
+.c-settings__sidebar {
+  background: var(--sidebar);
+  border-right: 1px solid var(--seam);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  padding: 14px 10px 12px;
+
+  @include narrow {
+    border-bottom: 1px solid var(--seam);
+    border-right: 0;
+    padding: 10px var(--gr) 8px var(--gl);
+  }
+}
+
+.c-settings__back {
+  @include state-transition(background-color);
+  align-items: center;
+  align-self: flex-start;
+  border-radius: var(--radius-sm);
+  color: var(--blue);
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 500;
+  gap: 2px;
+  margin: 0 0 10px;
+  padding: 4px 8px 4px 4px;
+
+  &:hover {
+    background: var(--fill);
+    text-decoration: none;
+  }
+}
+
+.c-settings__brand {
+  align-items: center;
+  color: var(--text);
+  display: flex;
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  gap: 10px;
+  letter-spacing: -0.02em;
+  padding: 2px 8px 14px;
+
+  .c-icon--mark {
+    color: var(--text);
+    height: 18px;
+    width: 25px;
+  }
+
+  @include narrow {
+    display: none;
+  }
+}
+
+.c-settings__groups {
+  display: grid;
+  flex: 1 1 auto;
+  gap: 14px;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 0 12px;
+
+  @include narrow {
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 0 0 2px;
+  }
+}
+
+.c-settings__group {
+  display: grid;
+  gap: 2px;
+
+  @include narrow {
+    display: contents;
+  }
+}
+
+.c-settings__group-label {
+  @include label-text(11px);
+  align-items: baseline;
+  display: flex;
+  gap: 6px;
+  letter-spacing: 0;
+  padding: 0 10px 3px;
+
+  @include narrow {
+    display: none;
+  }
+}
+
+.c-settings__group-meta {
+  @include ellipsis;
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.c-settings__list {
+  display: grid;
+  gap: 1px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+
+  @include narrow {
+    display: contents;
+  }
+}
+
+// No transition: the selection jumps like a system sidebar, and a half-faded white label on a still pale row (when the
+// route sets is-active after the first paint) is unreadable for a moment.
+.c-settings__item {
+  align-items: center;
+  border-radius: 8px;
+  color: var(--text);
+  display: flex;
+  font-size: 13px;
+  gap: 9px;
+  min-height: 32px;
+  padding: 4px 8px;
+  text-decoration: none;
+
+  &:hover {
+    background: var(--fill);
+    text-decoration: none;
+  }
+
+  &.is-active {
+    background: var(--blue-fill);
+    color: var(--on-fill);
+  }
+
+  @include narrow {
+    flex: none;
+    white-space: nowrap;
+  }
+}
+
+.c-settings__item-label {
+  @include ellipsis;
+}
+
+// Section tile: a 22 px rounded square in the section's hue with a white glyph.
+.c-settings__tile {
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.12);
+  color: #ffffff;
+  display: grid;
+  flex: none;
+  height: 22px;
+  place-items: center;
+  width: 22px;
+
+  .c-icon {
+    stroke-width: 1.9;
+  }
+}
+
+.c-settings__tile--blue {
+  background: var(--tile-blue);
+}
+
+.c-settings__tile--indigo {
+  background: var(--tile-indigo);
+}
+
+.c-settings__tile--purple {
+  background: var(--tile-purple);
+}
+
+.c-settings__tile--pink {
+  background: var(--tile-pink);
+}
+
+.c-settings__tile--orange {
+  background: var(--tile-orange);
+}
+
+.c-settings__tile--green {
+  background: var(--tile-green);
+}
+
+.c-settings__tile--teal {
+  background: var(--tile-teal);
+}
+
+.c-settings__tile--gray {
+  background: var(--tile-gray);
+}
+
+.c-settings__footer {
+  border-top: 1px solid var(--seam);
+  display: grid;
+  gap: 4px;
+  padding: 10px 8px 0;
+
+  @include narrow {
+    display: none;
+  }
+}
+
+.c-settings__sponsor {
+  align-items: center;
+  color: var(--muted);
+  display: inline-flex;
+  font-size: 11.5px;
+  gap: 5px;
+
+  .c-icon--opten {
+    height: 13px;
+    width: 13px;
+  }
+
+  &:hover {
+    color: var(--text);
+    text-decoration: none;
+  }
+}
+
+.c-settings__version {
+  @include mono;
+  color: var(--muted);
+  font-size: 11px;
+  user-select: text;
+}
+
+.c-settings__main {
+  min-height: 0;
+  min-width: 0;
+  overflow-y: auto;
+  scroll-padding-top: 24px;
+}

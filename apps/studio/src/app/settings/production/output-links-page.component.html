@@ -1,0 +1,147 @@
+<div class="c-page">
+  <sf-settings-page-head
+    [title]="t('regie.settings.nav.output')"
+    scope="production"
+    [note]="t('regie.output.links.hint')"
+  />
+
+  <div class="c-page__body">
+    <section class="c-group" aria-labelledby="sf-links-title">
+      <h2 class="c-group__title" id="sf-links-title">{{ t('regie.output.links.title') }}</h2>
+      <div class="c-group__body">
+        @if (loadError(); as error) {
+          <div class="c-empty c-links__empty" role="alert">
+            <strong>{{ tm(error) }}</strong>
+            <button class="c-btn c-btn--sm" type="button" (click)="load()">
+              {{ t('common.retry') }}
+            </button>
+          </div>
+        } @else if (settings() === null) {
+          <p class="c-empty c-links__empty">{{ t('regie.output.links.loading') }}</p>
+        } @else {
+          @for (row of rows(); track row.link.id) {
+            <div class="c-links__item" [class.is-open]="isOpen(row.link.id)">
+              <div
+                class="c-links__head"
+                [sfContextMenu]="menuOf(row.link)"
+                [sfContextMenuLabel]="t('regie.output.link.keyLabel', { name: row.link.name })"
+                (keydown)="onRowKeyDown($event, row.link)"
+              >
+                <button
+                  class="c-links__row"
+                  type="button"
+                  aria-keyshortcuts="F2 Delete"
+                  [attr.aria-expanded]="isOpen(row.link.id)"
+                  [attr.aria-controls]="'sf-link-' + row.link.id"
+                  (click)="toggle(row.link.id)"
+                >
+                  <span class="c-lamp" aria-hidden="true" [class]="row.lamp"></span>
+                  <span class="c-links__text">
+                    <span class="c-links__name">{{ row.link.name }}</span>
+                    <span class="c-links__state">
+                      {{ row.state }}
+                      @if (row.detail) {
+                        · {{ row.detail }}
+                      }
+                    </span>
+                  </span>
+                  <svg sfIcon="chev-right" class="c-links__chev"></svg>
+                </button>
+                <button
+                  class="c-ibtn c-links__more"
+                  type="button"
+                  aria-haspopup="menu"
+                  [attr.aria-label]="t('regie.output.menu.more', { name: row.link.name })"
+                  [title]="t('regie.output.menu.more', { name: row.link.name })"
+                  (click)="openMenuAt($event, row.link)"
+                >
+                  <svg sfIcon="more"></svg>
+                </button>
+              </div>
+              @if (isOpen(row.link.id)) {
+                <sf-output-link
+                  [id]="'sf-link-' + row.link.id"
+                  [link]="row.link"
+                  (updated)="onUpdated($event)"
+                  (revoked)="onRevoked($event)"
+                />
+              }
+            </div>
+          } @empty {
+            <div class="c-empty c-links__empty">
+              <strong>{{ t('regie.output.links.emptyTitle') }}</strong>
+              {{ t('regie.output.links.empty') }}
+            </div>
+          }
+          <form
+            class="c-group__row c-group__row--stack c-links__add"
+            novalidate
+            (submit)="addLink($event)"
+          >
+            <label class="c-group__label" for="output-link-name">{{
+              t('regie.output.link.nameLabel')
+            }}</label>
+            <div class="c-prod-page__inline">
+              <input
+                id="output-link-name"
+                class="c-input"
+                type="text"
+                autocomplete="off"
+                aria-describedby="output-link-name-note"
+                [placeholder]="t('regie.output.link.namePlaceholder')"
+                [class.is-invalid]="newName.invalid && newName.touched"
+                [attr.aria-invalid]="newName.invalid && newName.touched ? 'true' : null"
+                [formControl]="newName"
+              />
+              <button
+                class="c-btn c-btn--primary"
+                type="submit"
+                [disabled]="atLimit() || adding() || !store.canCommand()"
+              >
+                <svg sfIcon="plus"></svg>{{ t('regie.output.link.add') }}
+              </button>
+            </div>
+            <div id="output-link-name-note">
+              @if (newName.invalid && newName.touched) {
+                <p class="c-field-error" role="alert">
+                  @if (newName.hasError('taken')) {
+                    {{ t('regie.output.link.nameTaken') }}
+                  } @else {
+                    {{ t('regie.output.link.nameInvalid', { max: nameMax }) }}
+                  }
+                </p>
+              }
+              @if (atLimit()) {
+                <p class="c-hint">
+                  {{ t('regie.output.link.limit', { max: settings()?.maxLinks ?? 0 }) }}
+                </p>
+              }
+            </div>
+          </form>
+        }
+      </div>
+      @if (links().length > 0) {
+        <p class="c-group__footer">{{ t('regie.output.links.keys') }}</p>
+      }
+    </section>
+
+    @if (settings()) {
+      <section class="c-group" aria-labelledby="sf-links-embed">
+        <h2 class="c-group__title" id="sf-links-embed">{{ t('regie.output.embed.title') }}</h2>
+        <div class="c-group__body">
+          <div class="c-group__row">
+            <ul class="c-links__origins">
+              @for (origin of ancestors(); track origin) {
+                <li>{{ origin }}</li>
+              }
+            </ul>
+            <a class="c-btn c-btn--sm" routerLink="/settings/embedding">{{
+              t('regie.output.embed.change')
+            }}</a>
+          </div>
+        </div>
+        <p class="c-group__footer">{{ t('regie.output.embed.hint') }}</p>
+      </section>
+    }
+  </div>
+</div>

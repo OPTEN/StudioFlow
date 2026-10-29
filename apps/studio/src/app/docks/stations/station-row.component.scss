@@ -1,13 +1,26 @@
-// One station (prototype .st, .st-row, .st-main, .st-l1, .st-l2, .met, .st-thumb, .st-chev, .st-detail, .st-ack).
+// One device of the Devices dock: a rounded strip (thumbnail, name with Live / Preview, kind and codes, state line),
+// the strips that ask for a reaction, and the details that reveal below it.
 @use 'mixins' as *;
+
+// Thumbnail column; the strips and the details align their text with the name next to it.
+$thumb: 64px;
+$pad: 8px;
+$gap: 10px;
 
 :host {
   display: block;
 }
 
 .c-st {
-  border-bottom: 1px solid var(--seam);
+  @include state-transition(background-color);
+  border-radius: var(--radius-sm);
+  container-type: inline-size;
 
+  &.is-open {
+    background: var(--fill);
+  }
+
+  // State washes win over the open fill: the problem stays visible while the details are open.
   &.is-warn {
     background: var(--amber-wash);
   }
@@ -23,39 +36,59 @@
 
 @keyframes c-st-flash {
   0% {
-    background: color-mix(in srgb, var(--blue) 22%, transparent);
+    box-shadow: inset 0 0 0 2px var(--blue);
   }
 
   100% {
-    background: transparent;
+    box-shadow: inset 0 0 0 2px transparent;
   }
 }
 
-.c-st__row {
+// The strip. The row button holds only the name; its ::after covers the whole strip, so a click anywhere toggles.
+.c-st__head {
+  @include state-transition(background-color);
   align-items: center;
-  background: transparent;
-  border: 0;
-  color: var(--text);
-  cursor: pointer;
+  border-radius: var(--radius-sm);
   display: grid;
-  gap: 9px;
-  grid-template-columns: 14px auto minmax(0, 1fr) 56px 20px;
-  padding: 8px 6px 8px 10px;
-  text-align: left;
-  width: 100%;
+  gap: $gap;
+  grid-template-columns: $thumb minmax(0, 1fr) 14px;
+  min-height: 54px;
+  padding: 7px $pad;
+  position: relative;
 
   &:hover {
-    background: var(--raised);
+    background: var(--fill);
+  }
+
+  &:has(.c-st__row:focus-visible) {
+    outline: 2px solid var(--blue);
+    outline-offset: -2px;
   }
 }
 
-.c-st__codes {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 3px;
+.c-st.is-open > .c-st__head:hover {
+  background: var(--fill-hover);
+}
+
+.c-st__thumb,
+.c-st__audio {
+  border-radius: var(--radius-xs);
+  width: $thumb;
+}
+
+// The audio station has no picture: a microphone where the thumbnail would be.
+.c-st__audio {
+  align-items: center;
+  aspect-ratio: 16 / 9;
+  background: var(--fill);
+  color: var(--muted);
+  display: flex;
+  justify-content: center;
 }
 
 .c-st__main {
+  display: grid;
+  gap: 3px;
   min-width: 0;
 }
 
@@ -66,47 +99,110 @@
   min-width: 0;
 }
 
-.c-st__name {
-  @include ellipsis;
-  font-size: 13.5px;
-  font-weight: 600;
-}
+.c-st__row {
+  background: transparent;
+  border: 0;
+  color: var(--text);
+  cursor: pointer;
+  display: block;
+  min-width: 0;
+  padding: 0;
+  text-align: left;
 
-.c-st__l2 {
-  align-items: baseline;
-  color: var(--muted);
-  display: flex;
-  flex-wrap: wrap;
-  font-size: 12px;
-  gap: 2px 12px;
-  margin-top: 3px;
-  white-space: nowrap;
+  &::after {
+    border-radius: var(--radius-sm);
+    content: '';
+    inset: 0;
+    position: absolute;
+  }
 
-  .u-mono {
-    color: var(--text-2);
-    font-size: 11.5px;
+  &:focus-visible {
+    outline: none;
   }
 }
 
-.c-st__met b {
-  color: var(--text-2);
-  display: inline-block;
-  font: 500 12px var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  margin-right: 3px;
-  min-width: 3.4ch;
-  text-align: right;
+.c-st__name {
+  @include ellipsis;
+  display: block;
+  font-size: var(--fs-body);
+  font-weight: 600;
+  line-height: 1.25;
 }
 
-// The audio station has no picture: a microphone where the thumbnail would be.
-.c-st__audio {
+// Line 2: kind and codes, then the state line.
+.c-st__sub {
   align-items: center;
-  aspect-ratio: 16 / 9;
-  background: var(--raised-2);
-  border-radius: var(--radius-screen);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  min-width: 0;
+}
+
+.c-st__id {
+  align-items: center;
+  color: var(--muted);
+  display: inline-flex;
+  flex: none;
+  gap: 5px;
+  max-width: 100%;
+}
+
+.c-st__codes {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+// One line that gives way piece by piece: a piece that does not fit wraps onto a second line, which is clipped, so it
+// drops whole with its own "·" (never a dangling "· 7 ms" line, never a leading separator). The full line stays in the
+// DOM for the row's description.
+.c-st__l2 {
+  align-items: center;
   color: var(--muted);
   display: flex;
-  justify-content: center;
+  flex-wrap: wrap;
+  font-size: var(--fs-footnote);
+  line-height: 18px;
+  max-height: 18px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+
+  > .c-lamp {
+    margin-right: 6px;
+  }
+}
+
+// Separator dot before an item of the state line (drawn, so the text reads as words for assistive technology).
+.c-st__dot::before {
+  color: var(--muted);
+  content: '·';
+  font-weight: 400;
+  padding: 0 5px;
+}
+
+.c-st__slot,
+.c-st__time {
+  @include mono;
+  color: var(--text-2);
+}
+
+.c-st__slot {
+  font-weight: 600;
+  margin-right: 5px;
+}
+
+.c-st__time {
+  margin-left: 5px;
+}
+
+.c-st__met {
+  @include mono;
+
+  b {
+    color: var(--text-2);
+    font-weight: 500;
+  }
 }
 
 .c-st__chev {
@@ -118,20 +214,26 @@
   transform: rotate(180deg);
 }
 
-.c-st__ack {
+// Strips below the row: "Ask to share again", "The device is back · Dismiss" (aligned with the name).
+.c-st__strip {
   align-items: center;
-  color: var(--text-2);
   display: flex;
-  font-size: 12.5px;
-  gap: 10px;
-  padding: 0 12px 10px 34px;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 $pad 8px ($pad + $thumb + $gap);
+}
+
+.c-st__ack {
+  color: var(--text-2);
+  font-size: var(--fs-footnote);
+  gap: 4px 6px;
 
   > .c-icon {
     color: var(--green);
   }
 }
 
-// 200 ms reveal: the outer grid animates its row from 0fr to 1fr, the clip hides the overflow.
+// Details: a 240 ms reveal (the grid row animates from 0fr to 1fr, the clip hides the overflow).
 .c-st__detail {
   display: grid;
   grid-template-rows: 0fr;
@@ -150,13 +252,55 @@
 .c-st__detail-in {
   display: grid;
   gap: 10px;
-  padding: 4px 12px 14px 34px;
+  padding: 2px $pad 12px;
+}
+
+.c-st__offline {
+  margin: 0;
+}
+
+.c-st__actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+// Camera | Message | Details: the tabs keep the details short; the shown panel sits right below them.
+.c-st__tabs {
+  justify-self: start;
+  min-width: min(100%, 300px);
+}
+
+.c-st__tabpanel {
+  display: grid;
+  gap: 8px;
+}
+
+.c-st__panel {
+  background: var(--panel);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 0 0 0.5px var(--seam-strong);
+  padding: 10px;
+}
+
+// "Manage device": a section divided by a hairline.
+.c-st__section {
+  border-top: 1px solid var(--seam);
+  display: grid;
+  gap: 8px;
+  padding-top: 8px;
 }
 
 .c-st__kv {
-  font-size: 12.5px;
-  grid-template-columns: 74px minmax(0, 1fr);
-  padding: 0;
+  font-size: var(--fs-footnote);
+  gap: 5px 12px;
+  grid-template-columns: minmax(84px, max-content) minmax(0, 1fr);
+  padding: 2px 0 4px;
+
+  dd {
+    overflow-wrap: anywhere;
+  }
 }
 
 .c-st__tech {
@@ -172,21 +316,33 @@
   white-space: nowrap;
 }
 
-.c-st__muted,
-.c-state--muted {
+.c-st__muted {
   color: var(--muted);
 }
 
-.c-st__actions {
-  align-items: center;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+.c-st__note {
+  margin: 4px 0 2px;
 }
 
 .c-st__danger {
   display: inline-flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
   margin-left: auto;
+}
+
+.c-st__rename {
+  display: grid;
+  gap: 4px;
+}
+
+.c-st__rename-label {
+  @include label-text;
+}
+
+// A narrow dock (a side zone): the strips use the full width instead of aligning with the name.
+@container (max-width: 300px) {
+  .c-st__strip {
+    padding-left: $pad;
+  }
 }

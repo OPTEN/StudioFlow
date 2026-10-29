@@ -3,13 +3,15 @@ import type { Download, Page } from '@playwright/test';
 import { Scanner } from '../../support/a11y/axe';
 import { expectNoOverflow } from '../../support/a11y/layout';
 import { expectToast } from '../../support/regie/kit';
+import { openSettingsPage } from '../../support/regie/settings-window';
 import { t } from '../../support/tags';
 import { expect, test } from '../../support/ui/fixtures';
 
 /**
- * AUDIT in the Regie (docs/testing.md 2.15: E2E-AUDIT-01 ... 04): the audit log page `/audit`. A broadcast with two
- * switches is "Last broadcast" and the CSV download has the same rows; the filters, the details and the keyboard;
- * the page at 1024 px and on a tablet; axe in the dark and the light theme. The specs run in English.
+ * AUDIT in the Regie (docs/testing.md 2.15: E2E-AUDIT-01 ... 04): the activity log `/audit` in the settings window. A
+ * broadcast with two switches is "Last broadcast" and the CSV download (Export menu) has the same rows; the filters, the
+ * details with their two tabs, the menu of a row and the keyboard; the page at 1024 px and on a tablet; axe in the dark
+ * and the light theme. The specs run in English.
  */
 
 test.use({ locale: 'en-US', viewport: { width: 1440, height: 900 } });
@@ -57,20 +59,31 @@ async function readDownload(download: Download): Promise<Buffer> {
   return fs.readFileSync(file);
 }
 
-/** The rows of the table: the cells of each entry (time, who, what, production). */
+/** The rows of the table: the cells of each entry (time, who, what, production), without the ⋯ button of the row. */
 async function tableRows(page: Page): Promise<string[][]> {
   return page.locator('.c-audit-table tbody tr:not(.c-audit-table__details)').evaluateAll((rows) =>
     rows.map((row) =>
-      Array.from(row.querySelectorAll('td')).map((cell) => (cell.textContent ?? '').replace(/\s+/g, ' ').trim()),
+      Array.from(row.querySelectorAll('td'))
+        .slice(0, 4)
+        .map((cell) => (cell.textContent ?? '').replace(/\s+/g, ' ').trim()),
     ),
   );
 }
 
+/** Opens the activity log from the control room: the gear, then "Activity log" in the sidebar of the settings window. */
 async function openAuditLog(page: Page): Promise<void> {
-  await page.getByRole('button', { name: /^Production .*, menu$/ }).click();
-  await page.getByRole('link', { name: 'Audit log' }).click();
-  await expect(page).toHaveURL(/\/audit$/);
-  await expect(page.getByRole('heading', { level: 1, name: 'Audit log' })).toBeVisible();
+  await openSettingsPage(page, '/audit');
+  await expect(page.getByRole('heading', { level: 1, name: 'Activity log' })).toBeVisible();
+}
+
+/** "Export" opens a menu with CSV and JSON. */
+async function exportCsv(page: Page): Promise<Download> {
+  await page.getByRole('button', { name: 'Export', exact: true }).click();
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('menuitem', { name: /^Export as CSV/ }).click(),
+  ]);
+  return download;
 }
 
 test.describe('AUDIT audit log page', () => {
@@ -94,9 +107,10 @@ test.describe('AUDIT audit log page', () => {
       const rows = await tableRows(page);
       expect(rows.map((row) => row[1])).toEqual(['Admin', 'Admin', 'Admin', 'Admin']);
       expect(rows.map((row) => row[3])).toEqual(Array(4).fill(production.name));
-      await expect(page.locator('.c-audit__count')).toHaveText('4 entries loaded');
+      await expect(page.locator('.c-audit__count')).toHaveText('Showing 4 entries');
+      await expect(page.getByText(`The last broadcast of “${production.name}”`)).toBeVisible();
 
-      const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Export CSV' }).click()]);
+      const download = await exportCsv(page);
       await expectToast(page, /exported$/);
       expect(download.suggestedFilename()).toMatch(/^studioflow-audit-\d{4}-\d{2}-\d{2}\.csv$/);
       const bytes = await readDownload(download);
@@ -110,7 +124,7 @@ test.describe('AUDIT audit log page', () => {
 
       // The export itself is in the log.
       await page.getByLabel('Time range').selectOption({ label: 'Any time' });
-      await page.getByLabel('Production').selectOption({ label: 'All productions' });
+      await page.getByLabel('Production', { exact: true }).selectOption({ label: 'All productions' });
       // Earlier runs on the same stack (a retry, a repetition) left the same entry behind: one of them is enough.
       await expect(page.getByRole('table').getByText(/^Audit log exported as csv, 4 rows$/).first()).toBeVisible();
     },
@@ -138,21 +152,39 @@ test.describe('AUDIT audit log page', () => {
       await expect.poll(async () => (await tableRows(page)).map((row) => row[2])).not.toContainEqual(expect.stringContaining('Scene'));
 
       await page.getByRole('button', { name: 'Clear filters' }).click();
-      await page.getByLabel('Production').selectOption({ label: `${production.name} renamed (active)` });
+      await page.getByLabel('Production', { exact: true }).selectOption({ label: `${production.name} renamed (active)` });
       await page.getByLabel('Search').fill(snapshot.scenes[2]!.name);
-      await expect(page.locator('.c-audit__count')).toHaveText('1 entry loaded');
+      await expect(page.locator('.c-audit__count')).toHaveText('Showing 1 entry');
       expect(await tableRows(page)).toEqual([[expect.any(String), 'Admin', `Scene “${snapshot.scenes[2]!.name}” is live`, `${production.name} renamed`]]);
 
-      // Keyboard only: the details button of the entry opens its raw details.
+      // Keyboard only: the details button of the entry opens its summary; the arrow keys reach the recorded values.
       const toggle = page.locator('.c-audit-table__toggle');
       await toggle.focus();
       await page.keyboard.press('Enter');
       await expect(toggle).toHaveAttribute('aria-expanded', 'true');
       const details = page.locator('.c-audit-details');
+      await expect(details).toContainText(`Scene “${snapshot.scenes[2]!.name}” is live`);
+      await page.getByRole('tab', { name: 'Summary' }).focus();
+      await page.keyboard.press('ArrowRight');
+      await expect(page.getByRole('tab', { name: 'Recorded values' })).toHaveAttribute('aria-selected', 'true');
+      await expect(page.getByRole('tab', { name: 'Recorded values' })).toBeFocused();
       await expect(details).toContainText('scene.live');
       await expect(details.locator('dt', { hasText: /^via$/ }).locator('xpath=following-sibling::dd[1]')).toHaveText('click');
+      await toggle.focus();
       await page.keyboard.press('Space');
       await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+
+      // The menu of a row (the context-menu key, as a right click would) filters by its category.
+      await page.locator('.c-audit-table tbody tr').first().locator('.c-audit-table__menu').focus();
+      await page.keyboard.press('Shift+F10');
+      await expect(page.getByRole('menuitem', { name: 'Copy entry' })).toBeVisible();
+      await page.getByRole('menuitem', { name: 'Show only “Production”' }).click();
+      await expect(page.getByRole('button', { name: 'Production', exact: true })).toHaveAttribute('aria-pressed', 'true');
+
+      // Ctrl+F goes to the search box of the log.
+      await page.locator('body').click({ position: { x: 5, y: 5 } });
+      await page.keyboard.press('Control+f');
+      await expect(page.getByLabel('Search')).toBeFocused();
 
       // An empty result says so.
       await page.getByLabel('Search').fill('no-entry-has-this-text');
@@ -176,8 +208,8 @@ test.describe('AUDIT audit log page', () => {
     for (const viewport of [{ width: 1024, height: 768 }, { width: 768, height: 1024 }]) {
       await page.setViewportSize(viewport);
       await expectNoOverflow(page, { label: `the audit log at ${viewport.width} px` });
-      for (const name of ['Time range', 'Production', 'Search']) await expect(page.getByLabel(name)).toBeVisible();
-      await expect(page.getByRole('button', { name: 'Export CSV' })).toBeVisible();
+      for (const name of ['Time range', 'Production', 'Search']) await expect(page.getByLabel(name, { exact: true })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Export', exact: true })).toBeVisible();
       await expect(page.getByRole('columnheader', { name: 'Time' })).toBeVisible();
       await expect(page.getByRole('columnheader', { name: 'What' })).toBeVisible();
     }

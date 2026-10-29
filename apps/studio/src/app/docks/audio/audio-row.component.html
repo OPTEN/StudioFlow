@@ -8,7 +8,10 @@
   [class.is-silent]="silent()"
   [attr.data-source]="r.sourceId"
   [attr.aria-label]="t('regie.audio.row.group', { name: r.code + ' ' + r.name })"
+  [sfContextMenu]="menu"
+  [sfContextMenuLabel]="t('regie.audio.row.group', { name: r.code + ' ' + r.name })"
   (click)="select()"
+  (contextmenu)="select()"
   (focusin)="select()"
 >
   <div class="c-audio__head">
@@ -17,72 +20,71 @@
     <span class="c-audio__main">
       <span class="c-audio__name">{{ r.name }}</span>
       <span class="c-audio__sub">
-        {{ r.roleText }}
+        <span class="c-audio__role">{{ r.roleText }}</span
+        >&ngsp;
+        <span class="c-audio__dot c-audio__mode" [title]="modeHint(r.channel.mode)">{{
+          modeLabel(r.channel.mode)
+        }}</span>
         @if (stateWord(); as word) {
-          <span class="c-audio__state" [class.c-state--warn]="silent()" data-testid="audio-state">{{
-            word
-          }}</span>
+          &ngsp;<span
+            class="c-audio__dot c-audio__state"
+            [class.c-state--warn]="silent()"
+            data-testid="audio-state"
+            >{{ word }}</span
+          >
         }
       </span>
     </span>
-    @if (r.onAir) {
-      <span class="c-tag c-tag--pgm">PGM</span>
-    }
-    <button
-      class="c-audio__btn c-audio__btn--pfl"
-      type="button"
-      data-testid="audio-pfl"
-      [attr.aria-pressed]="listening()"
-      [attr.aria-label]="
-        listening()
-          ? t('regie.audio.row.pflStop', { name: r.name })
-          : t('regie.audio.row.pflStart', { name: r.name })
-      "
-      [title]="
-        listening()
-          ? t('regie.audio.row.pflStop', { name: r.name })
-          : t('regie.audio.row.pflStart', { name: r.name })
-      "
-      (click)="togglePfl()"
-    >
-      {{ t('regie.audio.row.pfl') }}
-    </button>
-    <button
-      class="c-audio__btn c-audio__btn--mute"
-      type="button"
-      data-testid="audio-mute"
-      aria-keyshortcuts="M"
-      [attr.aria-pressed]="muted()"
-      [attr.aria-label]="
-        muted()
-          ? t('regie.audio.row.unmuteName', { name: r.name })
-          : t('regie.audio.row.muteName', { name: r.name })
-      "
-      [title]="
-        muted()
-          ? t('regie.audio.row.unmuteName', { name: r.name })
-          : t('regie.audio.row.muteName', { name: r.name })
-      "
-      (click)="toggleMute()"
-    >
-      {{ t('regie.audio.row.mute') }}
-    </button>
-    <button
-      class="c-ibtn c-audio__more"
-      type="button"
-      data-testid="audio-more"
-      [attr.aria-expanded]="open()"
-      [attr.aria-controls]="detailId()"
-      [attr.aria-label]="t('regie.audio.row.details', { name: r.name })"
-      [title]="t('regie.audio.row.details', { name: r.name })"
-      (click)="open.set(!open())"
-    >
-      <svg sfIcon="chev" [size]="14" [class.is-open]="open()"></svg>
-    </button>
+    <span class="c-audio__end">
+      @if (r.onAir) {
+        <span class="c-tag c-tag--pgm" [title]="t('regie.audio.row.liveHint')">{{
+          t('regie.audio.row.live')
+        }}</span>
+      }
+      <button
+        class="c-ibtn c-audio__listen"
+        type="button"
+        data-testid="audio-pfl"
+        [attr.aria-pressed]="listening()"
+        [attr.aria-label]="t('regie.audio.row.listen', { name: r.name })"
+        [title]="t('regie.audio.row.listenHint', { name: r.name })"
+        (click)="togglePfl()"
+      >
+        <svg sfIcon="headphones" [size]="15"></svg>
+      </button>
+      <button
+        class="c-ibtn c-audio__mute"
+        type="button"
+        data-testid="audio-mute"
+        aria-keyshortcuts="M"
+        [attr.aria-pressed]="muted()"
+        [attr.aria-label]="t('regie.audio.row.muteName', { name: r.name })"
+        [title]="
+          muted()
+            ? t('regie.audio.row.unmuteHint', { name: r.name })
+            : t('regie.audio.row.muteHint', { name: r.name })
+        "
+        (click)="toggleMute()"
+      >
+        <svg [sfIcon]="muted() ? 'speaker-off' : 'speaker'" [size]="15"></svg>
+      </button>
+      <button
+        class="c-ibtn c-audio__more"
+        type="button"
+        data-testid="audio-more"
+        [attr.aria-expanded]="open()"
+        [attr.aria-controls]="detailId()"
+        [attr.aria-label]="t('regie.audio.row.details', { name: r.name })"
+        [title]="t('regie.audio.row.details', { name: r.name })"
+        (click)="open.set(!open())"
+      >
+        <svg sfIcon="chev" [size]="14" [class.is-open]="open()"></svg>
+      </button>
+    </span>
   </div>
 
   <div class="c-audio__mix">
-    <div class="c-audio__track">
+    <div class="c-audio__levels" [style.--unity]="unity">
       <div class="c-audio__meter" aria-hidden="true">
         <div
           class="c-audio__fill"
@@ -91,6 +93,7 @@
           [style.transform]="'scaleX(' + fill() + ')'"
         ></div>
       </div>
+      <span class="c-audio__unity" aria-hidden="true"></span>
       <input
         class="c-audio__fader"
         type="range"
@@ -107,7 +110,7 @@
         (dblclick)="resetFader()"
       />
     </div>
-    <output class="c-audio__db u-mono" data-testid="audio-db">{{ r.dbText }} dB</output>
+    <output class="c-audio__db" data-testid="audio-db">{{ r.dbText }} dB</output>
   </div>
 
   @if (open()) {
@@ -120,6 +123,7 @@
               type="button"
               [attr.data-testid]="'audio-mode-' + mode"
               [attr.aria-pressed]="r.channel.mode === mode"
+              [attr.aria-describedby]="modeHintId(mode)"
               [title]="modeHint(mode)"
               (click)="setMode(mode)"
             >
@@ -127,10 +131,14 @@
             </button>
           }
         </div>
+        <span class="c-hint c-audio__hint">{{ modeHint(r.channel.mode) }}</span>
+        @for (mode of r.modes; track mode) {
+          <span class="u-sr-only" [id]="modeHintId(mode)">{{ modeHint(mode) }}</span>
+        }
       </div>
       <div class="c-audio__field">
         <label class="c-label" [for]="syncId()">{{ t('regie.audio.row.sync') }}</label>
-        <div class="c-num">
+        <div class="c-num c-audio__sync">
           <input
             class="c-num__input"
             type="number"
@@ -145,10 +153,19 @@
           />
           <span class="c-num__unit">{{ t('regie.audio.row.syncUnit') }}</span>
         </div>
+        <span class="c-hint c-audio__hint" [id]="syncId() + '-hint'">{{
+          t('regie.audio.row.syncHint')
+        }}</span>
       </div>
-      <p class="c-hint c-audio__hint" [id]="syncId() + '-hint'">
-        {{ t('regie.audio.row.syncHint') }}
-      </p>
+      <button
+        class="c-btn c-btn--sm c-audio__reset"
+        type="button"
+        data-testid="audio-reset"
+        [disabled]="r.channel.gainDb === 0"
+        (click)="resetFader()"
+      >
+        <svg sfIcon="undo" [size]="14"></svg>{{ t('regie.audio.row.reset') }}
+      </button>
     </div>
   }
 </div>

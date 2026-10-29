@@ -1,22 +1,42 @@
+// Shared mixins of the sender. Emits no CSS by itself; component stylesheets `@use 'mixins' as *;`.
+//
+// The sender is built phone first (min-width queries). Two named contexts matter beyond the widths: `desktop` (a
+// laptop with a mouse or trackpad from 768 px: smaller type, the page column) and `landscape-low` (a phone turned on
+// its side: little height, the camera picture needs every pixel).
+@use 'sass:list';
 @use 'sass:map';
 @use 'tokens' as *;
 
-// Mobile-first media query for a named breakpoint of $BREAKPOINTS.
-// @param {String} $point - sm | md | lg
+/// Mobile-first media query for a named breakpoint of $BREAKPOINTS.
+/// @param {String} $point - sm | md | lg
 @mixin respond-to($point) {
   @media (min-width: map.get($BREAKPOINTS, $point)) {
     @content;
   }
 }
 
-// Landscape phones: wide and low.
+/// A laptop or desktop with a fine pointer, from 768 px: the desktop type scale applies.
+@mixin desktop {
+  @media (min-width: map.get($BREAKPOINTS, md)) and (pointer: fine) {
+    @content;
+  }
+}
+
+/// Landscape phones: wide and low.
 @mixin landscape-low {
   @media (orientation: landscape) and (max-height: 520px) {
     @content;
   }
 }
 
-// Visually hidden but readable by screen readers.
+/// prefers-reduced-motion: reduce. Durations already drop to 0s through the `--dur-*` custom properties.
+@mixin reduced-motion {
+  @media (prefers-reduced-motion: reduce) {
+    @content;
+  }
+}
+
+/// Visually hidden but readable by screen readers.
 @mixin sr-only {
   clip-path: inset(50%);
   height: 1px;
@@ -26,21 +46,71 @@
   width: 1px;
 }
 
-// Smallest comfortable touch target.
+/// Smallest comfortable touch target.
 @mixin touch-target {
   min-height: $TOUCH_TARGET;
   min-width: $TOUCH_TARGET;
   touch-action: manipulation;
 }
 
-// Mono font for codes, measurements and times (The Instrument Mono Rule).
+/// Figures that must line up (times, levels, rates): the UI font with tabular numerals.
 @mixin mono {
+  font-feature-settings: 'tnum' 1;
+  font-variant-numeric: tabular-nums;
+}
+
+/// Codes that are read character by character (check code, slot codes): the system mono font.
+@mixin code {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
 
-// Z-index of a named layer of $Z_INDEX_VALUES.
-// @param {String} $layer - layer name
+/// Focus ring for controls with their own shape (a soft halo in the accent).
+@mixin focus-ring {
+  box-shadow: var(--shadow-focus);
+  outline: 2px solid var(--blue);
+  outline-offset: 1px;
+}
+
+/// Single-line text with an ellipsis.
+@mixin ellipsis {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/// Transition of colour-like properties with the shared state duration and ease.
+/// @param {List} $properties - CSS properties to transition
+@mixin state-transition($properties...) {
+  $list: ();
+  @each $property in $properties {
+    $list: list.append($list, $property var(--dur-state) var(--ease), comma);
+  }
+  transition: $list;
+}
+
+/// Translucent material of the bars over the camera picture: the picture shows through, the text stays legible.
+@mixin material($strong: false) {
+  -webkit-backdrop-filter: saturate(160%) blur(18px);
+  backdrop-filter: saturate(160%) blur(18px);
+  background: var(--material);
+  box-shadow: inset 0 0 0 0.5px var(--material-edge);
+
+  @if $strong {
+    background: var(--material-strong);
+  }
+}
+
+/// Floating layer (menus, sheets, banners): a solid float surface with the pop shadow.
+@mixin floating {
+  background: var(--float);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-pop);
+}
+
+/// Z-index of a named layer of $Z_INDEX_VALUES.
+/// @param {String} $layer - layer name
 @function z($layer) {
   @return map.get($Z_INDEX_VALUES, $layer);
 }

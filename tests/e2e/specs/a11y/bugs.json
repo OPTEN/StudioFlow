@@ -30,6 +30,7 @@
     },
     "A11Y-04": {
       "status": "fixed",
+      "resolution": "2026-10-29: isTypingTarget no longer counts a checkbox or radio (the Studio Mode switch) as a text field, so 1-9 work after a click on the switch; Space on a focused switch only toggles it, as the platform does.",
       "severity": "medium",
       "area": "A11Y",
       "title": "The keys 1-9 and Space (Take) are ignored while the Studio Mode switch has the focus (a checkbox counts as a text field); Space on it toggles the mode back off",
@@ -38,11 +39,11 @@
       "expected": "The global shortcuts work whenever the focus is not in a text field: the Preview shows scene 4; Space on the switch only toggles it (acceptable), but digits are not typed text.",
       "actual": "KeyboardService treats every INPUT as a typing target (TYPING_TAGS), so digits do nothing while the switch (input type=checkbox role=switch) has the focus; the Preview stays on the old scene without a message. After a mouse click on the switch a second Space (meant as Take) flips the mode off again.",
       "evidence": "tests/e2e/.output/sf-e2e-4/artifacts (trace of the failing run with E2E_BUG_REPORT=1); apps/studio/src/app/core/ui/keyboard.service.ts (isTypingTarget)",
-      "fix": "isTypingTarget: only text-like input types (text, search, number, password, email, url, tel ...), not checkbox, radio, range, button; or blur the switch after toggling.",
-      "resolution": "2026-10-29: isTypingTarget counts only text-like inputs; checkboxes, radios, sliders and buttons are no typing target, so 1-9 work while the Studio Mode switch has the focus. Space is left to the focused switch (it toggles, no Take). Unit tests in keyboard.service.spec.ts."
+      "fix": "isTypingTarget: only text-like input types (text, search, number, password, email, url, tel ...), not checkbox, radio, range, button; or blur the switch after toggling."
     },
     "A11Y-05": {
       "status": "fixed",
+      "resolution": "2026-10-29: the stage renders the Preview/Program split only above 1180 px; in the stacked layout a plain 20 px gap keeps the spacing, so there is no separator to tab to. Guarded by the E2E-DEV-04 test (a regression guard now) and the unit test of StageComponent (A11Y-05).",
       "severity": "low",
       "area": "A11Y",
       "title": "At <= 1180 px the Preview/Program splitter stays visible and focusable (role=separator, tabindex=0) although it is disabled: a dead tab stop announced as resizable",
@@ -51,11 +52,10 @@
       "expected": "docs/testing.md DEV-04: grips and splitters are hidden (display:none) in the stacked layout (DEV-20: inert).",
       "actual": "'Size of Preview and Program' (20 x 295 px at x=484) is in the tab order with a focus indicator; Arrow keys do nothing (preview width stays 468 px). The dock splitters are display:none as specified; only .c-stage__split is not hidden below 1180 px (it is hidden at <= 900 px).",
       "evidence": "tests/e2e/.output/sf-e2e-4/screens/regie-1180x800-studio.png (splitter between the monitors); apps/studio/src/app/stage/stage.component.scss (.c-stage__split has no display:none under the stacked mixin)",
-      "fix": "display: none for .c-stage__split in the stacked mixin, or tabindex -1 and aria-hidden while splitterDisabled().",
-      "resolution": "2026-10-29: a disabled SplitterDirective (stacked layout) has no tabindex and is aria-hidden, so the Preview/Program splitter is no dead tab stop at <= 1180 px (its 20 px gap stays)."
+      "fix": "display: none for .c-stage__split in the stacked mixin, or tabindex -1 and aria-hidden while splitterDisabled()."
     },
     "A11Y-06": {
-      "status": "fixed",
+      "status": "open",
       "severity": "low",
       "area": "A11Y",
       "title": "Accessible names of scene rows, source rows, station rows and incident targets do not contain their visible text (WCAG 2.5.3 Label in Name, axe label-content-name-mismatch, serious)",
@@ -64,11 +64,11 @@
       "expected": "The accessible name contains the visible label text, so voice control (“Click Phone Entrance”) finds the control.",
       "actual": "Incident target: visible “K3 Phone Entrance”, aria-label “Show K3 in Stations”. Scene row: visible “Break empty” with keycap, aria-label “Break”. Station row: visible “K3 Phone Entrance PVW reconnecting 00:03 freeze frame”, aria-label “K3 Phone Entrance, in Preview, reconnecting”. Source row: visible “K3 Phone Entrance reconnecting 00:03”, aria-label “Select: K3 Phone Entrance”. The key part of the label is in the name for the rows, but not for the incident target (the device name is missing).",
       "evidence": "tests/e2e/.output/sf-e2e-4/a11y/axe/regie-label-in-name.json (nodes and html)",
-      "fix": "Incident target: aria-label “Show K3 Phone Entrance in Stations” (contains the visible text); rows: keep the visible text first in the name, then add the state.",
-      "resolution": "2026-10-29: scene, source and station rows have no aria-label any more: their visible text is their accessible name (the scene keycap is generated content from data-key, announced by aria-keyshortcuts); the incident target is labelled \"Show K3 Phone Entrance in Stations\" and separates code and name with a space."
+      "fix": "Incident target: aria-label “Show K3 Phone Entrance in Stations” (contains the visible text); rows: keep the visible text first in the name, then add the state."
     },
     "A11Y-07": {
-      "status": "open",
+      "status": "fixed",
+      "resolution": "2026-10-29: UI redesign of the sender: the screen-off cover (formerly .c-phone__dark) uses the text tokens of the redesign; axe color-contrast finds nothing on it any more.",
       "severity": "low",
       "area": "A11Y",
       "title": "Dark mode of the phone sender: the station code (2.96:1) and the hint “Tap for controls” (2.35:1) are below 4.5:1",
@@ -107,6 +107,7 @@
     },
     "A11Y-11": {
       "status": "fixed",
+      "resolution": "2026-10-29: the redesigned controls have forced-colors rules (forced-colors mixin, apps/studio/src/styles/_mixins.scss): the iOS switch is drawn with a ButtonText border and thumb (Highlight / HighlightText when on), a selected segment or tab gets a 3 px Highlight bottom border and weight 800, pressed icon buttons, menu highlights, the current scene row and selected rows get a Highlight outline. The DEV-22 [forced colours, controls] case is a regression guard now.",
       "severity": "medium",
       "area": "A11Y",
       "title": "No forced-colors support: in Windows high-contrast mode the Studio Mode switch is invisible and the selected Transition segment (Cut / Fade) cannot be told from the other",
@@ -115,11 +116,11 @@
       "expected": "docs/testing.md DEV-22: states remain distinguishable without colour. A switch needs a visible border; a selected segment a border, outline or weight.",
       "actual": "The switch is an appearance:none input painted with background colours and a thumb pseudo-element; forced colours replaces the backgrounds with the canvas colour, so only the label “Studio Mode” is left (screenshot). The selected segment's underline is an inset box-shadow, which forced colours removes; border, outline, decoration and weight are identical for both segments, only an 8 % background tint is left. The CSS contains no @media (forced-colors: active) rule.",
       "evidence": "tests/e2e/.output/sf-e2e-4/screens/regie-1440x900-forced-colors.png",
-      "fix": "@media (forced-colors: active): border: 1px solid ButtonText on the switch input and the thumb in CanvasText; for the segments a border-bottom or outline on [aria-pressed=true].",
-      "resolution": "2026-10-29: forced-colors rules: the Studio Mode switch gets a ButtonText border and a Highlight state, selected segments (.c-seg, .c-tab, Transition Cut/Fade) a 3 px Highlight bottom border and a heavier weight."
+      "fix": "@media (forced-colors: active): border: 1px solid ButtonText on the switch input and the thumb in CanvasText; for the segments a border-bottom or outline on [aria-pressed=true]."
     },
     "A11Y-12": {
       "status": "fixed",
+      "resolution": "2026-10-29: the redesigned activity bar has a fixed height and never wraps; the incident target shrinks (min-width: 0) and cuts the device name with an ellipsis (.c-status__name), the full name stays in the issues popover. The DEV-18 case is a regression guard now.",
       "severity": "medium",
       "area": "A11Y",
       "title": "At 390 px an incident of a station with a long device name makes the message strip wider than the viewport: horizontal page scroll (the name in button.c-status__target is neither wrapped nor cut)",
@@ -128,8 +129,7 @@
       "expected": "docs/testing.md DEV-18: ellipsis or wrap inside rows, strip entries and station rows; no horizontal scroll.",
       "actual": "document scrollWidth 431 > clientWidth 390: div.c-status__inc.is-warn spans x 16..431, button.c-status__target x 20..421. The same long name in the Stations dock, the monitors and the scene rows stays inside (tested at 1280, 900 and 390 px).",
       "evidence": "tests/e2e/.output/sf-e2e-4/screens/regie-long-text-390x844-long-incident-direct.png (the strip entry reaches beyond the right edge); assertion message of the run with E2E_BUG_REPORT=1",
-      "fix": "min-width: 0 and text-overflow: ellipsis (or wrapping) on .c-status__target and its name text; the strip entry is a flex container.",
-      "resolution": "2026-10-29: the device name in the incident target is cut with an ellipsis (min-width 0 and max-width 100% on the strip entry, the button and the name span), so the strip never exceeds the viewport."
+      "fix": "min-width: 0 and text-overflow: ellipsis (or wrapping) on .c-status__target and its name text; the strip entry is a flex container."
     },
     "A11Y-13": {
       "status": "fixed",
@@ -145,7 +145,7 @@
       "resolution": "2026-10-29: the dock SplitterBehavior of the workspace converts pixels with the content size of the docks (without padding and border) instead of the border-box size, so edge seams move exactly 16 px (Shift 64 px)."
     },
     "A11Y-08": {
-      "status": "fixed",
+      "status": "open",
       "severity": "info",
       "area": "A11Y",
       "title": "Presence text: “2 people in the control room” (numeral) where docs/testing.md DEV-15 pins “Two people in the control room”; one person is spelled out (“One person”)",
@@ -154,8 +154,7 @@
       "expected": "“Two people in the control room” (docs/testing.md DEV-15).",
       "actual": "“2 people in the control room” (header.component.ts presenceText); the visible label and the screen-reader text both use the numeral for >= 2.",
       "evidence": "tests/e2e/specs/a11y/a11y-axe.spec.ts (assertion), apps/studio/src/app/shell/header/header.component.ts",
-      "fix": "Either spell out small numbers in presenceText or change the plan to the numeral (documentation difference).",
-      "resolution": "2026-10-29: presenceText spells out two to nine people (\"Two people in the control room\", en and de-CH, docs/testing.md DEV-15); one stays \"One person\", ten and more use the numeral. Unit test presence-text.spec.ts."
+      "fix": "Either spell out small numbers in presenceText or change the plan to the numeral (documentation difference)."
     }
   }
 }

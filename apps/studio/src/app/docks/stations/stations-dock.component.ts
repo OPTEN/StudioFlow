@@ -24,8 +24,9 @@ import { DockLayoutService } from '../../shell/workspace/dock-layout.service';
 import { SwitcherService } from '../../stage/switcher.service';
 import { KnockCardComponent } from '../pairing/knock-card.component';
 import { PairingRequestsService } from '../pairing/pairing-requests.service';
+import { PairingTabMemory } from '../pairing/pairing-tab-memory.service';
 import { StationRowComponent } from './station-row.component';
-import { stationView, type StationView } from './station-view';
+import { compareStations, stationView, type StationView } from './station-view';
 
 /** How long a new outage makes its station lamp pulse (prototype: once, 1.2 s). */
 const PULSE_MS = 1300;
@@ -51,10 +52,12 @@ function sameItems<T>(a: readonly T[], b: readonly T[]): boolean {
 }
 
 /**
- * The Stations dock (prototype "Stations"): knock cards of waiting laptops (while the pairing dock is closed), then
- * every paired device in station order (outages first) with its row and expandable details. The header counts the
- * stations and toggles the pairing dock ("Pair device"). A request from the header or the message strip
- * (`StationFocusService`) opens the station, scrolls it into view and flashes it; a new outage pulses its lamp once.
+ * The Devices dock (formerly "Stations"): knock cards of waiting devices (while the pairing dock is closed), then every
+ * paired device in a stable order (by slot code, see {@link compareStations}) with its row and expandable details. A
+ * row never moves when its state changes; the lamp, the state word and the wash show the problem in place. The header
+ * counts the devices and toggles the pairing dock ("Add device", on the tab used last, Phone the first time). A request
+ * from the header or the message strip (`StationFocusService`) opens the device, scrolls it into view and flashes it; a
+ * new outage pulses its lamp once.
  */
 @Component({
   selector: 'sf-stations-dock',
@@ -69,6 +72,7 @@ export class StationsDockComponent {
   protected readonly layout = inject(DockLayoutService);
   private readonly switcher = inject(SwitcherService);
   private readonly requests = inject(PairingRequestsService);
+  private readonly tabMemory = inject(PairingTabMemory);
   private readonly focusService = inject(StationFocusService);
   private readonly viewport = inject(ViewportService);
   private readonly injector = inject(Injector);
@@ -124,7 +128,7 @@ export class StationsDockComponent {
         this.entryCache.delete(id);
       }
     }
-    return next;
+    return next.sort((a, b) => compareStations(a.view, b.view));
   });
   /** Knock cards: in the pairing dock while it is open, here otherwise. */
   protected readonly knocks = computed(() =>
@@ -135,6 +139,15 @@ export class StationsDockComponent {
     this.followFocusRequests();
     this.pulseNewOutages();
     this.returnFocusFromPairing();
+  }
+
+  /** "Add device": opens the pairing dock on the tab used last, or closes it. */
+  protected togglePairing(): void {
+    if (this.layout.pairingOpen()) {
+      this.layout.closePairing();
+    } else {
+      this.layout.openPairing(this.tabMemory.last());
+    }
   }
 
   protected toggle(deviceId: string): void {
@@ -209,7 +222,7 @@ export class StationsDockComponent {
     });
   }
 
-  /** Closing the pairing dock puts the focus back on "Pair device" (prototype `closePair`). */
+  /** Closing the pairing dock puts the focus back on "Add device" (prototype `closePair`). */
   private returnFocusFromPairing(): void {
     let wasOpen = false;
     effect(() => {

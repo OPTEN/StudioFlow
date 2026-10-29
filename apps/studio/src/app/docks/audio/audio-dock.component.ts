@@ -27,8 +27,9 @@ import { audioRowViews } from './audio-rows';
 
 /**
  * The Audio dock (spec 9.1, issue #7): the global mixer of the production. One row per channel – the audio station and
- * microphones, screens that share sound, videos with sound – with meter, fader, mute, mode, sync offset and PFL; undo
- * and redo of the mixer changes; the monitoring popover (off, program, headphones).
+ * microphones, screens that share sound, videos with sound – with meter, fader, mute, mode, sync offset and Listen;
+ * undo and redo of the mixer changes; the "Headphones" button, which says what this browser plays ("Headphones:
+ * Program", "Headphones: A1") and opens the headphones popover (off, program, output device).
  *
  * The M key mutes the selected channel; Ctrl+Z and Ctrl+Shift+Z act on the mixer while the focus is inside the dock and
  * on the scene being edited otherwise. A channel that is audible but silent for 10 seconds shows an amber state word
@@ -66,6 +67,20 @@ export class AudioDockComponent {
     return state ? audioRowViews(state, this.commands.channels(), this.audio.sounding()) : [];
   });
   protected readonly monitoring = computed(() => this.audio.monitor().kind !== 'off');
+  /** "Headphones", "Headphones: Program" or "Headphones: A1" (the channel listened to). */
+  protected readonly headphonesLabel = computed(() => {
+    const monitor = this.audio.monitor();
+    switch (monitor.kind) {
+      case 'off':
+        return t('regie.audio.dock.headphones');
+      case 'program':
+        return t('regie.audio.dock.headphonesOn', { what: t('regie.audio.monitor.program') });
+      case 'channel':
+        return t('regie.audio.dock.headphonesOn', {
+          what: this.store.sourceById(monitor.sourceId)?.code ?? '…',
+        });
+    }
+  });
 
   constructor() {
     const offMute = this.keyboard.register('mute', () => this.commands.toggleSelectedMute());

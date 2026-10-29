@@ -11,5 +11,8 @@ export const regieCore: Translation<typeof en> = {
   'regie.core.store.noActiveProduction': 'Keine aktive Produktion gefunden.',
   'regie.core.store.serverUnreachable':
     'Der Server ist nicht erreichbar. Die Regie verbindet neu …',
-  'regie.core.store.stationsLoading': 'Stationen …',
+  'regie.core.store.stationsLoading': 'Geräte …',
+  'regie.core.title.issues': { one: '{count} Störung', other: '{count} Störungen' },
+  'regie.core.title.onAir': '● Auf Sendung',
+  'regie.core.toast.dismiss': 'Ausblenden',
 };

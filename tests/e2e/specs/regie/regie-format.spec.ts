@@ -34,22 +34,44 @@ const near = (pixel: Rgba, hex: string, tolerance = 14): boolean => {
   );
 };
 
-/** Opens the menu of the production (if it is not open) and returns the entry with the label. */
-async function menuItem(page: Page, label: string) {
-  if (!(await page.locator('.c-prod__pop').isVisible())) {
-    await page.locator('.c-prod__trigger').click();
-  }
-  return page.getByRole('button', { name: label, exact: true });
+/** Opens a page of the settings window in the Regie's tab and waits for its title. */
+async function openSettings(page: Page, path: string, title: string): Promise<void> {
+  await page.goto(path);
+  await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible();
 }
 
-/** Creates a production in the new-production form of the Regie and waits until the Regie follows it. */
+/** Settings › Production › General, where format and resolution are changed. */
+const openGeneral = (page: Page): Promise<void> =>
+  openSettings(page, '/settings/production', 'General');
+
+/** Back to the control room (the monitors and the scene thumbnails). */
+async function openControlRoom(page: Page, name?: string): Promise<void> {
+  await page.goto('/');
+  if (name) {
+    await expect(page.locator('.c-prod__name')).toHaveText(name);
+  } else {
+    await expect(page.locator('.c-prod__name')).toBeVisible();
+  }
+}
+
+/**
+ * Creates a production with "New production…" (the switcher leads to Settings › All productions with the form open)
+ * and waits until the control room shows it.
+ */
 async function createInRegie(page: Page, name: string, ratio: string): Promise<void> {
-  await (await menuItem(page, 'New production…')).click();
-  await page.locator('.c-prod__form input[type="text"]').fill(name);
-  await expect(page.locator('.c-seg button[aria-pressed="true"]')).toHaveText(['16:9', '1080p']);
-  await page.getByRole('button', { name: ratio, exact: true }).click();
-  await page.getByRole('button', { name: 'Create', exact: true }).click();
-  await expect(page.locator('.c-prod__name')).toHaveText(name);
+  await page.getByRole('button', { name: /^Production .*, menu$/ }).click();
+  await page.getByRole('link', { name: 'New production…' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'All productions' })).toBeVisible();
+  const form = page.locator('form[data-form="new"]');
+  await form.getByLabel('Name', { exact: true }).fill(name);
+  await expect(form.locator('.c-seg button[aria-pressed="true"]')).toHaveText(['16:9', '1080p']);
+  await form.getByRole('button', { name: ratio, exact: true }).click();
+  await form.getByRole('button', { name: 'Create production', exact: true }).click();
+  await expect(page.getByTestId('production-row').filter({ hasText: name })).toHaveAttribute(
+    'aria-current',
+    'true',
+  );
+  await openControlRoom(page, name);
 }
 
 /** A lower third of the first scene of the production: shown, with the accent colour of THEME. */
@@ -122,7 +144,7 @@ test.describe('REGIE format and resolution', () => {
 
       // The Program monitor is narrow and says its size.
       await expect(page.locator('sf-monitor.c-monitor--program .c-monitor__meta')).toHaveText(
-        '1080 × 1920 · 30 fps',
+        '1080 × 1920',
       );
       expect((await screenRatios(page))[0]).toBeCloseTo(0.5625, 2);
 
@@ -153,8 +175,8 @@ test.describe('REGIE format and resolution', () => {
         h: 101,
       });
 
-      // Live: the menu says why nothing can be changed, the API refuses.
-      await (await menuItem(page, 'Format and resolution…')).click();
+      // Live: Settings › General says why nothing can be changed, the API refuses.
+      await openGeneral(page);
       await expect(page.getByRole('status').filter({ hasText: 'while the broadcast is live' })).toBeVisible();
       await expect(page.locator('.c-seg button[aria-pressed="true"]')).toHaveText(['9:16', '1080p']);
       for (const button of await page.locator('.c-seg button').all()) {
@@ -163,21 +185,21 @@ test.describe('REGIE format and resolution', () => {
       const refused = await api.changeCanvas(created.id, { format: 'square', resolution: 'p1080' });
       expect(refused.status).toBe(409);
       expect((refused.body as { code?: string }).code).toBe('broadcast_live');
-      await page.keyboard.press('Escape');
 
-      // Not live any more: the change to 1:1 asks first, because the scene has an element.
+      // Not live any more: the page unlocks; the change to 1:1 asks first, because the scene has an element.
       expect((await api.resetBroadcast(created.id)).status).toBe(200);
-      await (await menuItem(page, 'Format and resolution…')).click();
+      await expect(page.getByRole('status').filter({ hasText: 'while the broadcast is live' })).toHaveCount(0);
       await page.getByRole('button', { name: '1:1', exact: true }).click();
-      await page.getByRole('button', { name: 'Save', exact: true }).click();
+      await page.getByRole('button', { name: 'Save format', exact: true }).click();
       await expect(page.locator('sf-confirm-box')).toContainText('scaled to fit the new canvas');
       expect((await api.getSnapshot(created.id)).body.production.canvas.format).toBe('portrait');
       await page.getByRole('button', { name: 'Change format', exact: true }).click();
 
       // The open output page follows without a reload; the monitors are square.
       await expect.poll(() => stageSize(output), { timeout: 5_000 }).toEqual({ width: 1080, height: 1080 });
+      await openControlRoom(page, name);
       await expect(page.locator('sf-monitor.c-monitor--program .c-monitor__meta')).toHaveText(
-        '1080 × 1080 · 30 fps',
+        '1080 × 1080',
       );
       expect((await screenRatios(page))[0]).toBeCloseTo(1, 2);
       const fitted = (await api.getSnapshot(created.id)).body.scenes[0]!.items.find(
@@ -252,34 +274,39 @@ test.describe('REGIE format and resolution', () => {
   );
 
   test(
-    'E2E-FMT-03 [regie] "Format and resolution…" offers four formats and two resolutions; another resolution is saved without a question, the monitors and the scene thumbnails follow the shape',
+    'E2E-FMT-03 [settings] "Format and resolution" on the settings page General offers four formats and two resolutions; another resolution is saved without a question, the monitors and the scene thumbnails follow the shape',
     t.p2,
     async ({ openRegie, api, production }) => {
       const regie = await openRegie({ contextOptions: REGIE_CONTEXT });
       const page = regie.page;
-      await (await menuItem(page, 'Format and resolution…')).click();
+      // The switcher leads to the production settings.
+      await page.getByRole('button', { name: /^Production .*, menu$/ }).click();
+      await page.getByRole('link', { name: 'Production settings…' }).click();
+      await expect(page.getByRole('heading', { level: 1, name: 'General' })).toBeVisible();
       await expect(page.locator('.c-seg').nth(0).locator('button')).toHaveText(['16:9', '9:16', '1:1', '4:3']);
       await expect(page.locator('.c-seg').nth(1).locator('button')).toHaveText(['720p', '1080p']);
-      await expect(page.getByRole('button', { name: 'Save', exact: true })).toBeDisabled();
+      await expect(page.getByRole('button', { name: 'Save format', exact: true })).toBeDisabled();
 
       await page.getByRole('button', { name: '720p', exact: true }).click();
       await expect(page.getByText('every element is scaled in proportion')).toBeVisible();
-      await page.getByRole('button', { name: 'Save', exact: true }).click();
+      await page.getByRole('button', { name: 'Save format', exact: true }).click();
       await expect(page.locator('sf-confirm-box')).toHaveCount(0);
       await expect
         .poll(async () => (await api.getSnapshot(production.id)).body.production.canvas.width)
         .toBe(1280);
+      await openControlRoom(page);
       await expect(page.locator('sf-monitor.c-monitor--program .c-monitor__meta')).toHaveText(
-        '1280 × 720 · 30 fps',
+        '1280 × 720',
       );
 
       // Another format, no scene has elements: saved without a question; the thumbnails are as tall as before.
-      await (await menuItem(page, 'Format and resolution…')).click();
+      await openGeneral(page);
       await page.getByRole('button', { name: '9:16', exact: true }).click();
-      await page.getByRole('button', { name: 'Save', exact: true }).click();
+      await page.getByRole('button', { name: 'Save format', exact: true }).click();
       await expect
         .poll(async () => (await api.getSnapshot(production.id)).body.production.canvas.format)
         .toBe('portrait');
+      await openControlRoom(page);
       const thumb = page.locator('.c-scene__thumb').first();
       await expect
         .poll(async () => {

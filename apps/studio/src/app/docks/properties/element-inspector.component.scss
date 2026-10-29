@@ -1,27 +1,24 @@
-// Element inspector (prototype #insp with a selection).
+// Element inspector: crop, the short number fields, border, the fallback row and the footer actions.
 @use 'inspector';
 
-.c-insp__row--top {
-  align-items: start;
-
-  .c-insp__label {
-    padding-top: 7px;
-  }
+.c-insp__seg {
+  justify-self: start;
+  max-width: 100%;
 }
 
 .c-insp__crop {
   display: grid;
-  gap: 6px;
+  gap: 4px;
   justify-items: start;
+  min-width: 0;
+
+  .c-insp__pair {
+    width: 100%;
+  }
 }
 
-.c-insp__crop .c-insp__pair {
-  width: 100%;
-}
-
-.c-num__label--word {
-  font-family: var(--font-ui);
-  font-size: 12px;
+.c-insp__short {
+  max-width: 96px;
 }
 
 .c-insp__border {
@@ -31,22 +28,30 @@
   min-width: 0;
 }
 
-.c-insp__border-width {
-  flex: 0 1 92px;
+.c-insp__stack {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
 }
 
-.c-insp__color {
-  background: var(--ground);
-  border: 1px solid var(--control-edge);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  flex: none;
-  height: 30px;
-  padding: 3px;
-  width: 36px;
+.c-insp__danger-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
 
-  &:disabled {
-    cursor: not-allowed;
-    opacity: 0.6;
+// The tab bar sits on top of the inspector; the panels below keep the section rhythm.
+.c-insp__tabs {
+  margin-bottom: 4px;
+}
+
+.c-insp__panel {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 8px 0 16px;
+
+  &[hidden] {
+    display: none;
   }
 }

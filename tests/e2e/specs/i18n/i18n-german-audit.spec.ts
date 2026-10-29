@@ -116,41 +116,42 @@ test.describe('German text audit', () => {
       await page.getByRole('button', { name: TEXT_DE.stationsDock.grip }).focus();
       await page.keyboard.press('ArrowLeft');
       await expect(regie.toast().first()).toContainText(TEXT_DE.stationsDock.docked);
-      await audit.stateInGerman('toast: dock moved (with the “Reset layout” button)');
-      await page.getByRole('button', { name: TEXT_DE.stationsDock.resetLayout }).click();
-      await expect(regie.toast().first()).toContainText(TEXT_DE.stationsDock.layoutReset);
+      await audit.stateInGerman('toast: dock moved (with the “Undo” button)');
+      await regie.toast().first().getByRole('button', { name: TEXT_DE.stationsDock.undo }).click();
+      await expect(regie.toast().first()).toContainText(TEXT_DE.stationsDock.moveUndone);
     });
     await regie.setStudioMode(false);
 
     // popovers and menus
     const popovers: Array<[string, () => ReturnType<Page['getByRole']>]> = [
       ['output popover', () => page.getByRole('button', { name: /^Output/ })],
-      ['layout popover', () => page.getByRole('button', { name: 'Docks and layout' })],
+      ['layout popover', () => page.getByRole('button', { name: 'Layout', exact: true })],
+      ['issues popover', () => page.getByRole('region', { name: 'Activity' }).getByRole('button', { name: /^\d+ issues?$/ })],
       ['production menu', () => page.getByRole('button', { name: /^Production .*, menu$/ })],
-      ['add-source popover', () => page.getByRole('button', { name: 'Source', exact: true })],
+      ['add-source popover', () => page.getByRole('button', { name: 'Add source', exact: true })],
       ['scene menu', () => page.getByRole('button', { name: 'Actions for scene Break' })],
     ];
     for (const [label, trigger] of popovers) {
       await trigger().click();
-      await expect(page.locator('.c-pop').first()).toBeVisible();
+      await expect(page.locator('.c-pop, .c-ctx').first()).toBeVisible();
       await audit.state(label);
       await page.keyboard.press('Escape');
-      await expect(page.locator('.c-pop')).toHaveCount(0);
+      await expect(page.locator('.c-pop, .c-ctx')).toHaveCount(0);
     }
-    // the production menu in its three modes
+    // the production switcher with the right-click menu of the active production (its forms moved to the settings window)
     await page.getByRole('button', { name: /^Production .*, menu$/ }).click();
-    for (const [item, label, heading] of [['Rename', 'production: rename', 'Rename production'], ['Edit slates', 'production: slates', 'Before the broadcast'], ['New production…', 'production: new', 'New production']] as const) {
-      const menu = page.getByRole('dialog', { name: 'Production' });
-      // exact: the dialog also lists one button per production of the stack (“... renamed”)
-      await menu.getByRole('button', { name: item, exact: true }).click();
-      await expect(menu.locator('.c-pop-h', { hasText: heading })).toBeVisible();
-      await audit.state(label);
-      await menu.getByRole('button', { name: 'Cancel' }).click();
-    }
+    await page
+      .getByRole('dialog', { name: 'Production' })
+      .locator('.c-prod__item[aria-current="true"]')
+      .click({ button: 'right' });
+    await expect(page.locator('.c-ctx')).toBeVisible();
+    await audit.state('production switcher: right-click menu');
     await page.keyboard.press('Escape');
+    await page.keyboard.press('Escape');
+    await expect(page.locator('.c-pop, .c-ctx')).toHaveCount(0);
     // the add-source popover of a scene with elements, the layout popover with a hidden dock
     await regie.clickScene('Welcome');
-    await page.getByRole('button', { name: 'Source', exact: true }).click();
+    await page.getByRole('button', { name: 'Add source', exact: true }).click();
     await audit.state('add-source popover (scene with elements)');
     await page.keyboard.press('Escape');
 
@@ -163,16 +164,16 @@ test.describe('German text audit', () => {
     await open.getByRole('button', { name: 'Block device' }).click();
     await audit.state('station: block confirmation');
     await open.getByRole('button', { name: 'Cancel' }).click();
-    await open.getByRole('button', { name: 'Send message' }).click();
+    await open.getByRole('tab', { name: 'Message' }).click();
     await audit.state('station: message composer');
-    await open.getByRole('button', { name: 'Send message' }).click();
+    await open.getByRole('tab', { name: 'Details' }).click();
     await open.getByRole('button', { name: 'Rename' }).click();
     await audit.state('station: rename');
     await page.keyboard.press('Escape');
     await row.click();
 
     // an element selected, with the label tab
-    await page.locator('.c-src__select').first().click();
+    await page.getByRole('button', { name: /^Select: / }).first().click();
     await audit.state('element selected (properties of the element)');
 
     // the pairing dock on its three tabs, with a knock card
@@ -191,13 +192,17 @@ test.describe('German text audit', () => {
 
     // broadcast states: start, live, end
     await page.getByRole('button', { name: 'Start broadcast' }).click();
+    const preflight = page.getByRole('dialog', { name: 'Start the broadcast?' });
+    await expect(preflight).toBeVisible();
+    await audit.state('start broadcast: confirmation with the pre-flight check');
+    await preflight.getByRole('button', { name: 'Start broadcast' }).click();
     await expect(page.getByRole('button', { name: 'End broadcast' }).first()).toBeVisible();
     await audit.state('on air');
     await page.getByRole('button', { name: 'End broadcast' }).first().click();
     await audit.state('end broadcast: confirmation');
     await page.getByRole('button', { name: 'Cancel' }).first().click();
     expect((await api.endBroadcast(production.id)).status).toBeLessThan(300);
-    await expect(page.getByText('ENDED')).toBeVisible();
+    await expect(page.locator('.c-live b')).toHaveText('Ended');
     await audit.state('broadcast ended');
 
     // the monitoring page
@@ -241,7 +246,7 @@ test.describe('German text audit', () => {
     const clock = (await page.locator('.c-header__clock').innerText()).trim();
     expect(clock, 'the header clock').toMatch(/^([01]\d|2[0-3]):[0-5]\d:[0-5]\d$/);
     // elapsed times of an incident («00:03»)
-    await expect(page.getByRole('region', { name: 'Meldungen' })).toContainText(/\d{2}:\d{2}/);
+    await expect(page.getByRole('region', { name: 'Aktivität' })).toContainText(/\d{2}:\d{2}/);
     // the log texts: times as HH:mm
     // monitoring: decimal comma in the rate column, «Mbit/s» header
     await page.goto('/monitoring');

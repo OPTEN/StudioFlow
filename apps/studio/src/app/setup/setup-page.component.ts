@@ -34,6 +34,7 @@ import { RefusedFields, focusFirstInvalid } from '../core/ui/form-feedback';
 import { IconComponent } from '../core/ui/icon.component';
 import { LanguageSelectComponent } from '../core/ui/language-select.component';
 import { ToastService } from '../core/ui/toast.service';
+import { SetupStepsComponent } from './setup-steps.component';
 
 /** The fields of the form, in the order they are filled in. */
 type Field = 'code' | 'username' | 'password' | 'repeat';
@@ -73,12 +74,13 @@ function usernameInvalidMsg(): Msg {
  * enters the one-time setup code from the server log, a username and a password (twice). The form says what is wrong
  * next to a field as soon as it is left, and on submit moves the focus to the first field that needs attention. The
  * API has the last word (wrong code, rules the browser does not know such as the list of common passwords, an account
- * that was created meanwhile). After success the new account is signed in and the wizard of the server settings opens
- * (step 2 of 4: media address, address and certificate, embedding). The page shares the look of the login page.
+ * that was created meanwhile). After success the new account is signed in and the wizard of the server opens (media
+ * server, address, embedding). The page shares the setup-assistant card of the login page and the step indicator of the
+ * wizard, so the first run reads as one flow.
  */
 @Component({
   selector: 'sf-setup-page',
-  imports: [IconComponent, LanguageSelectComponent, ReactiveFormsModule],
+  imports: [IconComponent, LanguageSelectComponent, ReactiveFormsModule, SetupStepsComponent],
   templateUrl: './setup-page.component.html',
   styleUrls: ['../login/login-page.component.scss', './setup-page.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -112,6 +114,8 @@ export class SetupPageComponent {
     }),
   });
   protected readonly submitting = signal(false);
+  /** Both passwords are shown in clear text. */
+  protected readonly revealed = signal(false);
   /** A problem that is not about one field (lockout, no connection). */
   protected readonly error = signal<Msg | null>(null);
   /** The general problem as text in the active language. */

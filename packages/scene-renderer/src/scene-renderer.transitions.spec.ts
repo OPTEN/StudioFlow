@@ -303,7 +303,7 @@ describe('scene renderer: slates', () => {
     expect(element?.querySelector('.sf-r-slate-subtitle')?.textContent).toBe('Webinar Q4');
     expect(element?.style.backgroundColor).toBe('#0d1117');
     expect(element?.style.color).toBe('#ffffff');
-    expect(element?.querySelector<HTMLElement>('.sf-r-slate-title')?.style.fontSize).toBe('72px');
+    expect(element?.querySelector<HTMLElement>('.sf-r-slate-title')?.style.fontSize).toBe('80px');
     expect(element?.querySelector<HTMLElement>('.sf-r-slate-subtitle')?.style.fontSize).toBe(
       '36px',
     );
@@ -339,6 +339,53 @@ describe('scene renderer: slates', () => {
     expect(animations).toHaveLength(1);
     expect(element?.querySelector('.sf-r-slate-title')?.textContent).toBe('Thanks for watching');
     expect(element?.querySelector<HTMLElement>('.sf-r-slate-subtitle')?.style.display).toBe('none');
+  });
+
+  it('draws a production slate as a title card: a rule under the title, no glyph, no note', () => {
+    mounted = mount();
+    mounted.renderer.showSlate(standby);
+    const element = slate();
+    const part = (name: string): HTMLElement | null | undefined =>
+      element?.querySelector<HTMLElement>(`.sf-r-slate-${name}`);
+    expect(part('rule')?.style.display).toBe('block');
+    expect(part('rule')?.getAttribute('aria-hidden')).toBe('true');
+    expect(part('mark')?.style.display).toBe('none');
+    expect(part('note')?.style.display).toBe('none');
+    // No text besides the production's own.
+    expect(element?.textContent).toBe('Starting soonWebinar Q4');
+    // A picture behind the text gets a scrim; a plain ground does not.
+    expect(part('scrim')?.style.display).toBe('none');
+    mounted.renderer.showSlate(standby, '/media/explicit.png');
+    expect(part('scrim')?.style.display).toBe('block');
+  });
+
+  it('draws a notice of the page quieter, with a glyph and a last line, and back', () => {
+    mounted = mount();
+    const denied = {
+      title: 'No access',
+      subtitle: 'Ask the control room for the current output link.',
+      backgroundAssetId: null,
+    };
+    mounted.renderer.showSlate(denied, null, { note: 'This page tries again by itself.' });
+    const element = slate();
+    const part = (name: string): HTMLElement | null | undefined =>
+      element?.querySelector<HTMLElement>(`.sf-r-slate-${name}`);
+    expect(element?.style.backgroundColor).toBe('#0d1117');
+    expect(part('mark')?.style.display).toBe('block');
+    expect(part('mark')?.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+    expect(part('rule')?.style.display).toBe('none');
+    expect(part('title')?.style.fontSize).toBe('48px');
+    expect(part('note')?.textContent).toBe('This page tries again by itself.');
+    expect(part('note')?.style.display).toBe('block');
+
+    // The same element turns back into the production's slate in place, without a second fade.
+    mounted.renderer.showSlate(standby);
+    expect(slate()).toBe(element);
+    expect(animations).toHaveLength(1);
+    expect(part('mark')?.style.display).toBe('none');
+    expect(part('note')?.style.display).toBe('none');
+    expect(part('note')?.textContent).toBe('');
+    expect(part('title')?.style.fontSize).toBe('80px');
   });
 
   it('fades out and removes the slate', async () => {

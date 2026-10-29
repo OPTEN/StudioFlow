@@ -1,9 +1,8 @@
-import { compareText, lowerCase, t, type PlainMessageKey } from '@studioflow/i18n';
+import { compareText, formatNumber, lowerCase, t, type PlainMessageKey } from '@studioflow/i18n';
 import {
   MISSING_VALUE,
   formatHm,
   formatKbpsAsMbit,
-  formatPercent,
   statusWord,
   type DeviceDto,
   type SlotState,
@@ -16,8 +15,8 @@ import { encodingView } from '../docks/shared/stream-load';
 import { networkLabel, totalBitrateKbps, worstSource } from '../docks/stations/station-view';
 
 /**
- * Pure model of the monitoring page (spec 9.1 `/monitoring`): one row per station with the live telemetry of its
- * slots, and sorting by any column. No Angular, no DOM.
+ * Pure model of the monitoring page (spec 9.1 `/monitoring`): one row per device with the live telemetry of its
+ * slots, and sorting by any column. Figures carry no unit where the column heading names it. No Angular, no DOM.
  */
 
 /** Telemetry older than this counts as stale (device reports every 2 s; a device silent for 6 s is disconnected, GAP-29). */
@@ -60,6 +59,7 @@ export interface MonitoringSlot {
   readonly encoding: string;
   /** The sender is at its CPU limit and lowers the picture (shown as a tag, issue #12). */
   readonly cpuLimited: boolean;
+  /** Packet loss in percent, one decimal, without the unit (the column heading carries it): "0.5". */
   readonly loss: string;
 }
 
@@ -170,7 +170,12 @@ export function monitoringRows(
         encoding: encodingView(slot).text,
         cpuLimited: slot?.qualityLimitation === 'cpu',
         loss:
-          slot && finite(slot.packetLossPct) ? formatPercent(slot.packetLossPct, 1) : MISSING_VALUE,
+          slot && finite(slot.packetLossPct)
+            ? formatNumber(slot.packetLossPct, {
+                minimumFractionDigits: 1,
+                maximumFractionDigits: 1,
+              })
+            : MISSING_VALUE,
       };
     });
     const live = slots.filter((slot) => slot.state === 'live');

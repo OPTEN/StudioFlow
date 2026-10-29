@@ -268,10 +268,10 @@ export class RegiePage {
 
   // --- scenes and switching ----------------------------------------------------------------------------------------
 
-  /** A scene button (“Presentation”, aria-pressed; the accessible name is its visible text: name, PGM / PVW tag, slot codes). */
+  /** A scene button (“Presentation”, aria-pressed; the accessible name may add “, live on Program” etc.). */
   scene(name: string): Locator {
     return this.page
-      .getByRole('button', { name: new RegExp(`^${escapeRegExp(name)}(,|$| (PGM|PVW|empty|[A-Z]\\d)( |$))`) })
+      .getByRole('button', { name: new RegExp(`^${escapeRegExp(name)}(,|$)`) })
       .and(this.page.locator('[aria-pressed]'));
   }
 
@@ -299,9 +299,9 @@ export class RegiePage {
       .getByRole('button', { name: kind });
   }
 
-  // --- stations and pairing ----------------------------------------------------------------------------------------
+  // --- devices and pairing -----------------------------------------------------------------------------------------
 
-  /** A station row by slot code (“K1”, “S1”) or device name. */
+  /** A device row of the Devices dock (formerly Stations) by slot code (“K1”, “S1”) or device name. */
   station(codeOrName: string): Locator {
     return this.page.locator('.c-st[data-device]').filter({ hasText: codeOrName });
   }
@@ -309,14 +309,15 @@ export class RegiePage {
   /** Waits for the station row of a freshly paired device and returns it. */
   async waitForStation(codeOrName: string, timeout = 15_000): Promise<Locator> {
     const row = this.station(codeOrName).first();
-    await expect(row, `station ${codeOrName} appears in the Stations dock`).toBeVisible({
+    await expect(row, `device ${codeOrName} appears in the Devices dock`).toBeVisible({
       timeout,
     });
     return row;
   }
 
+  /** “Add device” in the header of the Devices dock (a disclosure of the pairing dock: aria-expanded). */
   pairButton(): Locator {
-    return this.page.getByRole('button', { name: 'Pair device', exact: true });
+    return this.page.getByRole('button', { name: 'Add device', exact: true });
   }
 
   pairingDock(): Locator {
@@ -327,7 +328,10 @@ export class RegiePage {
     return this.page.getByRole('tab', { name: TAB_LABEL[tab] });
   }
 
-  /** Opens the pairing dock (“Pair device”) on a tab (Phone | Laptop | Link) and waits for the panel. */
+  /**
+   * Opens the pairing dock (“Add device”) on a tab (Phone | Laptop | Link) and waits for the panel. The dock opens on
+   * the tab used last in the browser, Phone the first time.
+   */
   async openPairing(tab: PairingTab = 'phone'): Promise<void> {
     const button = this.pairButton();
     if ((await button.getAttribute('aria-expanded')) !== 'true') await button.click();
@@ -338,7 +342,7 @@ export class RegiePage {
   }
 
   async closePairing(): Promise<void> {
-    const close = this.page.getByRole('button', { name: 'Close pair device' });
+    const close = this.page.getByRole('button', { name: 'Close add device' });
     if (await close.isVisible()) await close.click();
     await expect(this.pairingTab('phone')).toBeHidden();
   }
@@ -395,9 +399,10 @@ export class RegiePage {
 
   // --- feedback ---------------------------------------------------------------------------------------------------
 
-  /** The toast region (`role=status`). */
+  /** The toast region (`role=status` on the toast host; other `<output>` values, such as a camera's distance, are
+   *  status elements too). */
   toast(): Locator {
-    return this.page.getByRole('status').filter({ hasText: /\S/ });
+    return this.page.getByRole('status').and(this.page.locator('sf-toast-host'));
   }
 
   /** Text of the visible incident strip (“K1 reconnecting”). */

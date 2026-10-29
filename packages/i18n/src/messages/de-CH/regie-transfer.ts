@@ -6,19 +6,27 @@ export const regieTransfer: Translation<typeof en> = {
   'regie.transfer.duplicate.defaultName': '{name} (Kopie)',
   'regie.transfer.duplicate.done':
     'Produktion «{name}» erstellt. Sie ist nicht aktiv; wechsle zu ihr, wenn du bereit bist.',
+  'regie.transfer.duplicate.details':
+    'Kopiert: Szenen, Texte, Medien und Einstellungen. Nicht kopiert: Kopplungen, Einladungen, Output-Links und das Protokoll. Die Kopie wird nicht zur aktiven Produktion.',
   'regie.transfer.duplicate.hint':
-    'Die Kopie übernimmt Szenen, Texte, Medien und Einstellungen. Kameras und Bildschirme werden zu Platzhaltern für die Geräte, die du als Nächstes koppelst. Kopplungen, Einladungen, Output-Links und das Protokoll werden nicht kopiert, und die Kopie wird nicht zur aktiven Produktion.',
+    'Kameras und Bildschirme werden zu Platzhaltern für die Geräte, die du als Nächstes koppelst.',
   'regie.transfer.duplicate.media': {
     '=0': 'Es gibt keine Mediendateien zu kopieren.',
     one: '{count} Mediendatei ({size}) wird kopiert.',
     other: '{count} Mediendateien ({size}) werden kopiert.',
   },
   'regie.transfer.duplicate.name': 'Name der Kopie',
+  'regie.transfer.duplicate.open': 'Duplizieren …',
+  'regie.transfer.duplicate.sub':
+    'Eine neue Produktion mit den Szenen, Texten, Medien und Einstellungen dieser. Geht auch während der Sendung.',
   'regie.transfer.duplicate.submit': 'Duplizieren',
   'regie.transfer.duplicate.title': 'Produktion duplizieren',
 
   'regie.transfer.export.started':
     'Export von «{name}» gestartet. Dein Browser speichert die Datei.',
+  'regie.transfer.export.sub':
+    'Eine Datei zum Aufbewahren oder zum Importieren auf einem anderen Server.',
+  'regie.transfer.export.title': 'Produktion exportieren',
 
   'regie.transfer.import.another': 'Andere Datei wählen',
   'regie.transfer.import.busy': 'Wird importiert …',
@@ -38,6 +46,8 @@ export const regieTransfer: Translation<typeof en> = {
   'regie.transfer.import.previewTitle': 'Diese Datei enthält',
   'regie.transfer.import.progress': '{percent} hochgeladen',
   'regie.transfer.import.scenes': { one: '{count} Szene', other: '{count} Szenen' },
+  'regie.transfer.import.sub':
+    'Aus einer Datei, die aus StudioFlow exportiert wurde (.studioflow.zip).',
   'regie.transfer.import.submit': 'Importieren',
   'regie.transfer.import.texts': {
     '=0': 'Keine Texte',

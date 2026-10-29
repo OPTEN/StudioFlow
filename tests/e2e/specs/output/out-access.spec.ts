@@ -17,7 +17,12 @@ import { t } from '../../support/tags';
  * refused page shows; it retries at most every 30 s; a corrected link or address brings the picture back.
  */
 
-const DENIED_SUBTITLE = 'The output link is invalid or has expired.';
+/** A link the server refused: one text for every cause, so nothing tells whether the slug exists. */
+const DENIED_SUBTITLE = 'The link is wrong or no longer valid, or this computer is not allowed to use it. Ask the control room for the current output link.';
+/** The last line of a refused link: the page keeps trying by itself. */
+const DENIED_RETRY = 'This page tries again by itself every 30 seconds.';
+/** A link without a (valid) key: the page knows that without asking anybody, and never retries. */
+const INCOMPLETE_SUBTITLE = 'This link is incomplete. Copy the whole output link from the control room again.';
 
 function outputParticipants(production: { id: string }) {
   return livekitAdmin.listParticipants(production.id).then((participants) => participants.filter((participant) => participant.identity.startsWith('output_')));
@@ -25,7 +30,7 @@ function outputParticipants(production: { id: string }) {
 
 test.describe('OUT access and reload', () => {
   test(
-    'E2E-OUT-12 [output, access denied] wrong key, missing key, unknown slug, key of another production: the same “No access” slate, no picture, at most one attempt every 30 s; the corrected link works',
+    'E2E-OUT-12 [output, access denied] wrong key, missing key, unknown slug, key of another production: the same “No access” notice (a missing key says the link is incomplete), no picture, at most one attempt every 30 s; the corrected link works',
     t.p0,
     async ({ browser, api, production, config, onCleanup }) => {
       test.setTimeout(240_000);
@@ -65,6 +70,7 @@ test.describe('OUT access and reload', () => {
           text: document.body.innerText.replace(/\s+/g, ' ').trim(),
           title: document.querySelector('.sf-r-slate-title')?.textContent,
           subtitle: document.querySelector('.sf-r-slate-subtitle')?.textContent,
+          note: document.querySelector('.sf-r-slate-note')?.textContent ?? '',
           layers: document.querySelectorAll('.sf-r-layer').length,
           videos: document.querySelectorAll('video').length,
           items: document.querySelectorAll('[data-item-id]').length,
@@ -74,9 +80,11 @@ test.describe('OUT access and reload', () => {
       }
       for (const [index, entry] of opened.entries()) {
         expect(facts[index]!.title, `${entry.name}: title`).toBe(TEXT.slate.denied);
-        expect(facts[index]!.subtitle, `${entry.name}: subtitle`).toBe(DENIED_SUBTITLE);
+        expect(facts[index]!.subtitle, `${entry.name}: subtitle`).toBe(entry.network ? DENIED_SUBTITLE : INCOMPLETE_SUBTITLE);
+        expect(facts[index]!.note, `${entry.name}: retry line`).toBe(entry.network ? DENIED_RETRY : '');
         expect(facts[index]!.layers + facts[index]!.videos + facts[index]!.items, `${entry.name}: no scene content`).toBe(0);
-        expect(facts[index], `${entry.name} looks exactly like the first case`).toEqual(facts[0]);
+        // The refused links look exactly alike (no hint whether the slug exists); only the link without a key differs.
+        if (entry.network) expect(facts[index], `${entry.name} looks exactly like the first case`).toEqual(facts[0]);
       }
       // The key is never written into the DOM or the console.
       for (const entry of opened) {

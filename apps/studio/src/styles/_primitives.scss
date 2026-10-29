@@ -1,9 +1,7 @@
-// Shared UI primitives of the Regie, visually identical to prototype/regie.html. Global on purpose: every dock,
-// popover and form uses them. Mapping prototype → BEMIT: .btn → .c-btn, .btn-sm → .c-btn--sm, .ibtn → .c-ibtn,
-// .code → .c-code, .lamp → .c-lamp, .tag → .c-tag, .state-* → .c-state--*, .pop → .c-pop, .menu-item → .c-menu-item,
-// .kv → .c-kv, .confirm → .c-confirm, .seg → .c-seg, .switch → .c-switch, .num → .c-num, .select → .c-select,
-// .textin → .c-input, .check → .c-check, .hint → .c-hint, .empty → .c-empty, .key → .c-keycap, .ico → .c-icon,
-// .tabs/.tab → .c-tabs/.c-tab, .linkbox → .c-linkbox, .chipbtn → .c-chipbtn, .sub-h/.sec-label/.ctrl-l → .c-label.
+// Shared UI primitives of the Regie (DESIGN.md "Components"). Global on purpose: every dock, popover, page and form uses
+// them, so a button, a field or a menu looks and behaves the same everywhere. The vocabulary follows the controls of
+// Apple's platforms: filled push buttons, tinted and prominent actions, segmented controls with a raised thumb, switches,
+// grouped inset sections and floating menus with a highlighted row.
 @use 'mixins' as *;
 
 // Icons (IconComponent renders <svg class="c-icon">)
@@ -26,8 +24,8 @@
 }
 
 .c-icon--opten {
-  height: 18px;
-  width: 18px;
+  height: 16px;
+  width: 16px;
 }
 
 .c-icon__fill {
@@ -39,102 +37,130 @@
   fill: var(--red);
 }
 
-// Buttons
+// Buttons: a quiet filled push button by default; tinted (primary), filled (fill), green (go) and red (danger) variants.
 .c-btn {
-  @include state-transition(background-color, border-color, color);
+  @include state-transition(background-color, box-shadow, color, transform);
   align-items: center;
-  background: transparent;
-  border: 1px solid var(--seam-strong);
+  background: var(--fill);
+  border: 0;
   border-radius: var(--radius-md);
   color: var(--text);
   cursor: pointer;
   display: inline-flex;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   gap: 6px;
-  height: 30px;
+  height: var(--control-h);
   justify-content: center;
-  padding: 0 11px;
+  line-height: 1;
+  padding: 0 12px;
+  text-decoration: none;
   white-space: nowrap;
 
   &:hover {
-    background: var(--raised);
-    border-color: var(--btn-hover-border);
+    background: var(--fill-hover);
+    text-decoration: none;
   }
 
   &:active {
-    background: var(--raised-2);
+    transform: scale(0.98);
   }
 
-  &:disabled {
+  &:disabled,
+  &[aria-disabled='true'] {
     cursor: not-allowed;
-    opacity: 0.45;
+    opacity: 0.4;
+    transform: none;
   }
 
   .c-icon {
-    height: 14px;
-    width: 14px;
+    height: 15px;
+    width: 15px;
   }
 }
 
 .c-btn--sm {
-  font-size: 12.5px;
-  height: 26px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  height: var(--control-h-sm);
   padding: 0 9px;
-}
 
-.c-btn--primary {
-  border-color: var(--blue);
-  color: var(--blue);
-
-  &:hover {
-    background: var(--blue-fill);
-    border-color: var(--blue-fill);
-    color: var(--on-fill);
+  .c-icon {
+    height: 13px;
+    width: 13px;
   }
 }
 
+.c-btn--lg {
+  border-radius: 9px;
+  font-size: 14px;
+  height: var(--control-h-lg);
+  padding: 0 16px;
+}
+
+// Tinted: the accent action of a panel (Add device, Add source).
+.c-btn--primary {
+  background: var(--blue-wash);
+  // A step deeper than the accent: the text stays AA on the wash and its hover on every toolbar and dock surface.
+  color: var(--blue-ink);
+  font-weight: 600;
+
+  &:hover {
+    background: color-mix(in srgb, var(--blue) 24%, transparent);
+  }
+}
+
+// Filled: the one action that completes a form or a step.
 .c-btn--fill {
   background: var(--blue-fill);
-  border-color: var(--blue-fill);
+  box-shadow: var(--shadow-raise);
   color: var(--on-fill);
+  font-weight: 600;
 
   &:hover {
     background: var(--blue-fill-hover);
-    border-color: var(--blue-fill-hover);
   }
 }
 
 .c-btn--go {
   background: var(--green);
-  border-color: var(--green);
   color: var(--on-state);
+  font-weight: 600;
 
   &:hover {
     background: var(--green-hover);
-    border-color: var(--green-hover);
   }
 }
 
+// Destructive: red text on a quiet fill, kept apart from other actions; the confirmation uses the filled variant.
 .c-btn--danger {
-  background: transparent;
-  border: 1px dashed var(--red);
+  background: var(--fill);
   color: var(--red);
+  font-weight: 600;
 
   &:hover {
     background: var(--red-wash);
-    border-color: var(--red);
   }
 }
 
 .c-btn--danger-fill {
   background: var(--red);
-  border-color: var(--red);
   color: var(--on-state);
+  font-weight: 600;
 
   &:hover {
-    background: var(--red);
-    border-color: var(--red);
+    background: color-mix(in srgb, var(--red) 88%, var(--text));
+  }
+}
+
+// Plain: a text button without a fill (secondary actions in rows and footers).
+.c-btn--plain {
+  background: transparent;
+  color: var(--blue);
+  padding: 0 6px;
+
+  &:hover {
+    background: var(--blue-wash);
   }
 }
 
@@ -142,7 +168,7 @@
 .c-ibtn {
   @include state-transition(background-color, color);
   background: transparent;
-  border: 1px solid transparent;
+  border: 0;
   border-radius: var(--radius-md);
   color: var(--muted);
   cursor: pointer;
@@ -154,83 +180,91 @@
   width: 28px;
 
   &:hover {
-    background: var(--raised);
+    background: var(--fill);
     color: var(--text);
   }
 
-  &[aria-pressed='true'] {
+  &[aria-pressed='true'],
+  &[aria-expanded='true'] {
+    background: var(--fill);
     color: var(--text);
+
+    @include forced-colors {
+      outline: 1px solid Highlight;
+      outline-offset: -1px;
+    }
   }
 
   &:disabled {
     cursor: not-allowed;
-    opacity: 0.45;
+    opacity: 0.4;
   }
 }
 
-// Header chip button (output, health)
+// Toolbar capsule (output, health): a pill that opens a popover.
 .c-chipbtn {
   @include state-transition(background-color);
   align-items: center;
   background: transparent;
   border: 0;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-pill);
   color: var(--text);
   cursor: pointer;
   display: inline-flex;
   font-size: 13px;
-  font-weight: 600;
-  gap: 8px;
-  height: 32px;
-  padding: 0 10px;
+  font-weight: 500;
+  gap: 7px;
+  height: 30px;
+  padding: 0 12px;
   white-space: nowrap;
 
-  &:hover {
-    background: var(--raised);
+  &:hover,
+  &[aria-expanded='true'] {
+    background: var(--fill);
   }
 
   .u-mono {
-    color: var(--text-2);
+    color: var(--muted);
     font-size: 12px;
     font-weight: 500;
   }
 }
 
-// Slot code chip (K1, S2, M3)
+// Slot code badge (K1, S2, M3)
 .c-code {
-  background: var(--raised-2);
-  border-radius: var(--radius-xs);
-  color: var(--text);
-  font: 600 11.5px / 1 var(--font-mono);
+  @include mono;
+  background: var(--fill);
+  border-radius: 5px;
+  color: var(--text-2);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
   padding: 3px 5px;
   white-space: nowrap;
 }
 
-// Status lamp
+// Status lamp: 8 px; attention and failure grow a soft halo.
 .c-lamp {
   background: var(--green);
   border-radius: 50%;
   flex: none;
-  height: 7px;
+  height: 8px;
   justify-self: center;
-  width: 7px;
+  width: 8px;
 
   &.is-idle {
     background: var(--muted);
+    opacity: 0.6;
   }
 
   &.is-warn {
     background: var(--amber);
-    height: 9px;
-    outline: 3px solid color-mix(in srgb, var(--amber) 22%, transparent);
-    width: 9px;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--amber) 24%, transparent);
   }
 
   &.is-bad {
     background: var(--red);
-    height: 11px;
-    outline: 3px solid color-mix(in srgb, var(--red) 25%, transparent);
-    width: 11px;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--red) 26%, transparent);
   }
 
   &.is-pulse {
@@ -240,27 +274,26 @@
 
 @keyframes c-lamp-pulse {
   35% {
-    outline-color: color-mix(in srgb, var(--red) 5%, transparent);
-    outline-width: 9px;
+    box-shadow: 0 0 0 8px color-mix(in srgb, var(--red) 6%, transparent);
   }
 }
 
-// PGM / PVW tags
+// Live / Preview badges: a small capsule in the state hue.
 .c-tag {
   align-items: center;
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-pill);
   display: inline-flex;
   flex: none;
-  font: 700 10.5px / 1 var(--font-ui);
-  letter-spacing: 0.08em;
-  padding: 3px 6px;
-  text-transform: uppercase;
+  font: 600 10.5px / 1 var(--font-ui);
+  gap: 4px;
+  letter-spacing: 0.02em;
+  padding: 3px 7px;
   white-space: nowrap;
 }
 
 .c-tag--pgm {
-  background: var(--red-wash);
-  color: var(--red);
+  background: var(--red);
+  color: var(--on-state);
 }
 
 .c-tag--pvw {
@@ -268,7 +301,7 @@
   color: var(--green);
 }
 
-// "CPU at limit": a computer lowers the picture (amber = attention, not a failure)
+// "CPU at limit": a computer lowers the picture (orange = attention, not a failure)
 .c-tag--warn {
   background: var(--amber-wash);
   color: var(--amber);
@@ -277,22 +310,22 @@
 // State words ("reconnecting", "sharing stopped", "back")
 .c-state--warn {
   color: var(--amber);
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .c-state--bad {
   color: var(--red);
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .c-state--ok {
   color: var(--green);
-  font-weight: 700;
+  font-weight: 600;
 }
 
-// Uppercase group label (TRANSITION, APPLY TEMPLATE, PENDING REQUESTS)
+// Group label (Transition, Apply template, Pending requests)
 .c-label {
-  @include label-text(11px);
+  @include label-text(12px);
 }
 
 // Popovers and menus
@@ -302,58 +335,80 @@
 }
 
 .c-pop {
-  background: var(--float);
-  border: 1px solid var(--seam-strong);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-pop);
+  @include floating;
+  animation: c-pop-in var(--dur-state) var(--ease);
   min-width: 260px;
   padding: 6px;
   position: absolute;
   right: 0;
-  top: calc(100% + 6px);
+  top: calc(100% + 8px);
+  transform-origin: top right;
   z-index: 40;
 }
 
 .c-pop--left {
   left: 0;
   right: auto;
+  transform-origin: top left;
+}
+
+@keyframes c-pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(-4px);
+  }
 }
 
 .c-pop-h {
-  @include label-text;
-  padding: 6px 8px 4px;
+  @include label-text(12px);
+  padding: 8px 10px 4px;
 }
 
 .c-pop-note {
   color: var(--muted);
-  font-size: 12.5px;
-  padding: 2px 8px 8px;
+  font-size: 12px;
+  padding: 2px 10px 8px;
 }
 
+// Menu row: highlighted in the accent on hover and focus, as in a system menu.
 .c-menu-item {
   align-items: center;
   background: transparent;
   border: 0;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   color: var(--text);
   cursor: pointer;
   display: flex;
-  font-size: 13.5px;
+  font-size: 13px;
   gap: 10px;
-  min-height: 34px;
-  padding: 6px 8px;
+  min-height: 30px;
+  padding: 5px 10px;
   text-align: left;
   text-decoration: none;
   width: 100%;
 
   &:hover,
   &:focus-visible {
-    background: var(--raised-2);
+    background: var(--blue-fill);
+    color: var(--on-fill);
+    outline: none;
+    text-decoration: none;
+
+    .c-icon,
+    .c-hint {
+      color: var(--on-fill);
+    }
+
+    @include forced-colors {
+      outline: 2px solid Highlight;
+      outline-offset: -2px;
+    }
   }
 
   &:disabled {
+    background: transparent;
+    color: var(--muted);
     cursor: not-allowed;
-    opacity: 0.45;
   }
 
   .c-icon {
@@ -369,25 +424,26 @@
 }
 
 .c-menu-sep {
-  background: var(--seam-strong);
+  background: var(--seam);
   height: 1px;
-  margin: 6px 2px;
+  margin: 5px 10px;
 }
 
 // Key-value list
 .c-kv {
   display: grid;
   font-size: 13px;
-  gap: 6px 10px;
-  grid-template-columns: 82px minmax(0, 1fr);
+  gap: 7px 12px;
+  grid-template-columns: 96px minmax(0, 1fr);
   margin: 0;
-  padding: 6px 8px;
+  padding: 6px 10px;
 
   dt {
     color: var(--muted);
   }
 
   dd {
+    @include mono;
     margin: 0;
     min-width: 0;
   }
@@ -401,27 +457,27 @@
   border-radius: var(--radius-md);
   display: flex;
   gap: 6px;
-  height: 34px;
+  height: 32px;
   margin: 4px 8px 8px;
-  padding: 0 4px 0 10px;
+  padding: 0 3px 0 10px;
 }
 
 .c-linkbox__text {
   @include ellipsis;
   flex: 1;
-  font: 500 12.5px var(--font-mono);
+  font: 500 12px var(--font-mono);
 }
 
-// Dashed red confirmation box
+// Confirmation: a tinted box that names the consequence; its final action is the filled red button.
 .c-confirm {
-  border: 1px dashed var(--red);
-  border-radius: var(--radius-md);
-  color: var(--text-2);
+  background: var(--red-wash);
+  border-radius: 10px;
+  color: var(--text);
   display: grid;
   font-size: 13px;
-  gap: 8px;
+  gap: 10px;
   margin: 8px;
-  padding: 10px;
+  padding: 12px;
 }
 
 .c-confirm--flush {
@@ -435,45 +491,43 @@
   gap: 8px;
 }
 
-// Segmented control (Fill | Show all)
+// Segmented control: a filled track with a raised thumb on the selected segment.
 .c-seg {
-  border: 1px solid var(--seam-strong);
-  border-radius: var(--radius-md);
+  background: var(--fill);
+  border-radius: 8px;
   display: inline-grid;
+  gap: 2px;
   grid-auto-columns: 1fr;
   grid-auto-flow: column;
-  overflow: hidden;
+  padding: 2px;
 
   button {
+    @include state-transition(background-color, box-shadow, color);
     background: transparent;
     border: 0;
-    border-right: 1px solid var(--seam-strong);
+    border-radius: 6px;
     color: var(--text-2);
     cursor: pointer;
     font-size: 12.5px;
-    font-weight: 600;
-    height: 28px;
+    font-weight: 500;
+    height: 24px;
     padding: 0 10px;
     white-space: nowrap;
 
-    &:last-child {
-      border-right: 0;
-    }
-
     &:hover {
-      background: var(--raised);
+      color: var(--text);
     }
 
     &:focus-visible {
-      outline-offset: -3px;
+      outline-offset: 0;
     }
 
     &[aria-pressed='true'] {
-      background: var(--raised-2);
-      box-shadow: var(--shadow-selected);
+      background: var(--float);
+      box-shadow: var(--shadow-raise);
       color: var(--text);
+      font-weight: 600;
 
-      // Forced colours remove the background and the box shadow: the selection stays visible as a bar and a weight.
       @include forced-colors {
         border-bottom: 3px solid Highlight;
         font-weight: 800;
@@ -482,51 +536,50 @@
 
     &:disabled {
       cursor: not-allowed;
-      opacity: 0.45;
+      opacity: 0.4;
     }
   }
 }
 
-// Tabs (Handy | Laptop | Link)
+// Tabs (Phone | Laptop | Link): the segmented control with role=tab.
 .c-tabs {
-  border: 1px solid var(--seam-strong);
-  border-radius: var(--radius-md);
+  background: var(--fill);
+  border-radius: 9px;
   display: grid;
+  gap: 2px;
   grid-auto-columns: minmax(0, 1fr);
   grid-auto-flow: column;
-  overflow: hidden;
+  padding: 2px;
 }
 
 .c-tab {
+  @include state-transition(background-color, box-shadow, color);
   align-items: center;
   background: transparent;
   border: 0;
-  border-right: 1px solid var(--seam-strong);
+  border-radius: 7px;
   color: var(--text-2);
   cursor: pointer;
   display: inline-flex;
-  font-size: 13.5px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 500;
   gap: 7px;
-  height: 32px;
+  height: 28px;
   justify-content: center;
 
-  &:last-child {
-    border-right: 0;
-  }
-
   &:hover {
-    background: var(--raised);
+    color: var(--text);
   }
 
   &:focus-visible {
-    outline-offset: -3px;
+    outline-offset: 0;
   }
 
   &[aria-selected='true'] {
-    background: var(--blue-wash);
-    box-shadow: var(--shadow-selected);
-    color: var(--blue);
+    background: var(--float);
+    box-shadow: var(--shadow-raise);
+    color: var(--text);
+    font-weight: 600;
 
     @include forced-colors {
       border-bottom: 3px solid Highlight;
@@ -535,39 +588,42 @@
   }
 }
 
-// Toggle switch (Studio Mode)
+// Toggle switch (Studio Mode and every on/off setting)
 .c-switch {
   align-items: center;
   color: var(--text);
   cursor: pointer;
   display: flex;
-  font-size: 13.5px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 500;
   gap: 10px;
   min-height: 24px;
 
   input {
     @include state-transition(background-color);
     appearance: none;
-    background: var(--control-edge);
+    background: var(--seam-strong);
     border-radius: var(--radius-switch);
     cursor: pointer;
     flex: none;
-    height: 20px;
+    height: 22px;
     margin: 0;
     position: relative;
-    width: 36px;
+    width: 38px;
 
     &::after {
-      background: var(--on-fill);
+      background: #ffffff;
       border-radius: 50%;
+      box-shadow:
+        0 1px 3px rgba(0, 0, 0, 0.3),
+        0 0 0 0.5px rgba(0, 0, 0, 0.06);
       content: '';
-      height: 14px;
-      left: 3px;
+      height: 18px;
+      left: 2px;
       position: absolute;
-      top: 3px;
-      transition: transform var(--dur-state) var(--ease);
-      width: 14px;
+      top: 2px;
+      transition: transform var(--dur-state) var(--ease-spring);
+      width: 18px;
     }
 
     &:checked {
@@ -585,17 +641,19 @@
 
     &:disabled {
       cursor: not-allowed;
-      opacity: 0.45;
+      opacity: 0.4;
     }
-  }
 
-  // Forced colours drop the painted track and thumb: draw them with borders and show the state by the thumb side.
-  @include forced-colors {
-    input {
+    // Track and thumb are backgrounds: a border draws the track, the thumb keeps a system colour.
+    @include forced-colors {
       border: 1px solid ButtonText;
+      forced-color-adjust: none;
+      background: Canvas;
 
       &::after {
         background: ButtonText;
+        top: 1px;
+        left: 1px;
       }
 
       &:checked {
@@ -613,21 +671,23 @@
 // Inputs
 .c-input,
 .c-select {
+  @include state-transition(border-color, box-shadow);
   background: var(--ground);
   border: 1px solid var(--control-edge);
   border-radius: var(--radius-md);
   color: var(--text);
-  height: 30px;
+  height: var(--control-h);
   width: 100%;
 
   &:focus {
     border-color: var(--blue);
+    box-shadow: var(--shadow-focus);
     outline: none;
   }
 
   &:disabled {
     cursor: not-allowed;
-    opacity: 0.6;
+    opacity: 0.55;
   }
 
   &.is-invalid {
@@ -636,43 +696,52 @@
 }
 
 .c-input {
-  font: 500 13.5px var(--font-ui);
+  font: 400 13px var(--font-ui);
   padding: 0 9px;
 }
 
+// Select: the native list with a drawn chevron.
 .c-select {
-  font: 500 13px var(--font-ui);
-  padding: 0 8px;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='14' viewBox='0 0 10 14'%3E%3Cpath d='M2 5l3-3 3 3M2 9l3 3 3-3' fill='none' stroke='%238e8e93' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-position: right 9px center;
+  background-repeat: no-repeat;
+  cursor: pointer;
+  font: 400 13px var(--font-ui);
+  padding: 0 28px 0 9px;
 }
 
-// Number field with mono label, violet value and unit
+// Number field with label, value and unit
 .c-num {
+  @include state-transition(border-color, box-shadow);
   align-items: center;
   background: var(--ground);
   border: 1px solid var(--control-edge);
   border-radius: var(--radius-md);
   display: flex;
   gap: 6px;
-  height: 30px;
+  height: var(--control-h);
   min-width: 0;
   padding: 0 8px;
 
   &:focus-within {
     border-color: var(--blue);
+    box-shadow: var(--shadow-focus);
   }
 }
 
 .c-num__label,
 .c-num__unit {
   color: var(--muted);
-  font: 500 11px var(--font-mono);
+  font: 500 11px var(--font-ui);
 }
 
 .c-num__input {
+  @include mono;
   background: transparent;
   border: 0;
-  color: var(--violet);
-  font: 500 13px var(--font-mono);
+  color: var(--text);
+  font-size: 13px;
   min-width: 0;
   outline: none;
   padding: 0;
@@ -694,48 +763,182 @@
 
   input {
     accent-color: var(--blue-fill);
-    height: 15px;
+    height: 16px;
     margin: 0;
-    width: 15px;
+    width: 16px;
   }
 }
 
 // Hint text, empty state, field error
 .c-hint {
   color: var(--muted);
-  font-size: 12.5px;
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .c-field-error {
   color: var(--red);
-  font-size: 12.5px;
+  font-size: 12px;
 }
 
 .c-empty {
   color: var(--muted);
-  font-size: 13px;
-  padding: 16px 14px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  padding: 18px 16px;
 
   strong {
-    color: var(--text-2);
+    color: var(--text);
     display: block;
-    margin-bottom: 4px;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 3px;
   }
 }
 
 // Keycap number on scene thumbnails
 .c-keycap {
+  @include mono;
   background: var(--pic-scrim);
-  border-radius: 2px;
-  bottom: 2px;
-  color: var(--pic-text-2);
-  font: 600 9.5px / 1 var(--font-mono);
-  padding: 2px 3px;
+  border-radius: 4px;
+  bottom: 3px;
+  color: var(--pic-text);
+  font: 600 10px / 1 var(--font-ui);
+  padding: 2px 4px;
   position: absolute;
-  right: 2px;
+  right: 3px;
 
   @include short-laptop {
-    font-size: 8.5px;
-    padding: 1px 2px;
+    font-size: 9px;
+    padding: 1px 3px;
   }
+}
+
+// Count badge next to a title (Scenes 7, Devices 4)
+.c-badge {
+  @include mono;
+  background: var(--fill);
+  border-radius: var(--radius-pill);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  min-width: 18px;
+  padding: 3px 6px;
+  text-align: center;
+}
+
+// Grouped inset section (settings, forms): a rounded group of rows on the grouped surface, as in System Settings.
+.c-group {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  min-width: 0;
+}
+
+.c-group__title {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 0 4px;
+}
+
+.c-group__body {
+  background: var(--group);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 0 0 0.5px var(--seam);
+  display: grid;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.c-group__row {
+  align-items: center;
+  display: grid;
+  gap: 4px 16px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-height: 44px;
+  padding: 9px 14px;
+  position: relative;
+
+  & + & {
+    box-shadow: inset 0 1px 0 var(--seam);
+  }
+}
+
+.c-group__row--stack {
+  align-items: stretch;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.c-group__label {
+  color: var(--text);
+  font-size: 13px;
+  min-width: 0;
+}
+
+.c-group__sub {
+  color: var(--muted);
+  display: block;
+  font-size: 12px;
+  line-height: 1.4;
+  margin-top: 2px;
+}
+
+.c-group__footer {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+  padding: 0 4px;
+}
+
+// Settings page: a large title, the scope line, then grouped sections in one readable column (DESIGN.md "Settings").
+.c-page {
+  display: grid;
+  gap: 28px;
+  margin: 0 auto;
+  max-width: 720px;
+  padding: 34px 32px 64px;
+
+  @include narrow {
+    padding: 20px var(--gr) 48px var(--gl);
+  }
+}
+
+.c-page--wide {
+  max-width: 1160px;
+}
+
+.c-page__head {
+  display: grid;
+  gap: 4px;
+}
+
+.c-page__title {
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.c-page__lead {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+  max-width: 62ch;
+}
+
+.c-page__body {
+  display: grid;
+  gap: 26px;
+  min-width: 0;
+}
+
+.c-page__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
 }

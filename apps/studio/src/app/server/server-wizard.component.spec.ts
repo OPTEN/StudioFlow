@@ -40,9 +40,7 @@ describe('ServerWizardComponent', () => {
     await render();
     answerSettings(answer);
     await render();
-    for (const request of http.match('/api/settings/media/suggestions')) {
-      request.flush({ fromHost: null, interfaces: [] });
-    }
+    answerSuggestions();
     await render();
   }
 
@@ -55,35 +53,56 @@ describe('ServerWizardComponent', () => {
     }
   }
 
+  function answerSuggestions(): void {
+    for (const request of http.match('/api/settings/media/suggestions')) {
+      request.flush({ fromHost: null, interfaces: [] });
+    }
+  }
+
   async function render(): Promise<void> {
     await flushMicrotasks();
     fixture.detectChanges();
     await fixture.whenStable();
   }
 
-  function stepText(): string {
-    return element.querySelector('.c-wizard__step')?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
+  function title(): string {
+    return element.querySelector('h1')?.textContent?.trim() ?? '';
   }
 
-  function segments(): string[] {
-    return Array.from(element.querySelectorAll('.c-wizard__seg')).map((segment) =>
-      segment.classList.contains('is-done')
+  /** The steps of the indicator: done, current or still to do. */
+  function steps(): string[] {
+    return Array.from(element.querySelectorAll('.c-steps__item')).map((step) =>
+      step.classList.contains('is-done')
         ? 'done'
-        : segment.classList.contains('is-current')
+        : step.getAttribute('aria-current') === 'step'
           ? 'current'
           : 'todo',
     );
   }
 
+  function button(label: string): HTMLButtonElement {
+    const found = Array.from(element.querySelectorAll('button')).find(
+      (candidate) => candidate.textContent?.replace(/\s+/g, ' ').trim() === label,
+    );
+    if (!found) {
+      throw new Error(`no button "${label}"`);
+    }
+    return found;
+  }
+
+  function section<T>(type: new (...args: never[]) => T): T {
+    return fixture.debugElement.query(By.directive(type)).componentInstance as T;
+  }
+
   afterEach(() => http.verify());
 
-  it('starts with the media address as step 2 of 4, after the account', async () => {
+  it('starts with the media server, after the account, in the labelled steps of the first run', async () => {
     await setup();
-    expect(element.querySelector('h2')?.textContent).toBe('Set up the server');
-    expect(stepText()).toBe('Step 2 of 4 · Media address');
-    expect(segments()).toEqual(['done', 'current', 'todo', 'todo']);
+    expect(title()).toBe('Connect the media server');
+    expect(steps()).toEqual(['done', 'current', 'todo', 'todo', 'todo']);
+    expect(element.querySelector('[aria-current="step"]')?.textContent).toContain('Media server');
     expect(fixture.debugElement.query(By.directive(MediaSectionComponent))).not.toBeNull();
-    expect(element.querySelector('#wizard-media')?.textContent).toBe('Media address');
+    expect(element.textContent).not.toContain('Keep the defaults');
   });
 
   it('says that the settings could not be read and tries again', async () => {
@@ -91,69 +110,92 @@ describe('ServerWizardComponent', () => {
     expect(element.querySelector('[role="alert"]')?.textContent).toContain(
       'could not read the settings',
     );
-    (element.querySelector('.c-wizard__section button') as HTMLButtonElement).click();
+    button('Try again').click();
     await render();
     answerSettings(serverSettingsFixture());
     await render();
-    http
-      .match('/api/settings/media/suggestions')
-      .forEach((request) => request.flush({ fromHost: null, interfaces: [] }));
+    answerSuggestions();
     await render();
-    expect(stepText()).toBe('Step 2 of 4 · Media address');
+    expect(title()).toBe('Connect the media server');
   });
 
   it('goes through address and embedding, which can keep their defaults, to the end', async () => {
     await setup();
-    fixture.debugElement.query(By.directive(MediaSectionComponent)).componentInstance.saved.emit();
+    section(MediaSectionComponent).saved.emit();
     await render();
-    expect(stepText()).toBe('Step 3 of 4 · Address and certificate');
-    expect(segments()).toEqual(['done', 'done', 'current', 'todo']);
+    expect(title()).toBe('Choose how browsers reach the server');
+    expect(steps()).toEqual(['done', 'done', 'current', 'todo', 'todo']);
     expect(fixture.debugElement.query(By.directive(AddressSectionComponent))).not.toBeNull();
+    expect(element.querySelector('.c-wizard__keep')?.textContent).toContain(
+      'keeps its local certificate',
+    );
 
-    (element.querySelector('.c-wizard__skip button') as HTMLButtonElement).click();
+    button('Keep the defaults').click();
     await render();
-    expect(stepText()).toBe('Step 4 of 4 · Embedding');
+    expect(title()).toBe('Allow websites to show the output');
     expect(fixture.debugElement.query(By.directive(EmbeddingSectionComponent))).not.toBeNull();
+    expect(element.querySelector('.c-wizard__keep')?.textContent).toContain(
+      'no other website may show the output',
+    );
 
-    (element.querySelector('.c-wizard__skip button') as HTMLButtonElement).click();
+    button('Keep the defaults').click();
     await render();
-    expect(stepText()).toBe('The server is ready');
-    expect(segments()).toEqual(['done', 'done', 'done', 'done']);
+    expect(title()).toBe('The server is ready');
+    expect(steps()).toEqual(['done', 'done', 'done', 'done', 'current']);
     expect(element.querySelector('.c-wizard__link')).toBeNull();
+  });
+
+  it('goes back one step, and the focus moves to the title of each new step', async () => {
+    await setup();
+    document.body.append(element);
+    section(MediaSectionComponent).saved.emit();
+    await render();
+    button('Keep the defaults').click();
+    await render();
+    expect(document.activeElement).toBe(element.querySelector('h1'));
+
+    button('Back').click();
+    await render();
+    expect(title()).toBe('Choose how browsers reach the server');
+    button('Back').click();
+    await render();
+    answerSuggestions();
+    await render();
+    expect(title()).toBe('Connect the media server');
+    expect(element.textContent).not.toContain('Back');
+    element.remove();
   });
 
   it('opens the Regie at the end', async () => {
     await setup(configuredSettingsFixture());
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
-    fixture.debugElement.query(By.directive(MediaSectionComponent)).componentInstance.saved.emit();
+    section(MediaSectionComponent).saved.emit();
     await render();
-    fixture.debugElement
-      .query(By.directive(AddressSectionComponent))
-      .componentInstance.saved.emit('https://localhost:8443');
+    // The address did not change: the server answers at the origin this page was opened at.
+    section(AddressSectionComponent).saved.emit(document.location.origin);
     await render();
-    fixture.debugElement
-      .query(By.directive(EmbeddingSectionComponent))
-      .componentInstance.saved.emit();
+    section(EmbeddingSectionComponent).saved.emit();
     await render();
-    (element.querySelector('.c-login__submit') as HTMLButtonElement).click();
+    button('Open the control room').click();
     await render();
     expect(navigate).toHaveBeenCalledWith('/');
   });
 
-  it('points to the new address when the address was changed to another one', async () => {
+  it('leads to the new address when the address was changed to another one', async () => {
     await setup();
-    fixture.debugElement.query(By.directive(MediaSectionComponent)).componentInstance.saved.emit();
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+    section(MediaSectionComponent).saved.emit();
     await render();
-    fixture.debugElement
-      .query(By.directive(AddressSectionComponent))
-      .componentInstance.saved.emit('https://studioflow.example.com:8443');
+    section(AddressSectionComponent).saved.emit('https://studioflow.example.com:8443');
     await render();
-    fixture.debugElement
-      .query(By.directive(EmbeddingSectionComponent))
-      .componentInstance.saved.emit();
+    section(EmbeddingSectionComponent).saved.emit();
     await render();
     const link = element.querySelector<HTMLAnchorElement>('.c-wizard__link')!;
     expect(link.getAttribute('href')).toBe('https://studioflow.example.com:8443');
     expect(link.textContent).toContain('Open https://studioflow.example.com:8443');
+    expect(link.classList).toContain('c-btn--fill');
+    button('Stay at this address').click();
+    await render();
+    expect(navigate).toHaveBeenCalledWith('/');
   });
 });

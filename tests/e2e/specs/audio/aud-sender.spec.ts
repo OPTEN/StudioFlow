@@ -46,7 +46,7 @@ test.describe('AUD senders', () => {
       await station.waitForMic('live', 45_000);
       await expect(station.page.getByText('Stereo, sent as it comes: echo cancellation, noise suppression and automatic gain are off.')).toBeVisible();
       await expect(station.page.getByRole('button', { name: /Share screen|Add camera/ })).toHaveCount(0);
-      await expect(station.levelText()).not.toHaveText('−∞ dB', { timeout: 15_000 });
+      await expect(station.levelText()).not.toHaveText('No sound', { timeout: 15_000 });
       // The Regie knows a station with one audio source (no picture in its row).
       const row = await regie.waitForStation('Mixing desk');
       await expect(row).toContainText('A1');
@@ -73,9 +73,9 @@ test.describe('AUD senders', () => {
         .toContain(chosen.value);
       await station.waitForMic('live', 30_000);
 
-      // "Switch microphone off": stopped on purpose, the button changes, a reload does not start it again.
+      // "Stop sending sound": stopped on purpose, the button changes, a reload does not start it again.
       await station.micToggle().click();
-      await expect(station.micToggle()).toHaveText('Switch microphone on');
+      await expect(station.micToggle()).toHaveText('Start sending sound');
       await expect(station.panel().getByTestId('mic-state')).toHaveText('Off');
       const callsBefore = await station.page.evaluate(() => (window as unknown as { __sfMedia: { userMediaCalls: unknown[] } }).__sfMedia.userMediaCalls.length);
       await station.page.reload();
@@ -107,15 +107,15 @@ test.describe('AUD senders', () => {
       const camera = phone.sourceId;
       const mic = phone.sourceId.replace(/\/camera$/, '/mic');
       expect((await production.snapshot()).sources.some((source) => source.kind === 'audio'), 'no microphone before it is switched on').toBe(false);
-      // The microphone button is there and says it is off; nothing was asked of the browser.
+      // The microphone button of the control rail is there and not pressed (off); nothing was asked of the browser.
       const button = phone.phone.page.getByTestId('slot-mic');
-      await expect(button).toHaveText('Microphone off');
+      await expect(button).toHaveText('Microphone');
       await expect(button).toHaveAttribute('aria-pressed', 'false');
       expect((await phone.phone.page.evaluate(() => (window as unknown as { __sfMedia: { userMediaCalls: Array<{ audio?: unknown }> } }).__sfMedia.userMediaCalls.filter((call) => call.audio).length))).toBe(0);
 
       await button.click();
       await phone.phone.waitForSlot('mic', 'live', 45_000);
-      await expect(button).toHaveText('Microphone on');
+      await expect(button).toHaveAttribute('aria-pressed', 'true');
       await expect(phone.phone.page.getByTestId('mic-live'), 'not on air').toBeHidden();
       // A new audio source with a channel that starts muted and follows the picture of its device.
       await expect
@@ -147,10 +147,10 @@ test.describe('AUD senders', () => {
 
       // Switching it off on the phone: stopped on purpose, the sound is gone and a reload does not start it again.
       await button.click();
-      await expect(button).toHaveText('Microphone off');
+      await expect(button).toHaveAttribute('aria-pressed', 'false');
       await phone.phone.page.reload();
       await phone.phone.waitConnected();
-      await expect(phone.phone.page.getByTestId('slot-mic')).toHaveText('Microphone off');
+      await expect(phone.phone.page.getByTestId('slot-mic')).toHaveAttribute('aria-pressed', 'false');
       expect(phone.phone.problems.pageErrors).toEqual([]);
     },
   );

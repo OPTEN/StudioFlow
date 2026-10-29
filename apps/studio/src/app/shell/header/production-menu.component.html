@@ -4,10 +4,11 @@
     type="button"
     aria-haspopup="dialog"
     [attr.aria-label]="t('regie.header.production.menu', { name: name() })"
+    [title]="name()"
     [sfPopoverTrigger]="popoverId"
   >
     <span class="c-prod__name">{{ name() }}</span>
-    <svg sfIcon="chev" [size]="13"></svg>
+    <svg class="c-prod__chev" sfIcon="chev" [size]="14"></svg>
   </button>
 
   @if (popovers.isOpen(popoverId)) {
@@ -17,380 +18,71 @@
       [attr.aria-label]="t('regie.header.production.dialog')"
       [sfPopover]="popoverId"
     >
-      @switch (mode()) {
-        @case ('rename') {
-          <form class="c-prod__form" (submit)="rename($event)">
-            <div class="c-pop-h">{{ t('regie.header.production.renameTitle') }}</div>
-            <label class="c-prod__field">
-              <span class="c-prod__label">{{ t('regie.header.production.name') }}</span>
-              <input
-                class="c-input"
-                type="text"
-                maxlength="80"
-                autocomplete="off"
-                [class.is-invalid]="renameControl.invalid && renameControl.touched"
-                [formControl]="renameControl"
-              />
-            </label>
-            @if (renameControl.invalid && renameControl.touched) {
-              <p class="c-field-error">{{ t('regie.header.production.nameInvalid') }}</p>
-            }
-            <div class="c-prod__row">
-              <button class="c-btn c-btn--sm c-btn--fill" type="submit" [disabled]="busy()">
-                {{ t('common.save') }}
-              </button>
-              <button
-                class="c-btn c-btn--sm"
-                type="button"
-                [disabled]="busy()"
-                (click)="mode.set('menu')"
-              >
-                {{ t('common.cancel') }}
-              </button>
-            </div>
-          </form>
+      @if (confirming(); as target) {
+        <div class="c-pop-h">{{ t('regie.production.switch.toLabel', { name: target.name }) }}</div>
+        <sf-confirm-box
+          [label]="t('regie.header.production.switchTitle')"
+          [message]="t('regie.production.switch.confirm', { live: name() })"
+          [confirmLabel]="t('regie.header.production.switchTitle')"
+          [busy]="busy()"
+          (confirm)="switchTo(target)"
+          (cancel)="confirming.set(null)"
+        />
+      } @else {
+        <div class="c-pop-h" id="sf-prod-list">{{ t('regie.production.switcher.title') }}</div>
+        @if (!store.canCommand()) {
+          <p class="c-pop-note">{{ t('regie.production.switcher.offline') }}</p>
         }
-        @case ('slates') {
-          <form class="c-prod__form" [formGroup]="slatesForm" (submit)="saveSlates($event)">
-            <div class="c-pop-h">{{ t('regie.header.production.beforeBroadcast') }}</div>
-            <label class="c-prod__field">
-              <span class="c-prod__label">{{ t('regie.header.production.title') }}</span>
-              <input class="c-input" type="text" maxlength="120" formControlName="standbyTitle" />
-            </label>
-            <label class="c-prod__field">
-              <span class="c-prod__label">{{ t('regie.header.production.subtitle') }}</span>
-              <input
-                class="c-input"
-                type="text"
-                maxlength="120"
-                formControlName="standbySubtitle"
-              />
-            </label>
-            @if (imageAssets().length > 0) {
-              <label class="c-prod__field">
-                <span class="c-prod__label">{{ t('regie.header.production.background') }}</span>
-                <select class="c-select" formControlName="standbyBackground">
-                  <option value="">{{ t('regie.header.production.backgroundNone') }}</option>
-                  @for (asset of imageAssets(); track asset.id) {
-                    <option [value]="asset.id">{{ asset.code }} · {{ asset.name }}</option>
-                  }
-                </select>
-              </label>
-            }
-            <div class="c-pop-h">{{ t('regie.header.production.afterBroadcast') }}</div>
-            <label class="c-prod__field">
-              <span class="c-prod__label">{{ t('regie.header.production.title') }}</span>
-              <input class="c-input" type="text" maxlength="120" formControlName="endTitle" />
-            </label>
-            <label class="c-prod__field">
-              <span class="c-prod__label">{{ t('regie.header.production.subtitle') }}</span>
-              <input class="c-input" type="text" maxlength="120" formControlName="endSubtitle" />
-            </label>
-            @if (imageAssets().length > 0) {
-              <label class="c-prod__field">
-                <span class="c-prod__label">{{ t('regie.header.production.background') }}</span>
-                <select class="c-select" formControlName="endBackground">
-                  <option value="">{{ t('regie.header.production.backgroundNone') }}</option>
-                  @for (asset of imageAssets(); track asset.id) {
-                    <option [value]="asset.id">{{ asset.code }} · {{ asset.name }}</option>
-                  }
-                </select>
-              </label>
-            }
-            @if (slatesForm.invalid && slatesForm.touched) {
-              <p class="c-field-error">{{ t('regie.header.production.slatesInvalid') }}</p>
-            }
-            <p class="c-hint">{{ t('regie.header.production.slatesHint') }}</p>
-            <div class="c-prod__row">
-              <button class="c-btn c-btn--sm c-btn--fill" type="submit" [disabled]="busy()">
-                {{ t('common.save') }}
-              </button>
-              <button
-                class="c-btn c-btn--sm"
-                type="button"
-                [disabled]="busy()"
-                (click)="mode.set('menu')"
-              >
-                {{ t('common.cancel') }}
-              </button>
-            </div>
-          </form>
-        }
-        @case ('textColors') {
-          <form class="c-prod__form" [formGroup]="textForm" (submit)="saveTextColors($event)">
-            <div class="c-pop-h">{{ t('regie.header.production.textColorsTitle') }}</div>
-            @for (field of textColorFields; track field.key) {
-              <div class="c-prod__field">
-                <span class="c-prod__label">{{ t(field.label) }}</span>
-                <span class="c-prod__color">
-                  <input
-                    class="c-prod__swatch"
-                    type="color"
-                    [attr.aria-label]="
-                      t('regie.header.production.textPick', { colour: t(field.label) })
-                    "
-                    [value]="textForm.controls[field.key].value"
-                    (input)="setColor(field.key, $any($event.target).value)"
-                  />
-                  <input
-                    class="c-input u-mono"
-                    type="text"
-                    maxlength="7"
-                    autocomplete="off"
-                    spellcheck="false"
-                    [attr.aria-label]="
-                      t('regie.header.production.textHex', { colour: t(field.label) })
-                    "
-                    [class.is-invalid]="
-                      textForm.controls[field.key].invalid && textForm.controls[field.key].touched
-                    "
-                    [formControl]="textForm.controls[field.key]"
-                  />
-                </span>
-              </div>
-            }
-            @if (editedTheme(); as theme) {
-              <div
-                class="c-prod__sample"
-                role="img"
-                [attr.aria-label]="t('regie.header.production.textSample')"
-                [style.background-color]="theme.background"
-                [style.color]="theme.foreground"
-                [style.border-left-color]="theme.accent"
-              >
-                <strong>{{ t('regie.text.placeholder.name') }}</strong>
-                <span>{{ t('regie.text.placeholder.role') }}</span>
-              </div>
-            }
-            @if (lowContrast(); as ratio) {
-              <p class="c-field-error" role="status">
-                {{ t('regie.header.production.textContrastLow', { ratio }) }}
-              </p>
-            }
-            @if (textForm.invalid && textForm.touched) {
-              <p class="c-field-error">{{ t('regie.header.production.textColorsInvalid') }}</p>
-            }
-            <p class="c-hint">{{ t('regie.header.production.textColorsHint') }}</p>
-            <div class="c-prod__row">
-              <button class="c-btn c-btn--sm c-btn--fill" type="submit" [disabled]="busy()">
-                {{ t('common.save') }}
-              </button>
-              <button
-                class="c-btn c-btn--sm"
-                type="button"
-                [disabled]="busy()"
-                (click)="resetTextColors()"
-              >
-                {{ t('regie.header.production.textColorsReset') }}
-              </button>
-              <button
-                class="c-btn c-btn--sm"
-                type="button"
-                [disabled]="busy()"
-                (click)="mode.set('menu')"
-              >
-                {{ t('common.cancel') }}
-              </button>
-            </div>
-          </form>
-        }
-        @case ('canvas') {
-          <form class="c-prod__form" (submit)="saveCanvas($event)">
-            <div class="c-pop-h">{{ t('regie.canvas.title') }}</div>
-            <sf-canvas-picker
-              [format]="canvasFormat()"
-              [resolution]="canvasResolution()"
-              [disabled]="live() || busy()"
-              (formatChange)="setCanvasFormat($event)"
-              (resolutionChange)="setCanvasResolution($event)"
-            />
-            @if (live()) {
-              <p class="c-field-error" role="status">{{ t('regie.canvas.liveLocked') }}</p>
-            } @else if (confirmingCanvas()) {
-              <sf-confirm-box
-                [message]="t('regie.canvas.confirm', { count: scenesWithElements() })"
-                [confirmLabel]="t('regie.canvas.confirmButton')"
-                [busy]="busy()"
-                (confirm)="applyCanvas()"
-                (cancel)="confirmingCanvas.set(false)"
-              />
-            } @else {
-              @if (resolutionOnly()) {
-                <p class="c-hint">{{ t('regie.canvas.resolutionOnly') }}</p>
-              }
-              <div class="c-prod__row">
-                <button
-                  class="c-btn c-btn--sm c-btn--fill"
-                  type="submit"
-                  [disabled]="busy() || !canvasChanged()"
-                >
-                  {{ t('common.save') }}
-                </button>
-                <button
-                  class="c-btn c-btn--sm"
-                  type="button"
-                  [disabled]="busy()"
-                  (click)="mode.set('menu')"
-                >
-                  {{ t('common.cancel') }}
-                </button>
-              </div>
-            }
-          </form>
-        }
-        @case ('create') {
-          <form class="c-prod__form" (submit)="create($event)">
-            <div class="c-pop-h">{{ t('regie.header.production.new') }}</div>
-            <label class="c-prod__field">
-              <span class="c-prod__label">{{ t('regie.header.production.name') }}</span>
-              <input
-                class="c-input"
-                type="text"
-                maxlength="80"
-                autocomplete="off"
-                [placeholder]="t('regie.header.production.namePlaceholder')"
-                [class.is-invalid]="createControl.invalid && createControl.touched"
-                [formControl]="createControl"
-              />
-            </label>
-            @if (createControl.invalid && createControl.touched) {
-              <p class="c-field-error">{{ t('regie.header.production.nameInvalid') }}</p>
-            }
-            <sf-canvas-picker [(format)]="newFormat" [(resolution)]="newResolution" />
-            <div class="c-prod__row">
-              <button class="c-btn c-btn--sm c-btn--fill" type="submit" [disabled]="busy()">
-                {{ t('regie.header.production.createSubmit') }}
-              </button>
-              <button
-                class="c-btn c-btn--sm"
-                type="button"
-                [disabled]="busy()"
-                (click)="mode.set('menu')"
-              >
-                {{ t('common.cancel') }}
-              </button>
-            </div>
-          </form>
-        }
-        @case ('duplicate') {
-          <sf-duplicate-production-form (done)="created()" (cancelled)="mode.set('menu')" />
-        }
-        @case ('import') {
-          <sf-import-production-form (done)="created()" (cancelled)="mode.set('menu')" />
-        }
-        @case ('password') {
-          <sf-change-password-form (done)="mode.set('menu')" (cancelled)="mode.set('menu')" />
-        }
-        @default {
-          <div class="c-pop-h">{{ t('regie.header.production.dialog') }}</div>
-          <button
-            class="c-menu-item"
-            type="button"
-            [disabled]="!store.canCommand()"
-            (click)="show('rename')"
-          >
-            <svg sfIcon="pencil"></svg>{{ t('common.rename') }}
-          </button>
-          <button
-            class="c-menu-item"
-            type="button"
-            [disabled]="!store.canCommand()"
-            (click)="show('slates')"
-          >
-            <svg sfIcon="image"></svg>{{ t('regie.header.production.editSlates') }}
-          </button>
-          <button
-            class="c-menu-item"
-            type="button"
-            [disabled]="!store.canCommand()"
-            (click)="show('textColors')"
-          >
-            <svg sfIcon="text"></svg>{{ t('regie.header.production.textColors') }}
-          </button>
-          <button
-            class="c-menu-item"
-            type="button"
-            [disabled]="!store.canCommand()"
-            (click)="show('canvas')"
-          >
-            <svg sfIcon="layout"></svg>{{ t('regie.canvas.menu') }}
-          </button>
-          <div class="c-menu-sep"></div>
-          <button
-            class="c-menu-item"
-            type="button"
-            [disabled]="!store.canCommand()"
-            (click)="show('duplicate')"
-          >
-            <svg sfIcon="copy"></svg>{{ t('regie.transfer.menu.duplicate') }}
-          </button>
-          @if (exportHref(); as href) {
-            <a
-              class="c-menu-item"
-              download
-              data-testid="export-production"
-              [href]="href"
-              (click)="exported()"
-              ><svg sfIcon="download"></svg>{{ t('regie.transfer.menu.export') }}</a
-            >
-          }
-          <div class="c-menu-sep"></div>
-          <div class="c-pop-h">{{ t('regie.header.production.switchTitle') }}</div>
+        <div class="c-prod__list" role="group" aria-labelledby="sf-prod-list">
           @if (productions(); as list) {
             @for (production of list; track production.id) {
               <button
-                class="c-menu-item"
+                class="c-menu-item c-prod__item"
                 type="button"
                 [attr.aria-current]="production.isActive ? 'true' : null"
-                [disabled]="production.isActive || live() || busy() || !store.canCommand()"
-                (click)="switchTo(production)"
+                [disabled]="busy() || (!production.isActive && !store.canCommand())"
+                [sfContextMenu]="menuOf(production)"
+                [sfContextMenuLabel]="production.name"
+                (click)="choose(production)"
               >
-                @if (production.isActive) {
-                  <svg sfIcon="check"></svg>
-                } @else {
-                  <span class="c-prod__spacer" aria-hidden="true"></span>
-                }
+                <span class="c-prod__check">
+                  @if (production.isActive) {
+                    <svg sfIcon="check"></svg>
+                  }
+                </span>
                 <span class="c-prod__item-name">{{ production.name }}</span>
+                @if (production.isActive && live()) {
+                  <span class="c-tag c-tag--pgm">{{ t('regie.production.state.onAir') }}</span>
+                } @else {
+                  <span class="c-hint c-prod__date">{{ created(production) }}</span>
+                }
               </button>
             }
           } @else if (listError()) {
-            <div class="c-pop-note">{{ t('regie.header.production.listError') }}</div>
+            <p class="c-pop-note">{{ t('regie.header.production.listError') }}</p>
           } @else {
-            <div class="c-pop-note">{{ t('regie.header.production.listLoading') }}</div>
+            <p class="c-pop-note">{{ t('regie.header.production.listLoading') }}</p>
           }
-          @if (live()) {
-            <div class="c-pop-note">{{ t('regie.header.production.noSwitchWhileLive') }}</div>
-          }
-          <button
-            class="c-menu-item"
-            type="button"
-            [disabled]="!store.canCommand()"
-            (click)="show('create')"
-          >
-            <svg sfIcon="plus"></svg>{{ t('regie.header.production.newMenu') }}
-          </button>
-          <button
-            class="c-menu-item"
-            type="button"
-            [disabled]="!store.canCommand()"
-            (click)="show('import')"
-          >
-            <svg sfIcon="upload"></svg>{{ t('regie.transfer.menu.import') }}
-          </button>
-          <div class="c-menu-sep"></div>
-          <a class="c-menu-item" routerLink="/audit"
-            ><svg sfIcon="list"></svg>{{ t('regie.audit.menu') }}</a
-          >
-          <a class="c-menu-item" routerLink="/settings"
-            ><svg sfIcon="gear"></svg>{{ t('regie.server.menu') }}</a
-          >
-          <button class="c-menu-item" type="button" (click)="show('password')">
-            <svg sfIcon="lock"></svg>{{ t('regie.account.change.menu') }}
-          </button>
-          <button class="c-menu-item" type="button" (click)="logout()">
-            <svg sfIcon="logout"></svg>{{ t('regie.header.production.signOut') }}
-          </button>
-        }
+        </div>
+        <div class="c-menu-sep"></div>
+        <a
+          class="c-menu-item"
+          routerLink="/settings/productions"
+          [queryParams]="newQuery"
+          (click)="close()"
+          ><svg sfIcon="plus"></svg>{{ t('regie.header.production.newMenu') }}</a
+        >
+        <a
+          class="c-menu-item"
+          routerLink="/settings/productions"
+          [queryParams]="importQuery"
+          (click)="close()"
+          ><svg sfIcon="upload"></svg>{{ t('regie.transfer.menu.import') }}</a
+        >
+        <div class="c-menu-sep"></div>
+        <a class="c-menu-item" routerLink="/settings/production" (click)="close()"
+          ><svg sfIcon="sliders"></svg>{{ t('regie.production.switcher.settings') }}</a
+        >
       }
     </div>
   }

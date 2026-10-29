@@ -1,50 +1,99 @@
 <main class="c-login">
-  <div class="c-login__col">
+  <div class="c-login__card">
+    <header class="c-login__head">
+      <svg class="c-login__mark" sfIcon="mark"></svg>
+      <h1 class="c-login__title">{{ t('regie.login.heading') }}</h1>
+      <p class="c-login__lead">{{ t('regie.login.lead') }}</p>
+    </header>
+
     <form class="c-login__form" novalidate [formGroup]="form" (submit)="submit($event)">
-      <h1 class="c-login__brand"><svg sfIcon="mark"></svg>StudioFlow</h1>
-      <p class="c-login__lead">{{ t('regie.login.brandLead') }}</p>
+      <div class="c-login__fields">
+        <div class="c-login__field">
+          <label class="c-login__label" for="login-username">{{ t('regie.login.username') }}</label>
+          <input
+            id="login-username"
+            class="c-input"
+            type="text"
+            autocomplete="username"
+            autocapitalize="off"
+            spellcheck="false"
+            formControlName="username"
+            [class.is-invalid]="form.controls.username.invalid && form.controls.username.touched"
+          />
+        </div>
+        <div class="c-login__field">
+          <label class="c-login__label" for="login-password">{{ t('regie.login.password') }}</label>
+          <div class="c-login__secret">
+            <input
+              id="login-password"
+              class="c-input"
+              #password
+              [type]="revealed() ? 'text' : 'password'"
+              autocomplete="current-password"
+              formControlName="password"
+              [class.is-invalid]="form.controls.password.invalid && form.controls.password.touched"
+            />
+            <button
+              class="c-ibtn c-login__reveal"
+              type="button"
+              aria-controls="login-password"
+              [attr.aria-pressed]="revealed()"
+              (click)="revealed.set(!revealed())"
+            >
+              <svg [sfIcon]="revealed() ? 'eye-off' : 'eye'"></svg>
+              <span class="u-sr-only">{{ t('regie.login.reveal') }}</span>
+            </button>
+          </div>
+        </div>
+      </div>
 
-      <label class="c-login__field">
-        <span class="c-login__label">{{ t('regie.login.username') }}</span>
-        <input
-          class="c-input"
-          type="text"
-          autocomplete="username"
-          autocapitalize="off"
-          spellcheck="false"
-          formControlName="username"
-          [class.is-invalid]="form.controls.username.invalid && form.controls.username.touched"
-        />
-      </label>
-      <label class="c-login__field">
-        <span class="c-login__label">{{ t('regie.login.password') }}</span>
-        <input
-          class="c-input"
-          #password
-          type="password"
-          autocomplete="current-password"
-          formControlName="password"
-          [class.is-invalid]="form.controls.password.invalid && form.controls.password.touched"
-        />
-      </label>
-
-      <p class="c-login__error" role="alert" aria-live="assertive">
+      <p class="c-login__error" id="login-error" role="alert" aria-live="assertive">
         @if (message(); as message) {
-          <svg sfIcon="alert" [size]="14"></svg>{{ message }}
+          <svg sfIcon="alert" [size]="14"></svg><span>{{ message }}</span>
         }
       </p>
 
-      <button
-        class="c-btn c-btn--fill c-login__submit"
-        type="submit"
-        [disabled]="submitting() || locked()"
-      >
-        {{ submitting() ? t('regie.login.submitting') : t('regie.login.submit') }}
-      </button>
-    </form>
+      <div class="c-login__actions">
+        <button
+          class="c-btn c-btn--plain c-login__secondary"
+          type="button"
+          aria-controls="login-forgot"
+          [attr.aria-expanded]="forgotOpen()"
+          (click)="forgotOpen.set(!forgotOpen())"
+        >
+          {{ t('regie.login.forgot') }}
+        </button>
+        <button
+          class="c-btn c-btn--lg c-btn--fill c-login__submit"
+          type="submit"
+          [disabled]="submitting() || locked()"
+          [attr.aria-describedby]="locked() ? 'login-error' : null"
+        >
+          {{ submitting() ? t('regie.login.submitting') : t('regie.login.submit') }}
+        </button>
+      </div>
 
-    <footer class="c-login__footer">
-      <sf-language-select />
-    </footer>
+      @if (forgotOpen()) {
+        <div class="c-login__help" id="login-forgot">
+          <p>{{ t('regie.login.forgotText') }}</p>
+          <code>{{ resetCommand }}</code>
+        </div>
+      }
+    </form>
   </div>
+
+  <footer class="c-login__footer">
+    <sf-language-select variant="inline" />
+    <a
+      class="c-login__sponsor"
+      href="https://www.opten.ch"
+      target="_blank"
+      rel="noopener"
+      data-testid="login-sponsor"
+    >
+      <span>{{ t('regie.login.sponsor') }}&ngsp;</span>
+      <svg sfIcon="opten"></svg>
+      <span>OPTEN</span>
+    </a>
+  </footer>
 </main>

@@ -1,9 +1,8 @@
 <main
   class="c-phone"
   aria-labelledby="phone-station-title"
-  [class.is-dark]="dark()"
+  [class.is-screen-off]="screenOff()"
   [class.is-awake]="awake()"
-  [class.has-tally]="tally() !== 'off'"
   (click)="wake()"
 >
   <div class="c-phone__stage" data-testid="slot-camera" [attr.data-state]="cameraState()">
@@ -14,179 +13,293 @@
         [sfMediaPreview]="stream"
         [attr.aria-label]="t('sender.station.phone.previewLabel')"
       ></video>
-    } @else if (!problem()) {
-      <div class="c-phone__placeholder">
-        <sf-icon class="c-phone__placeholder-icon" name="camera" />
-        <p>
-          {{
-            cameraState() === 'starting'
-              ? t('sender.station.phone.starting')
-              : t('sender.station.phone.off')
-          }}
-        </p>
-      </div>
     }
   </div>
 
-  @if (dark() && !awake()) {
-    <div class="c-phone__dark" aria-hidden="true">
-      <span class="c-phone__dark-code u-mono">{{ camera()?.code ?? '' }}</span>
-      <span class="c-phone__dark-hint">{{ t('sender.station.phone.tapHint') }}</span>
-    </div>
-  }
+  <div class="c-phone__top">
+    <header class="c-phone__status" [class.is-hidden]="!controlsVisible()">
+      <div class="c-phone__identity">
+        @if (camera()?.code; as code) {
+          <span class="c-code">{{ code }}</span>
+        }
+        <h1 class="c-phone__name" id="phone-station-title" data-route-focus tabindex="-1">
+          {{ name() }}
+        </h1>
+      </div>
+      <div class="c-phone__line">
+        <sf-connection-status
+          [view]="session.connection()"
+          [since]="session.degradedSince()"
+          [now]="session.now()"
+        />
+        <span class="c-phone__tags">
+          @if (session.micLive()) {
+            <span class="c-tag c-tag--pgm" data-testid="mic-live">{{
+              t('sender.audio.live')
+            }}</span>
+          }
+          <sf-tally-tag [state]="tally()" testId="tally-tag" />
+        </span>
+      </div>
+    </header>
 
-  <header class="c-phone__top" [class.is-hidden]="!controlsVisible()">
-    <div class="c-phone__identity">
-      @if (camera()?.code; as code) {
-        <span class="c-code">{{ code }}</span>
+    <p class="c-phone__remote" role="status" data-testid="remote-camera-notice">
+      @if (session.remoteNotice(); as notice) {
+        <span class="c-phone__remote-text">{{ noticeText(notice) }}</span>
       }
-      <h1 class="c-phone__name" id="phone-station-title" data-route-focus tabindex="-1">
-        {{ name() }}
-      </h1>
-      @if (session.micLive()) {
-        <span class="c-tag c-tag--program" data-testid="mic-live">{{
-          t('sender.audio.live')
-        }}</span>
-      }
-    </div>
-    <sf-connection-status
-      [view]="session.connection()"
-      [since]="session.degradedSince()"
-      [now]="session.now()"
-    />
-  </header>
+    </p>
 
-  <p class="c-phone__remote" role="status" data-testid="remote-camera-notice">
-    @if (session.remoteNotice(); as notice) {
-      <span class="c-phone__remote-text">{{ noticeText(notice) }}</span>
-    }
-  </p>
+    <ng-content />
+  </div>
 
   @if (problem(); as issue) {
-    <div class="c-phone__problem" role="alert">
-      <div class="c-notice c-notice--bad">
-        <sf-icon class="c-notice__icon" name="alert" />
-        <div class="c-notice__body">
-          <p class="c-notice__title">{{ issue.title }}</p>
-          <ol class="c-phone__steps">
-            @for (step of issue.steps; track $index) {
-              <li>{{ step }}</li>
-            }
-          </ol>
-        </div>
-      </div>
-      <button
-        class="c-button c-button--fill c-button--large c-button--block"
-        type="button"
-        (click)="session.startCamera()"
-      >
-        {{ t('sender.station.phone.tryAgain') }}
-      </button>
+    <div class="c-phone__center">
+      <section class="c-phone__card c-phone__problem" role="alert" aria-labelledby="camera-problem">
+        <span class="c-phone__card-icon is-bad"><sf-icon name="alert" /></span>
+        <h2 class="c-phone__card-title" id="camera-problem">{{ issue.title }}</h2>
+        <ol class="c-phone__steps">
+          @for (step of issue.steps; track $index) {
+            <li>{{ step }}</li>
+          }
+        </ol>
+        <button
+          class="c-btn c-btn--fill c-btn--lg c-btn--block"
+          type="button"
+          (click)="session.startCamera(); $event.stopPropagation()"
+        >
+          {{ t('sender.station.phone.tryAgain') }}
+        </button>
+      </section>
     </div>
+  } @else if (!running()) {
+    <div class="c-phone__center" [class.is-hidden]="!controlsVisible()">
+      <section class="c-phone__card" aria-labelledby="camera-off">
+        <span class="c-phone__card-icon"><sf-icon name="camera" /></span>
+        <h2 class="c-phone__card-title" id="camera-off">{{ t('sender.station.phone.off') }}</h2>
+        <p class="c-phone__card-text">{{ t('sender.station.phone.offHint') }}</p>
+        <button
+          class="c-btn c-btn--fill c-btn--lg c-btn--block"
+          type="button"
+          (click)="session.startCamera(); $event.stopPropagation()"
+        >
+          {{ t('sender.station.phone.start') }}
+        </button>
+      </section>
+    </div>
+  } @else if (preview() === null) {
+    <p class="c-phone__starting" role="status">{{ t('sender.station.phone.starting') }}</p>
   }
 
-  <div
-    class="c-phone__controls"
-    role="group"
-    [attr.aria-label]="t('sender.station.phone.controls')"
-    [class.is-hidden]="!controlsVisible()"
-  >
-    <button
-      class="c-button c-phone__toggle"
-      type="button"
-      [class.c-button--overlay]="running()"
-      [class.c-button--fill]="!running()"
-      (click)="toggleCamera()"
+  <div class="c-phone__rail" [class.is-hidden]="!controlsVisible()">
+    <div
+      class="c-phone__controls"
+      role="group"
+      [attr.aria-label]="t('sender.station.phone.controls')"
     >
-      <sf-icon [name]="running() ? 'close' : 'camera'" />
-      {{ running() ? t('sender.station.phone.stop') : t('sender.station.phone.start') }}
-    </button>
+      <button
+        class="c-round c-phone__control--switch"
+        type="button"
+        [attr.data-facing]="facing()"
+        [title]="facingLabel()"
+        (click)="requestSwitch(); $event.stopPropagation()"
+      >
+        <span class="c-round__glyph"><sf-icon name="flip" /></span>
+        <span class="c-round__label">{{ t('sender.station.phone.switch') }}</span>
+      </button>
 
-    <fieldset class="c-segmented c-segmented--overlay c-phone__facing">
-      <legend class="u-sr-only">{{ t('sender.station.phone.cameraLegend') }}</legend>
-      <div class="c-segmented__options">
-        <label class="c-segmented__option">
-          <input
-            class="c-segmented__input"
-            type="radio"
-            name="facing"
-            value="user"
-            [checked]="facing() === 'user'"
-            (change)="setFacing('user')"
-          />
-          <span>{{ t('sender.station.phone.front') }}</span>
-        </label>
-        <label class="c-segmented__option">
-          <input
-            class="c-segmented__input"
-            type="radio"
-            name="facing"
-            value="environment"
-            [checked]="facing() === 'environment'"
-            (change)="setFacing('environment')"
-          />
-          <span>{{ t('sender.station.phone.back') }}</span>
-        </label>
-      </div>
-    </fieldset>
+      <button
+        class="c-round c-phone__control--quality"
+        type="button"
+        aria-haspopup="dialog"
+        [attr.aria-label]="qualityName()"
+        [attr.data-resolution]="resolution()"
+        [title]="qualityName()"
+        (click)="qualityOpen.set(true); $event.stopPropagation()"
+      >
+        <span class="c-round__glyph"><sf-icon name="quality" /></span>
+        <span class="c-round__label">{{ t('sender.station.phone.quality') }}</span>
+      </button>
 
-    <fieldset class="c-segmented c-segmented--overlay c-phone__resolution">
-      <legend class="u-sr-only">{{ t('sender.station.phone.resolutionLegend') }}</legend>
-      <div class="c-segmented__options">
-        <label class="c-segmented__option">
-          <input
-            class="c-segmented__input"
-            type="radio"
-            name="resolution"
-            value="720"
-            [checked]="resolution() === 720"
-            (change)="setResolution(720)"
-          />
-          <span class="u-mono">720p</span>
-        </label>
-        <label class="c-segmented__option">
-          <input
-            class="c-segmented__input"
-            type="radio"
-            name="resolution"
-            value="1080"
-            [checked]="resolution() === 1080"
-            (change)="setResolution(1080)"
-          />
-          <span class="u-mono">1080p</span>
-        </label>
-      </div>
-    </fieldset>
+      <button
+        class="c-round c-phone__control--mic"
+        type="button"
+        data-testid="slot-mic"
+        [attr.data-state]="session.mic()?.state ?? 'idle'"
+        [attr.aria-pressed]="micRunning()"
+        (click)="toggleMic(); $event.stopPropagation()"
+      >
+        <span class="c-round__glyph"><sf-icon [name]="micRunning() ? 'mic' : 'micOff'" /></span>
+        <span class="c-round__label">{{ t('sender.audio.phone.label') }}</span>
+      </button>
 
-    <button
-      class="c-button c-button--overlay c-phone__mic"
-      type="button"
-      data-testid="slot-mic"
-      [attr.data-state]="session.mic()?.state ?? 'idle'"
-      [attr.aria-pressed]="micRunning()"
-      (click)="toggleMic(); $event.stopPropagation()"
-    >
-      <sf-icon name="mic" />
-      {{ micRunning() ? t('sender.audio.phone.on') : t('sender.audio.phone.off') }}
-    </button>
+      <button
+        class="c-round c-phone__control--screen-off"
+        type="button"
+        [attr.aria-pressed]="screenOff()"
+        (click)="toggleScreenOff(); $event.stopPropagation()"
+      >
+        <span class="c-round__glyph"><sf-icon name="moon" /></span>
+        <span class="c-round__label">{{ t('sender.station.phone.screenOff') }}</span>
+      </button>
 
-    <button
-      class="c-button c-button--overlay c-phone__dark-toggle"
-      type="button"
-      [attr.aria-pressed]="dark()"
-      (click)="toggleDark(); $event.stopPropagation()"
-    >
-      <sf-icon name="moon" />
-      {{ t('sender.station.phone.dark') }}
-    </button>
+      <button
+        class="c-round c-phone__control--check"
+        type="button"
+        aria-haspopup="dialog"
+        (click)="openTechCheck.emit(); $event.stopPropagation()"
+      >
+        <span class="c-round__glyph">
+          <sf-icon name="gauge" />
+          @if (techLevel() !== 'unknown') {
+            <span
+              class="c-lamp c-round__badge"
+              [class.is-warn]="techLevel() === 'warn'"
+              [class.is-bad]="techLevel() === 'bad'"
+              aria-hidden="true"
+            ></span>
+          }
+        </span>
+        <span class="c-round__label">{{ t('sender.techcheck.open') }}</span>
+      </button>
 
-    <button
-      class="c-button c-button--overlay c-phone__check"
-      type="button"
-      (click)="openTechCheck.emit()"
-    >
-      <sf-icon name="gauge" />
-      {{ t('sender.techcheck.open') }}
-    </button>
+      @if (running()) {
+        <button
+          class="c-round c-round--stop c-phone__control--stop"
+          type="button"
+          (click)="requestStop(); $event.stopPropagation()"
+        >
+          <span class="c-round__glyph"><sf-icon name="stop" /></span>
+          <span class="c-round__label">{{ t('sender.station.phone.stop') }}</span>
+        </button>
+      }
+    </div>
   </div>
+
+  @if (screenOff() && !awake()) {
+    <button class="c-phone__screen-off" type="button" (click)="wake(); $event.stopPropagation()">
+      <span class="c-phone__screen-off-status">
+        @if (camera()?.code; as code) {
+          <span class="c-phone__screen-off-code">{{ code }}</span>
+        }
+        <span class="c-phone__screen-off-line">
+          <span
+            class="c-lamp"
+            [class.is-idle]="session.connection() === 'connecting'"
+            [class.is-warn]="
+              session.connection() === 'reconnecting' || session.connection() === 'offline'
+            "
+            [class.is-bad]="
+              session.connection() === 'blocked' || session.connection() === 'removed'
+            "
+          ></span>
+          {{ connectionWord() }}
+          @if (tally() !== 'off') {
+            ·
+            {{
+              tally() === 'program'
+                ? t('sender.station.tally.live')
+                : t('sender.station.tally.preview')
+            }}
+          }
+        </span>
+      </span>
+      <span class="c-phone__screen-off-hint">{{ t('sender.station.phone.screenOffHint') }}</span>
+      <span class="c-phone__screen-off-hint">{{ t('sender.station.phone.tapHint') }}</span>
+    </button>
+  }
+
+  @if (qualityOpen()) {
+    <sf-sheet
+      labelledBy="quality-title"
+      testId="quality-sheet"
+      (closed)="qualityOpen.set(false)"
+      #qualitySheet
+    >
+      <div class="c-sheet__head">
+        <h2 class="c-sheet__title" id="quality-title" tabindex="-1" autofocus>
+          {{ t('sender.station.phone.qualityTitle') }}
+        </h2>
+        <button
+          class="c-btn c-btn--plain"
+          type="button"
+          aria-keyshortcuts="Enter Escape"
+          (click)="qualitySheet.close()"
+        >
+          {{ t('sender.station.phone.done') }}
+        </button>
+      </div>
+      <div class="c-sheet__body">
+        <fieldset class="c-choices" (keydown.enter)="qualitySheet.close()">
+          <legend class="u-sr-only">{{ t('sender.station.phone.qualityTitle') }}</legend>
+          <div class="c-choices__list">
+            <label class="c-choice">
+              <input
+                class="c-choice__input"
+                type="radio"
+                name="quality"
+                value="720"
+                aria-labelledby="quality-720"
+                aria-describedby="quality-720-hint"
+                [checked]="resolution() === 720"
+                (change)="setResolution(720)"
+              />
+              <span class="c-choice__title" id="quality-720">{{
+                t('sender.station.phone.qualityStandard')
+              }}</span>
+              <span class="c-choice__text" id="quality-720-hint">{{
+                t('sender.station.phone.qualityStandardHint')
+              }}</span>
+              <sf-icon class="c-choice__mark" name="check" />
+            </label>
+            <label class="c-choice">
+              <input
+                class="c-choice__input"
+                type="radio"
+                name="quality"
+                value="1080"
+                aria-labelledby="quality-1080"
+                aria-describedby="quality-1080-hint"
+                [checked]="resolution() === 1080"
+                (change)="setResolution(1080)"
+              />
+              <span class="c-choice__title" id="quality-1080">{{
+                t('sender.station.phone.qualityHigh')
+              }}</span>
+              <span class="c-choice__text" id="quality-1080-hint">{{
+                t('sender.station.phone.qualityHighHint')
+              }}</span>
+              <sf-icon class="c-choice__mark" name="check" />
+            </label>
+          </div>
+        </fieldset>
+        @if (live()) {
+          <div class="c-notice c-notice--warn">
+            <sf-icon name="alert" />
+            <p class="c-notice__text">{{ t('sender.station.phone.qualityLive') }}</p>
+          </div>
+        }
+      </div>
+    </sf-sheet>
+  }
+
+  @switch (pending()) {
+    @case ('switch') {
+      <sf-confirm-sheet
+        [title]="t('sender.station.phone.switchTitle')"
+        [text]="t('sender.station.phone.switchConfirm')"
+        [confirmLabel]="t('sender.station.phone.switch')"
+        (confirmed)="confirm()"
+        (cancelled)="pending.set(null)"
+      />
+    }
+    @case ('stop') {
+      <sf-confirm-sheet
+        [title]="t('sender.station.phone.stopTitle')"
+        [text]="t('sender.station.phone.stopConfirm')"
+        [confirmLabel]="t('sender.station.phone.stop')"
+        (confirmed)="confirm()"
+        (cancelled)="pending.set(null)"
+      />
+    }
+  }
 </main>

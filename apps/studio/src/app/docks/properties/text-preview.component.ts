@@ -26,8 +26,8 @@ import { SCENE_RENDERER_FACTORY } from '../../stage/scene-view.component';
   styles: `
     :host {
       background: var(--slot);
-      border: 1px solid var(--seam);
-      border-radius: var(--radius-md);
+      border-radius: var(--radius-xs);
+      box-shadow: 0 0 0 1px var(--seam);
       display: block;
       overflow: hidden;
       position: relative;

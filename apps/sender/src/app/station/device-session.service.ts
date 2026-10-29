@@ -81,8 +81,6 @@ export const OUTAGE_PROBE_MS = 10_000;
 export const BLOCKED_RETRY_MS = 15_000;
 /** Pause before reconnecting after a refused connection when `GET /me` says access is fine (or failed). */
 export const ACCESS_RETRY_MS = 5000;
-/** A Regie message disappears after this time unless confirmed earlier. */
-export const MESSAGE_DISMISS_MS = 15_000;
 /** The note about a remote camera change disappears after this time. */
 export const REMOTE_NOTICE_MS = 3000;
 /** The first technical check waits this long for the phone camera before it runs without it. */
@@ -276,7 +274,6 @@ export class DeviceSessionService {
   private readonly intervals: ReturnType<typeof setInterval>[] = [];
   private accessTimer: ReturnType<typeof setTimeout> | null = null;
   private helloTimer: ReturnType<typeof setTimeout> | null = null;
-  private messageTimer: ReturnType<typeof setTimeout> | null = null;
   private techCheckTimer: ReturnType<typeof setTimeout> | null = null;
   private remoteNoticeTimer: ReturnType<typeof setTimeout> | null = null;
   private helloAttempt = 0;
@@ -661,9 +658,8 @@ export class DeviceSessionService {
 
   // ---- Messages and technical check ---------------------------------------------------------------------------
 
-  /** “OK” on the Regie message banner. */
+  /** “Dismiss” on the Regie message banner. The message stays until then: nobody may miss it. */
   dismissMessage(): void {
-    this.clearTimer('messageTimer');
     this.message.set(null);
   }
 
@@ -848,12 +844,6 @@ export class DeviceSessionService {
     if (this.kind() === 'phone' || this.env.isPhone()) {
       this.env.vibrate([200, 100, 200]);
     }
-    this.clearTimer('messageTimer');
-    this.messageTimer = setTimeout(() => {
-      if (this.message()?.id === message.id) {
-        this.message.set(null);
-      }
-    }, MESSAGE_DISMISS_MS);
   }
 
   /** Stops what a slot publishes: the microphone has its own publisher, everything else belongs to the video one. */
@@ -1471,7 +1461,7 @@ export class DeviceSessionService {
   }
 
   private clearTimer(
-    name: 'accessTimer' | 'helloTimer' | 'messageTimer' | 'techCheckTimer' | 'remoteNoticeTimer',
+    name: 'accessTimer' | 'helloTimer' | 'techCheckTimer' | 'remoteNoticeTimer',
   ): void {
     const timer = this[name];
     if (timer !== null) {
@@ -1483,7 +1473,6 @@ export class DeviceSessionService {
   private clearAllTimers(): void {
     this.clearTimer('accessTimer');
     this.clearTimer('helloTimer');
-    this.clearTimer('messageTimer');
     this.clearTimer('techCheckTimer');
     this.clearTimer('remoteNoticeTimer');
     for (const interval of this.intervals.splice(0)) {

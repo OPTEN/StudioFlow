@@ -1,35 +1,38 @@
 <div class="c-audio-station">
-  <header class="c-audio-station__bar">
-    <sf-brand-mark class="c-audio-station__brand" />
-    <sf-connection-status
-      class="c-audio-station__connection"
-      [view]="session.connection()"
-      [since]="session.degradedSince()"
-      [now]="session.now()"
-    />
-    <button class="c-button c-audio-station__check" type="button" (click)="openTechCheck.emit()">
-      <span
-        class="c-lamp"
-        [class.c-lamp--idle]="techLevel() === 'unknown'"
-        [class.c-lamp--warn]="techLevel() === 'warn'"
-        [class.c-lamp--bad]="techLevel() === 'bad'"
-        aria-hidden="true"
-      ></span>
-      {{ t('sender.techcheck.open') }}
-    </button>
-  </header>
+  <div class="c-top">
+    <header class="c-bar">
+      <sf-brand-mark class="c-bar__brand" />
+      <sf-connection-status
+        class="c-bar__connection"
+        [view]="session.connection()"
+        [since]="session.degradedSince()"
+        [now]="session.now()"
+      />
+      <div class="c-bar__end">
+        <sf-tally-tag [state]="tally()" testId="tally-tag" />
+        <button class="c-btn" type="button" aria-haspopup="dialog" (click)="openTechCheck.emit()">
+          <span
+            class="c-lamp"
+            [class.is-idle]="techLevel() === 'unknown'"
+            [class.is-warn]="techLevel() === 'warn'"
+            [class.is-bad]="techLevel() === 'bad'"
+            aria-hidden="true"
+          ></span>
+          {{ t('sender.techcheck.open') }}
+        </button>
+      </div>
+    </header>
+    <div class="c-top__banners"><ng-content /></div>
+  </div>
 
-  <main class="c-audio-station__main">
-    <div class="c-audio-station__intro">
-      <h1 class="c-audio-station__title" data-route-focus tabindex="-1">
-        {{ self()?.name }}
-      </h1>
-      <p class="c-audio-station__lead">
-        {{ t('sender.audio.station.lead', { name: self()?.name ?? '' }) }}
-      </p>
-      <p class="c-audio-station__hint">{{ t('sender.audio.station.hint') }}</p>
-    </div>
+  <main class="c-column c-audio-station__main">
+    <header class="c-column__head">
+      <h1 class="c-column__title" data-route-focus tabindex="-1">{{ self()?.name }}</h1>
+      <p class="c-column__lead">{{ t('sender.audio.station.lead') }}</p>
+    </header>
 
     <sf-mic-panel />
+
+    <p class="c-group__footer">{{ t('sender.audio.station.hint') }}</p>
   </main>
 </div>

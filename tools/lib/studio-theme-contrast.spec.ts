@@ -65,6 +65,11 @@ function isPictureToken(name: string): boolean {
   return name === 'well' || name.startsWith('slot') || name.startsWith('pic-');
 }
 
+/** The section tiles of the settings sidebar: one hue per section, the same in both themes, under a white glyph. */
+function isTileToken(name: string): boolean {
+  return name.startsWith('tile-');
+}
+
 const css = compile('apps/studio/src/styles.scss', { loadPaths: ['apps/studio/src/styles'] }).css;
 const darkProperties = customProperties(css, ':root');
 const lightProperties = customProperties(css, ':root[data-theme=light]');
@@ -134,17 +139,26 @@ describe.each([
     expectContrast(colour(name), wash, AA_TEXT, `${name} on ${name}-wash`);
   });
 
-  it.each([
-    ['red', 'PGM'],
-    ['green', 'PVW'],
-  ] as const)('keeps the %s %s tag readable on its row (4.5:1)', (name) => {
-    const wash = colour(`${name}-wash`);
+  // Tinted buttons (.c-btn--primary) sit on the toolbar and the docks: blue-ink on the wash and on its 24 % hover.
+  it.each(['ground', 'panel', 'raised-2'] as const)('keeps tinted button text readable on %s (4.5:1)', (surface) => {
+    expectContrast(colour('blue-ink'), composite(colour('blue-wash'), colour(surface)), AA_TEXT, `blue-ink on blue-wash over ${surface}`);
+    const hover = composite({ rgb: colour('blue').rgb, alpha: 0.24 }, colour(surface));
+    expectContrast(colour('blue-ink'), hover, AA_TEXT, `blue-ink on the hover over ${surface}`);
+  });
+
+  // The Live tag is a filled red capsule (the brightest mark on screen, DESIGN.md "Only the live path burns").
+  it('keeps the Live tag readable (on-state on red, 4.5:1)', () => {
+    expectContrast(colour('on-state'), colour('red'), AA_TEXT, 'Live tag');
+  });
+
+  it('keeps the green Preview tag readable on its row (4.5:1)', () => {
+    const wash = colour('green-wash');
     // The current scene row is Raised, and the tag adds its own wash to it.
     const currentRow = composite(wash, colour('raised'));
-    expectContrast(colour(name), currentRow, AA_TEXT, `${name} tag on the current row`);
+    expectContrast(colour('green'), currentRow, AA_TEXT, 'green tag on the current row');
     // A station row in the same state has the wash too, and the tag adds a second one.
     const stateRow = composite(wash, colour('panel'));
-    expectContrast(colour(name), composite(wash, stateRow), AA_TEXT, `${name} tag on a ${name} row`);
+    expectContrast(colour('green'), composite(wash, stateRow), AA_TEXT, 'green tag on a green row');
   });
 
   it('keeps lamps, tally outlines and the focus ring visible on the surfaces (3:1)', () => {
@@ -177,6 +191,13 @@ describe.each([
     expectContrast(colour('on-state'), colour('green'), AA_TEXT, 'on-state on green');
     expectContrast(colour('on-state'), colour('green-hover'), AA_TEXT, 'on-state on green-hover');
     expectContrast(colour('on-state'), colour('red'), AA_TEXT, 'on-state on red');
+  });
+
+  it('keeps the white glyph of every settings tile visible (3:1)', () => {
+    const white: Colour = { rgb: [255, 255, 255], alpha: 1 };
+    for (const name of [...tokens.keys()].filter(isTileToken)) {
+      expectContrast(white, colour(name), AA_COMPONENT, `glyph on ${name}`);
+    }
   });
 
   it('keeps the picture surfaces near black with readable ink on them', () => {
@@ -243,11 +264,12 @@ describe('the browser chrome colour', () => {
 
 describe('the light theme', () => {
   it('defines every themed colour of the dark theme, and none of the picture surfaces', () => {
-    const themed = [...dark.keys()].filter((name) => !isPictureToken(name));
+    const themed = [...dark.keys()].filter((name) => !isPictureToken(name) && !isTileToken(name));
     expect(themed.length).toBeGreaterThan(20);
     const overridden = new Set(lightProperties.keys());
     expect(themed.filter((name) => !overridden.has(name))).toEqual([]);
     expect([...overridden].filter(isPictureToken)).toEqual([]);
+    expect([...overridden].filter(isTileToken)).toEqual([]);
   });
 
   it('declares the colour scheme of the theme', () => {

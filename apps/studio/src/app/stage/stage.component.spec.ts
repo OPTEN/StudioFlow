@@ -1,16 +1,21 @@
+import { signal } from '@angular/core';
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
+import type { BroadcastState, SceneDto } from '@studioflow/scene-model';
 import { FakeStudioHub, flushMicrotasks } from '../../testing/fake-studio-hub';
-import { productionFixture, snapshotFixture } from '../../testing/fixtures';
+import { defaultScenes, productionFixture, snapshotFixture } from '../../testing/fixtures';
 import {
   MemoryStorage,
   startStore,
   studioTestProviders,
   type StoreHarness,
 } from '../../testing/store-harness';
+import { ContextMenuService } from '../core/ui/context-menu';
 import { PREFERENCE_KEYS } from '../core/ui/preferences.service';
+import { ViewportService } from '../core/ui/viewport.service';
 import { EditorService } from './editor.service';
 import { FRAME_SCHEDULER } from './frame-scheduler';
 import { SCENE_RENDERER_FACTORY } from './scene-view.component';
+import { StageCommandsService } from './stage-commands.service';
 import { StageComponent } from './stage.component';
 import { FakeRendererFactory, ManualFrames, type FakeSceneRenderer } from './testing/stage-fakes';
 
@@ -22,7 +27,24 @@ describe('StageComponent', () => {
   let element: HTMLElement;
   let frames: ManualFrames;
 
-  async function setup(options: { studio?: boolean; preview?: string | null } = {}): Promise<void> {
+  /** The breakpoints of the test window (the DOM of the test runner is 1024 px wide, which would be stacked). */
+  const viewport = {
+    stacked: signal(false),
+    narrow: signal(false),
+    shortLaptop: signal(false),
+    reducedMotion: signal(false),
+  };
+
+  async function setup(
+    options: {
+      studio?: boolean;
+      preview?: string | null;
+      broadcast?: BroadcastState;
+      stacked?: boolean;
+      scenes?: SceneDto[];
+    } = {},
+  ): Promise<void> {
+    viewport.stacked.set(options.stacked ?? false);
     hub = new FakeStudioHub();
     factory = new FakeRendererFactory();
     frames = new ManualFrames();
@@ -35,12 +57,17 @@ describe('StageComponent', () => {
         ...studioTestProviders(hub, storage),
         { provide: SCENE_RENDERER_FACTORY, useValue: factory.create },
         { provide: FRAME_SCHEDULER, useValue: frames.scheduler },
+        { provide: ViewportService, useValue: viewport },
       ],
     });
     harness = await startStore(
       hub,
       snapshotFixture({
-        production: productionFixture({ previewSceneId: options.preview ?? null }),
+        production: productionFixture({
+          previewSceneId: options.preview ?? null,
+          broadcast: options.broadcast ?? 'standby',
+        }),
+        ...(options.scenes ? { scenes: options.scenes } : {}),
       }),
     );
     fixture = TestBed.createComponent(StageComponent);
@@ -110,7 +137,7 @@ describe('StageComponent', () => {
     }
   });
 
-  it('without Studio Mode: one Program monitor with the overlay, "Preview off" beside it', async () => {
+  it('without Studio Mode: one Program monitor with the overlay, the Studio Mode panel beside it', async () => {
     await setup();
     expect(monitor('preview')).toBeNull();
     const program = monitor('program') as HTMLElement;
@@ -118,17 +145,22 @@ describe('StageComponent', () => {
     const labelId = program.getAttribute('aria-labelledby') as string;
     expect(text(element.querySelector(`#${labelId}`))).toBe('Program');
     expect(text(program.querySelector('.c-monitor__name'))).toBe('Welcome');
-    expect(text(program.querySelector('.c-monitor__live-edit'))).toBe(
-      'Changes go live immediately',
-    );
-    expect(text(program.querySelector('.c-monitor__meta'))).toBe('1920 × 1080 · 30 fps');
+    const liveEdit = program.querySelector('.c-monitor__live-edit') as HTMLElement;
+    expect(text(liveEdit)).toBe('Changes go live immediately');
+    // Not on air: a neutral note, not a red warning.
+    expect(liveEdit.classList).not.toContain('is-on-air');
+    expect(text(program.querySelector('.c-monitor__meta'))).toBe('1920 × 1080');
     expect(program.querySelector('sf-edit-overlay')).not.toBeNull();
-    const off = element.querySelector('.c-stage__preview-off');
-    expect(off?.getAttribute('aria-hidden')).toBe('true');
-    expect(text(off?.querySelector('b') ?? null)).toBe('Preview off');
-    expect(text(off?.querySelector('span') ?? null)).toBe(
-      'With Studio Mode the Preview appears here.',
+    // The place of the Preview teaches what the mode means and offers to turn it on (no longer aria-hidden).
+    const off = element.querySelector('.c-stage__preview-off') as HTMLElement;
+    expect(off.getAttribute('aria-hidden')).toBeNull();
+    expect(text(off.querySelector('.c-stage__off-label'))).toBe('Preview');
+    expect(text(off.querySelector('.c-stage__off-state'))).toBe('Off');
+    expect(text(off.querySelector('.c-stage__preview-off-title'))).toBe('Studio Mode is off');
+    expect(text(off.querySelector('.c-stage__off-text'))).toBe(
+      'A click on a scene goes live at once. Turn it on to prepare the next scene in Preview first.',
     );
+    expect(text(off.querySelector('button'))).toBe('Turn on Studio Mode');
     expect(element.querySelector('sf-control-column')).not.toBeNull();
     expect(rendererOf('program').element.getAttribute('aria-label')).toBe(
       'Program monitor: Welcome, matches the output',
@@ -144,6 +176,7 @@ describe('StageComponent', () => {
     ).toBeTruthy();
     expect(text(preview.querySelector('.c-monitor__name'))).toBe('Presentation');
     expect(text(preview.querySelector('.c-monitor__meta'))).toBe('2 items');
+    expect(text(program.querySelector('.c-monitor__meta'))).toBe('1920 × 1080');
     expect(preview.querySelector('sf-edit-overlay')).not.toBeNull();
     expect(program.querySelector('sf-edit-overlay')).toBeNull();
     expect(program.querySelector('.c-monitor__live-edit')).toBeNull();
@@ -155,13 +188,106 @@ describe('StageComponent', () => {
     expect(rendererOf('program').current?.id).toBe('scn_a');
   });
 
-  it('shows the live note while the live scene is in the Preview', async () => {
+  it('says “Live, read only” in the Preview header while the live scene is in the Preview', async () => {
     await setup({ studio: true, preview: 'scn_a' });
-    expect(text(monitor('preview')?.querySelector('.c-monitor__live-note') ?? null)).toBe(
+    const note = monitor('preview')?.querySelector('.c-monitor__live-note') as HTMLElement;
+    expect(text(note)).toBe('Live, read only');
+    expect(note.getAttribute('title')).toBe(
       'This scene is live right now. Editing is possible once another scene is on Program.',
     );
+    // The note sits in the header, so nothing covers the lower third of the picture.
+    expect(note.closest('.c-monitor__head')).not.toBeNull();
+    expect(
+      monitor('preview')?.querySelector('.c-monitor__screen .c-monitor__live-note'),
+    ).toBeNull();
     expect(monitor('program')?.querySelector('.c-monitor__live-note')).toBeNull();
     expect(monitor('preview')?.querySelector('sf-edit-overlay')?.classList).toContain('is-locked');
+  });
+
+  it('turns “Changes go live immediately” red only while the broadcast is on air', async () => {
+    await setup({ broadcast: 'live' });
+    expect(monitor('program')?.querySelector('.c-monitor__live-edit')?.classList).toContain(
+      'is-on-air',
+    );
+  });
+
+  it('offers each monitor’s menu on its ⋯ button and a right click; “Show safe area” draws the guide', async () => {
+    await setup();
+    const menus = TestBed.inject(ContextMenuService);
+    const program = monitor('program') as HTMLElement;
+    const more = program.querySelector('.c-monitor__more') as HTMLButtonElement;
+    expect(more.getAttribute('aria-label')).toBe('Program options');
+    more.click();
+    const labels = (menus.current()?.entries ?? []).flatMap((entry) =>
+      entry === 'separator' ? [] : [entry.label],
+    );
+    expect(labels).toEqual(['Turn on Studio Mode', 'Show safe area', 'Copy scene name']);
+    menus.close(false);
+    program
+      .querySelector('.c-monitor__head')
+      ?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+    expect(menus.current()?.label).toBe('Program');
+    menus.close(false);
+    expect(program.querySelector('.c-monitor__safe')).toBeNull();
+    TestBed.inject(StageCommandsService).toggleSafeArea();
+    await render();
+    expect(program.querySelector('.c-monitor__safe')).not.toBeNull();
+  });
+
+  it('“Turn on Studio Mode” in the place of the Preview turns the mode on', async () => {
+    await setup();
+    (element.querySelector('.c-stage__preview-off button') as HTMLButtonElement).click();
+    await render();
+    harness.http
+      .expectOne((request) => request.url.endsWith('/preview'))
+      .flush(productionFixture({ previewSceneId: 'scn_b' }));
+    await render();
+    expect(element.querySelector('.c-stage__preview-off')).toBeNull();
+    expect(monitor('preview')).not.toBeNull();
+  });
+
+  it('counts every item of the Preview and names the hidden ones', async () => {
+    const scenes = defaultScenes();
+    scenes[1] = {
+      ...scenes[1],
+      items: [{ ...scenes[1].items[0], hidden: true }, scenes[1].items[1]],
+    };
+    await setup({ studio: true, preview: 'scn_b', scenes });
+    expect(text(monitor('preview')?.querySelector('.c-monitor__meta') ?? null)).toBe(
+      '2 items · 1 hidden',
+    );
+  });
+
+  it('teaches where to add a scene when the production has none', async () => {
+    await setup({ scenes: [] });
+    const empty = monitor('program')?.querySelector('.c-monitor__empty');
+    expect(text(empty?.querySelector('strong') ?? null)).toBe('No scene yet');
+    expect(text(empty?.querySelector('span') ?? null)).toBe('Add a scene in the Scenes dock.');
+  });
+
+  it('does not render the split in the stacked layout, where resizing is off (A11Y-05)', async () => {
+    await setup({ studio: true, preview: 'scn_b', stacked: true });
+    expect(element.querySelector('.c-stage__split')).toBeNull();
+    expect(element.querySelector('[role="separator"]')).toBeNull();
+    expect(element.querySelector('.c-stage__gap')).not.toBeNull();
+  });
+
+  it('shows the progress of a running fade under the Program header', async () => {
+    await setup();
+    expect(monitor('program')?.querySelector('.c-monitor__fade')).toBeNull();
+    harness.emitEvent({
+      type: 'programSwitched',
+      programSceneId: 'scn_b',
+      previewSceneId: null,
+      previousProgramSceneId: 'scn_a',
+      transition: { kind: 'fade', durationMs: 1000 },
+      at: new Date().toISOString(),
+    });
+    await harness.settle();
+    await render();
+    const line = monitor('program')?.querySelector('.c-monitor__fade') as HTMLElement;
+    expect(line.style.animationDuration).toBe('1000ms');
+    expect(line.getAttribute('aria-hidden')).toBe('true');
   });
 
   function press(target: Element, init: PointerEventInit = {}): void {
@@ -186,6 +312,7 @@ describe('StageComponent', () => {
       program.querySelector('.c-monitor__head') as Element,
       program.querySelector('.c-monitor__name') as Element,
       element.querySelector('.c-stage__preview-off') as Element,
+      element.querySelector('.c-stage__off-panel') as Element,
       element.querySelector('.c-stage__monitors') as Element,
     ];
     for (const target of around) {

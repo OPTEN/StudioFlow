@@ -10,7 +10,7 @@ import { FakeStudioHub, flushMicrotasks } from '../../../testing/fake-studio-hub
 import { PRODUCTION_ID, deviceFixture } from '../../../testing/fixtures';
 import { startStore, studioTestProviders, type StoreHarness } from '../../../testing/store-harness';
 import { dockSnapshot } from '../testing/dock-fixtures';
-import { CAMERA_COMMAND_INTERVAL_MS } from './camera-control.service';
+import { CAMERA_COMMAND_INTERVAL_MS, CameraControlService } from './camera-control.service';
 import { CameraPanelComponent, DRAFT_HOLD_MS } from './camera-panel.component';
 
 const PHONE = 'dev_aaaaaaaaaaaaaaaa';
@@ -298,6 +298,36 @@ describe('CameraPanelComponent', () => {
     expect(sent()).toMatchObject({ camera: { zoom: 2 } });
   });
 
+  it('says that changes show on air while the camera is in the program, and asks before "Reset to auto"', async () => {
+    await setup(phone(ANDROID), true);
+
+    expect(text(element.querySelector('.c-cam__live'))).toBe(
+      'Live Every change shows on air right away.',
+    );
+    button('Reset to auto')?.click();
+    await render();
+    harness.http.expectNone(COMMANDS);
+    expect(text(element.querySelector('.c-confirm span'))).toBe(
+      'K1 is live. Zoom, focus, brightness and light go back to automatic at once.',
+    );
+    button('Reset now')?.click();
+    await tick();
+    expect(sent()).toMatchObject({ camera: { reset: true } });
+    expect(element.querySelector('.c-confirm')).toBeNull();
+  });
+
+  it('forgets a failure message when the panel closes', async () => {
+    await setup(phone(ANDROID));
+    hub.drop();
+    await render();
+    drag(slider('zoom'), 2);
+    await tick(CAMERA_COMMAND_INTERVAL_MS);
+    const control = TestBed.inject(CameraControlService);
+    expect(control.failureOf(PHONE)).not.toBeNull();
+    fixture.destroy();
+    expect(control.failureOf(PHONE)).toBeNull();
+  });
+
   it('locks and releases the focus, switches the light, sets the brightness back to auto and resets', async () => {
     await setup(phone(ANDROID, { exposureCompensation: 1 }));
 
@@ -311,9 +341,7 @@ describe('CameraPanelComponent', () => {
     expect(light.request.body).toMatchObject({ camera: { torch: true } });
     light.flush({}, { status: 202, statusText: 'Accepted' });
 
-    element
-      .querySelector<HTMLButtonElement>('[aria-label="Set the brightness to automatic"]')
-      ?.click();
+    element.querySelector<HTMLButtonElement>('[aria-label="Reset the brightness to 0"]')?.click();
     await tick(CAMERA_COMMAND_INTERVAL_MS);
     const brightness = harness.http.expectOne(COMMANDS);
     expect(brightness.request.body).toMatchObject({ camera: { exposureCompensation: 0 } });

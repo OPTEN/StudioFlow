@@ -1,15 +1,15 @@
-<main class="c-pairing">
-  <div class="c-pairing__inner">
-    <sf-brand-mark class="c-pairing__brand" />
+<main class="c-page">
+  <div class="c-page__inner">
+    <sf-brand-mark class="c-page__brand" />
 
     @switch (state()) {
       @case ('expired') {
-        <section class="c-pairing__inner" data-testid="pairing-expired">
-          <h1 class="c-pairing__title" data-route-focus tabindex="-1">
+        <section class="c-page__inner" data-testid="pairing-expired">
+          <h1 class="c-page__title" data-route-focus tabindex="-1">
             {{ t('sender.pairing.redeem.expiredTitle') }}
           </h1>
           <div class="c-notice c-notice--warn" role="alert">
-            <sf-icon class="c-notice__icon" name="alert" />
+            <sf-icon [name]="isPhone() ? 'qr' : 'alert'" />
             <p class="c-notice__text">
               {{
                 isPhone()
@@ -18,58 +18,99 @@
               }}
             </p>
           </div>
-          <a class="c-button c-button--block" routerLink="/" replaceUrl>{{
-            t('sender.pairing.redeem.pairWithCode')
-          }}</a>
+          <div class="c-page__actions">
+            <a
+              class="c-btn c-btn--lg c-btn--block"
+              [class.c-btn--fill]="!isPhone()"
+              routerLink="/"
+              replaceUrl
+              >{{ t('sender.pairing.redeem.pairWithCode') }}</a
+            >
+          </div>
         </section>
       }
       @case ('failed') {
-        <h1 class="c-pairing__title" data-route-focus tabindex="-1">
+        <h1 class="c-page__title" data-route-focus tabindex="-1">
           {{ t('sender.pairing.redeem.failedTitle') }}
         </h1>
         <div class="c-notice c-notice--bad" role="alert">
-          <sf-icon class="c-notice__icon" name="alert" />
+          <sf-icon name="alert" />
           <p class="c-notice__text">{{ error()?.userMessage }}</p>
         </div>
-        <div class="c-pairing__actions">
+        <div class="c-page__actions">
           <button
-            class="c-button c-button--fill c-button--large c-button--block"
+            class="c-btn c-btn--fill c-btn--lg c-btn--block"
             type="button"
             [disabled]="busy()"
             (click)="redeem()"
           >
             {{ t('sender.pairing.redeem.retry') }}
           </button>
-          <a class="c-button c-button--block" routerLink="/" replaceUrl>{{
+          <a class="c-btn c-btn--plain c-btn--block" routerLink="/" replaceUrl>{{
             t('sender.pairing.redeem.pairWithCode')
           }}</a>
         </div>
       }
       @case ('already') {
-        <h1 class="c-pairing__title" data-route-focus tabindex="-1">
-          {{ t('sender.pairing.redeem.alreadyTitle') }}
-        </h1>
-        <p class="c-pairing__lead">{{ t('sender.pairing.redeem.alreadyText') }}</p>
-        <div class="c-pairing__actions">
+        <header class="c-page__head">
+          <h1 class="c-page__title" data-route-focus tabindex="-1">
+            {{ t('sender.pairing.redeem.alreadyTitle') }}
+          </h1>
+          <p class="c-page__lead">{{ t('sender.pairing.redeem.alreadyText') }}</p>
+        </header>
+        <div class="c-page__actions">
           <button
-            class="c-button c-button--fill c-button--large c-button--block"
+            class="c-btn c-btn--fill c-btn--lg c-btn--block"
             type="button"
             (click)="toStation()"
           >
             {{ t('sender.pairing.redeem.alreadyStation') }}
           </button>
-          <button
-            class="c-button c-button--block"
-            type="button"
-            [disabled]="busy()"
-            (click)="repair()"
-          >
-            {{ t('sender.pairing.redeem.alreadyAgain') }}
-          </button>
+          @if (confirming()) {
+            <div
+              class="c-confirm"
+              role="group"
+              sfConfirmKeys
+              [attr.aria-label]="t('sender.pairing.redeem.alreadyConfirmAction')"
+              (confirmKey)="busy() || repair()"
+              (cancelKey)="confirming.set(false)"
+            >
+              <p>{{ t('sender.pairing.redeem.alreadyConfirm') }}</p>
+              <div class="c-confirm__row">
+                <button
+                  class="c-btn c-btn--danger-fill"
+                  type="button"
+                  aria-keyshortcuts="Enter"
+                  [disabled]="busy()"
+                  (click)="repair()"
+                >
+                  {{ t('sender.pairing.redeem.alreadyConfirmAction') }}
+                  <kbd class="c-btn__key" aria-hidden="true">↵</kbd>
+                </button>
+                <button
+                  class="c-btn"
+                  type="button"
+                  aria-keyshortcuts="Escape"
+                  (click)="confirming.set(false)"
+                >
+                  {{ t('common.cancel') }}
+                  <kbd class="c-btn__key" aria-hidden="true">esc</kbd>
+                </button>
+              </div>
+            </div>
+          } @else {
+            <button
+              class="c-btn c-btn--danger c-btn--block"
+              type="button"
+              (click)="confirming.set(true)"
+            >
+              {{ t('sender.pairing.redeem.alreadyAgain') }}
+            </button>
+          }
         </div>
       }
       @default {
-        <h1 class="c-pairing__title" data-route-focus tabindex="-1">
+        <h1 class="c-page__title" data-route-focus tabindex="-1">
           {{ t('sender.pairing.redeem.pairingTitle') }}
         </h1>
         <div class="c-redeem__status">
@@ -77,9 +118,19 @@
             ><span class="c-pulse__dot"></span><span class="c-pulse__dot"></span
             ><span class="c-pulse__dot"></span
           ></span>
-          <p role="status" aria-live="polite">{{ t('sender.pairing.redeem.pairingStatus') }}</p>
+          <p role="status" aria-live="polite">
+            {{
+              slow()
+                ? t('sender.pairing.redeem.pairingSlow')
+                : t('sender.pairing.redeem.pairingStatus')
+            }}
+          </p>
         </div>
       }
     }
+
+    <footer class="c-page__foot">
+      <sf-language-select />
+    </footer>
   </div>
 </main>

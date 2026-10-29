@@ -1,0 +1,23 @@
+// Backups: compact controls on the right of their rows, the off-site switch across the whole row, row and group errors.
+.c-backup__zone {
+  max-width: 260px;
+}
+
+.c-backup__count {
+  text-align: right;
+  width: 84px;
+}
+
+.c-backup__switch {
+  grid-column: 1 / -1;
+  justify-content: space-between;
+}
+
+.c-backup__row-error {
+  grid-column: 1 / -1;
+  justify-self: end;
+}
+
+.c-backup__group-error {
+  padding: 0 4px;
+}

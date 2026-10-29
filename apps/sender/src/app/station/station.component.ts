@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -7,11 +8,13 @@ import {
   inject,
   signal,
 } from '@angular/core';
+import { Title } from '@angular/platform-browser';
 import { Router } from '@angular/router';
 import { t } from '@studioflow/i18n';
 import { AppUpdateService } from '../core/app-update.service';
 import { LiveStateService } from '../core/live-state.service';
 import { NoticeService } from '../core/notice.service';
+import { ConfirmKeysDirective } from '../shared/confirm-keys.directive';
 import { IconComponent } from '../shared/icon.component';
 import { AudioStationComponent } from './audio-station.component';
 import { ConnectionStatusComponent } from './connection-status.component';
@@ -22,23 +25,32 @@ import { PhoneStationComponent } from './phone-station.component';
 import { TallyFrameComponent } from './tally-frame.component';
 import { TechCheckPanelComponent } from './tech-check-panel.component';
 
-/** The “Paired” greeting of a phone disappears after this time. */
+/** The “Paired” greeting disappears after this time. */
 const GREETING_MS = 8000;
 /** “Server not reachable” only after the connection has been down this long. */
 const UNREACHABLE_AFTER_MS = 5000;
+/** “This takes longer than usual” on the starting screen after this time. */
+const STARTING_SLOW_MS = 15_000;
+/** The brand in the tab title (never translated). */
+const BRAND = 'StudioFlow';
 
 /**
  * `/join/station`: the paired device. Owns the {@link DeviceSessionService}, renders the phone, laptop or audio station UI, the
- * tally frame, Regie messages, the technical check and the screens for blocked devices and replaced sessions.
+ * tally frame, the banners (Regie message, greeting, connection, update), the tech check and the screens for blocked
+ * devices and replaced sessions. The banners are projected into each station's own layout, in the flow under its
+ * status bar, so they never cover a control. The tab title says what matters to a speaker in another window: “Live”,
+ * a message or a request to share again.
  */
 @Component({
   selector: 'sf-station',
   imports: [
     AudioStationComponent,
+    ConfirmKeysDirective,
     ConnectionStatusComponent,
     IconComponent,
     LaptopStationComponent,
     MessageBannerComponent,
+    NgTemplateOutlet,
     PhoneStationComponent,
     TallyFrameComponent,
     TechCheckPanelComponent,
@@ -54,14 +66,17 @@ export class StationComponent {
   protected readonly updates = inject(AppUpdateService);
   private readonly liveState = inject(LiveStateService);
   private readonly router = inject(Router);
+  private readonly title = inject(Title);
 
-  protected readonly justPaired = signal(inject(NoticeService).takeJustPaired());
-  protected readonly greeting = signal(this.justPaired());
+  protected readonly greeting = signal(inject(NoticeService).takeJustPaired());
   protected readonly techCheckOpen = signal(false);
+  /** “Reload now…” was pressed on the update banner: the consequence is shown with the final button. */
+  protected readonly confirmReload = signal(false);
+  protected readonly startingSlow = signal(false);
 
   protected readonly kind = this.session.kind;
   protected readonly phase = this.session.phase;
-  protected readonly dark = computed(
+  protected readonly screenOff = computed(
     () => this.session.settings().dark && this.kind() === 'phone' && this.phase() !== 'blocked',
   );
   protected readonly tally = computed(() => {
@@ -86,18 +101,49 @@ export class StationComponent {
       this.session.now() - since >= UNREACHABLE_AFTER_MS
     );
   });
+  /** The tab title: “Live · Message · Laptop Anna – StudioFlow”. */
+  private readonly tabTitle = computed(() => {
+    const name = this.session.self()?.name ?? '';
+    if (name === '') {
+      return null;
+    }
+    const parts: string[] = [];
+    if (this.tally() === 'program') {
+      parts.push(t('sender.station.tally.live'));
+    }
+    if (this.session.message() !== null) {
+      parts.push(t('sender.station.tab.message'));
+    } else if (this.session.screens().some((slot) => slot.reshareRequested)) {
+      parts.push(t('sender.station.laptop.shareAgain'));
+    }
+    return `${[...parts, name].join(' · ')} – ${BRAND}`;
+  });
 
   constructor() {
     this.session.start();
+    const destroyRef = inject(DestroyRef);
     effect(() => {
       if (this.phase() === 'removed') {
         void this.router.navigate(['/'], { replaceUrl: true });
       }
     });
+    effect(() => {
+      const title = this.tabTitle();
+      if (title !== null) {
+        this.title.setTitle(title);
+      }
+    });
+    effect(() => {
+      if (!this.showUpdate()) {
+        this.confirmReload.set(false);
+      }
+    });
     if (this.greeting()) {
       const timer = setTimeout(() => this.greeting.set(false), GREETING_MS);
-      inject(DestroyRef).onDestroy(() => clearTimeout(timer));
+      destroyRef.onDestroy(() => clearTimeout(timer));
     }
+    const slowTimer = setTimeout(() => this.startingSlow.set(true), STARTING_SLOW_MS);
+    destroyRef.onDestroy(() => clearTimeout(slowTimer));
   }
 
   protected openTechCheck(): void {

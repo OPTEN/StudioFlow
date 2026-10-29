@@ -1,0 +1,108 @@
+@use 'mixins' as *;
+@use 'tokens' as *;
+
+// The ⋯ menu of a card: a floating list under its button, highlighted in the accent on hover and focus like a system
+// menu. Rows are 44 px high for fingers.
+.c-menu-wrap {
+  flex: none;
+  position: relative;
+}
+
+.c-menu {
+  @include floating;
+  animation: c-menu-in var(--dur-state) var(--ease);
+  display: grid;
+  min-width: 280px;
+  padding: $SPACE_SM;
+  position: absolute;
+  right: 0;
+  top: calc(100% + #{$SPACE_SM});
+  transform-origin: top right;
+  z-index: z(menu);
+}
+
+@keyframes c-menu-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(-4px);
+  }
+}
+
+.c-menu-item {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  cursor: pointer;
+  display: flex;
+  font-size: var(--fs-callout);
+  gap: $SPACE_ROW;
+  min-height: $TOUCH_TARGET;
+  padding: $SPACE_SM $SPACE_ROW;
+  text-align: left;
+  width: 100%;
+
+  sf-icon {
+    --icon-size: 18px;
+    color: var(--muted);
+  }
+
+  &:hover,
+  &:focus-visible {
+    background: var(--blue-fill);
+    color: var(--on-fill);
+    outline: none;
+
+    sf-icon,
+    .c-menu-item__sub {
+      color: var(--on-fill);
+    }
+  }
+}
+
+.c-menu-item--danger {
+  color: var(--red);
+
+  sf-icon {
+    color: var(--red);
+  }
+
+  &:hover,
+  &:focus-visible {
+    background: var(--red);
+    color: var(--on-state);
+
+    sf-icon {
+      color: var(--on-state);
+    }
+  }
+}
+
+.c-menu-item__body {
+  display: grid;
+  flex: 1 1 auto;
+  gap: 2px;
+  min-width: 0;
+}
+
+.c-menu-item__sub {
+  color: var(--muted);
+  font-size: var(--fs-footnote);
+}
+
+// The check of a checkable item stays in its column, visible only while checked.
+.c-menu-item__check {
+  flex: none;
+  opacity: 0;
+
+  [aria-checked='true'] > & {
+    opacity: 1;
+  }
+}
+
+.c-menu-sep {
+  background: var(--seam);
+  height: 1px;
+  margin: $SPACE_XS $SPACE_ROW;
+}

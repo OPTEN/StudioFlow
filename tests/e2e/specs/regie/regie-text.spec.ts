@@ -95,7 +95,7 @@ test.describe('REGIE texts', () => {
       const page = regie.page;
 
       // "+ Source" > "Lower third": a hidden row T1 with placeholder content; the editor is open with a preview.
-      await page.getByRole('button', { name: 'Source', exact: true }).click();
+      await page.getByRole('button', { name: 'Add source', exact: true }).click();
       await page.getByRole('menuitem', { name: 'Lower third' }).click();
       const row = rowOf(page, 'Name');
       await expect(row).toBeVisible();
@@ -178,7 +178,8 @@ test.describe('REGIE texts', () => {
 
       await rowOf(page, 'Welcome to the show').locator('.c-src__select').click();
       await expect(page.locator('#sf-text-line1')).toHaveValue('Welcome to the show');
-      await expect(page.locator('#sf-text-line1-count')).toHaveText('19 of 120');
+      // The counter only shows near the limit of 120 characters.
+      await expect(page.locator('#sf-text-line1-count')).toHaveCount(0);
 
       // A title is centred; the output changes style without a reload.
       await page.getByRole('group', { name: 'Style' }).getByRole('button', { name: 'Title' }).click();
@@ -208,7 +209,7 @@ test.describe('REGIE texts', () => {
   );
 
   test(
-    'E2E-TXT-03 [regie, output] "Text colours…" in the production menu: hex fields, warning below 4.5 : 1, nothing is sent for an invalid colour, saving recolours the output',
+    'E2E-TXT-03 [settings, output] the settings page Text style: hex fields, warning below 4.5 : 1, nothing is sent for an invalid colour, saving recolours the output',
     t.p1,
     async ({ openRegie, openOutput, api, production }) => {
       await seedText(api, production, { line1: 'Mia Meier', line2: 'Host' }, true);
@@ -217,27 +218,28 @@ test.describe('REGIE texts', () => {
       const regie = await openRegie({ contextOptions: { context: REGIE_CONTEXT.context } });
       const page = regie.page;
 
-      await page.getByRole('button', { name: /^Production .*, menu$/ }).click();
-      await page.getByRole('button', { name: 'Text colours…' }).click();
+      await page.goto('/settings/text-style');
+      await expect(page.getByRole('heading', { level: 1, name: 'Text style' })).toBeVisible();
       const field = (name: string) => page.getByLabel(`${name}, hex value`);
+      const advice = page.getByRole('status').filter({ hasText: /^\s*Contrast/ });
       await expect(field('Accent')).toHaveValue('#1f6feb');
-      await expect(page.locator('.c-prod__pop').getByRole('status')).toHaveCount(0);
+      await expect(advice).toHaveCount(0);
 
       // Grey on white is below 4.5 : 1: the warning names the ratio (rounded down); the colours can still be saved.
       await field('Background').fill('#ffffff');
       await field('Text').fill('#777777');
-      await expect(page.locator('.c-prod__pop').getByRole('status')).toHaveText(/^\s*Contrast 4\.4 : 1\./);
+      await expect(advice).toHaveText(/^\s*Contrast 4\.4 : 1\./);
       await field('Text').fill('#767676');
-      await expect(page.locator('.c-prod__pop').getByRole('status')).toHaveCount(0);
+      await expect(advice).toHaveCount(0);
 
       // An invalid colour is refused in the form; the API is not called.
       await field('Accent').fill('orange');
-      await page.getByRole('button', { name: 'Save', exact: true }).click();
-      await expect(page.locator('.c-field-error')).toContainText('Enter every colour as #rrggbb');
+      await page.getByRole('button', { name: 'Save colours', exact: true }).click();
+      await expect(page.locator('.c-field-error')).toContainText('Enter the colour as #rrggbb');
       expect((await api.getSnapshot(production.id)).body.production.textTheme.accent).toBe('#1f6feb');
 
       await field('Accent').fill('#00aa55');
-      await page.getByRole('button', { name: 'Save', exact: true }).click();
+      await page.getByRole('button', { name: 'Save colours', exact: true }).click();
       await expect.poll(async () => (await api.getSnapshot(production.id)).body.production.textTheme).toEqual({
         accent: '#00aa55',
         background: '#ffffff',

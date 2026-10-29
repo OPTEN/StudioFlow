@@ -11,6 +11,7 @@ import {
   COLOR,
   SCENES,
   animationsOf,
+  endBroadcast,
   expectFadeTiming,
   fadeDeviationMs,
   fadeStartEpochMs,
@@ -27,7 +28,9 @@ import {
   recordRequests,
   renderedItems,
   replaceItems,
+  rowToggle,
   sceneHit,
+  startBroadcast,
   toastLog,
   toastOf,
   trackToasts,
@@ -98,8 +101,8 @@ test.describe('REGIE switching', () => {
       await expect(regie.statusLine()).toContainText('Scene “Scene B” is live');
       const row = regie.scene('Scene B');
       await expect(row).toHaveAttribute('aria-pressed', 'true');
-      await expect(row).toHaveAccessibleName(/^Scene B PGM( |$)/);
-      await expect(page.locator('sf-scene-row.is-program .c-tag--pgm')).toHaveText('PGM');
+      await expect(row).toHaveAccessibleName(/, live on Program$/);
+      await expect(page.locator('sf-scene-row.is-program .c-tag--pgm')).toHaveText('Live');
       await expect(regie.scene('Scene A')).toHaveAttribute('aria-pressed', 'false');
       expect(await programId(api, production)).toBe(b);
       await expect
@@ -403,24 +406,22 @@ test.describe('REGIE switching', () => {
         st: await page.locator('sf-dock-slot[data-dock="st"]').boundingBox(),
       });
       const hint = page.locator('.c-control-column__hint');
-      await expect(hint).toHaveText('Click a scene to switch it live directly.');
-      await expect(page.getByText('Preview off', { exact: true })).toBeVisible();
+      await expect(hint).toHaveText('A click on a scene puts it live at once.');
+      await expect(page.getByText('Studio Mode is off', { exact: true })).toBeVisible();
       await expect(monitorOf(page, 'program').locator('.c-monitor__live-edit')).toBeVisible();
       const before = await boxes();
 
       await regie.setStudioMode(true);
-      await expect(toastOf(page)).toContainText('Studio Mode on: Preview and Take');
+      await expect(toastOf(page)).toContainText('Studio Mode is on. Take puts the Preview live.');
       await expect(monitorOf(page, 'preview')).toBeVisible();
       await expect(regie.take()).toBeVisible();
       await expect(regie.take()).toContainText('Space');
-      await expect(page.getByText('Preview off', { exact: true })).toHaveCount(0);
+      await expect(page.getByText('Studio Mode is off', { exact: true })).toHaveCount(0);
       await expect(
         monitorOf(page, 'program').locator('.c-monitor__live-edit'),
         '“Changes go live immediately” is hidden',
       ).toHaveCount(0);
-      await expect(hint).toHaveText(
-        'Click a scene to load it into Preview. Take switches it live.',
-      );
+      await expect(hint).toHaveText('A click on a scene loads it into Preview.');
       const after = await boxes();
       expect(after.scenes, 'docks do not move').toEqual(before.scenes);
       expect(after.src).toEqual(before.src);
@@ -433,8 +434,8 @@ test.describe('REGIE switching', () => {
       // The preview defaults to the scene after the program.
       await expect.poll(() => previewId(api, production)).toBe(b);
       await expect(regie.scene('Scene B')).toHaveAttribute('aria-pressed', 'true');
-      await expect(regie.scene('Scene B')).toHaveAccessibleName(/^Scene B PVW( |$)/);
-      await expect(page.locator('sf-scene-row.is-preview .c-tag--pvw')).toHaveText('PVW');
+      await expect(regie.scene('Scene B')).toHaveAccessibleName(/, in Preview$/);
+      await expect(page.locator('sf-scene-row.is-preview .c-tag--pvw')).toHaveText('Preview');
       expect(await page.evaluate(() => localStorage.getItem('studioflow.studio'))).toBe('1');
 
       // A click only changes the preview: program and output stay.
@@ -450,10 +451,12 @@ test.describe('REGIE switching', () => {
       await expect(regie.studioModeSwitch()).toBeChecked();
       await expect(regie.take()).toBeVisible();
 
-      // Off: toast, “Preview off”, the preview is cleared (only operator).
+      // Off: toast, “Studio Mode is off” in the place of the Preview, the preview is cleared (only operator).
       await regie.setStudioMode(false);
-      await expect(toastOf(page)).toContainText('Studio Mode off: scenes switch live directly');
-      await expect(page.getByText('Preview off', { exact: true })).toBeVisible();
+      await expect(toastOf(page)).toContainText(
+        'Studio Mode is off. A click on a scene goes live at once.',
+      );
+      await expect(page.getByText('Studio Mode is off', { exact: true })).toBeVisible();
       await expect.poll(() => previewId(api, production)).toBeNull();
       expect(await page.evaluate(() => localStorage.getItem('studioflow.studio'))).toBe('0');
       await expect(regie.take()).toHaveCount(0);
@@ -686,7 +689,7 @@ test.describe('REGIE tally', () => {
       expect(states(), 'a preview in standby is off as well').toEqual(['off', 'off', 'off', 'off']);
 
       // Start: K1 program (red), K2 preview (green), K3 off, the laptop is program with S1 on air and its camera in the preview.
-      await page.getByRole('button', { name: 'Start broadcast' }).click();
+      await startBroadcast(page);
       await expect
         .poll(states, { message: 'after the start', timeout: 3000 })
         .toEqual(['program', 'preview', 'off', 'program']);
@@ -726,24 +729,19 @@ test.describe('REGIE tally', () => {
       // Hiding an element: after an even number of takes A is on air and B is in the preview, which is the scene the Regie edits.
       expect(await programId(api, production)).toBe(a);
       expect(await previewId(api, production)).toBe(b);
-      await page.getByRole('button', { name: 'Hide: Phone Two' }).click();
+      await (await rowToggle(page, 'Hide: Phone Two')).click();
       await expect
         .poll(() => two.overall(), { message: 'a hidden element gives no tally', timeout: 3000 })
         .toBe('off');
-      await page.getByRole('button', { name: 'Show: Phone Two' }).click();
+      await (await rowToggle(page, 'Show: Phone Two')).click();
       await expect.poll(() => two.overall(), { timeout: 3000 }).toBe('preview');
 
       // Ending the broadcast: off for everybody, also K1 and S1 in the program scene; starting again brings the tally back.
-      await page.getByRole('button', { name: 'End broadcast' }).click();
-      await page
-        .getByRole('dialog', { name: 'End broadcast' })
-        .getByRole('group', { name: 'End broadcast' })
-        .getByRole('button', { name: 'End broadcast' })
-        .click();
+      await endBroadcast(page);
       await expect
         .poll(states, { message: 'ended', timeout: 3000 })
         .toEqual(['off', 'off', 'off', 'off']);
-      await page.getByRole('button', { name: 'Start broadcast' }).click();
+      await startBroadcast(page);
       await expect
         .poll(states, { message: 'after the next start', timeout: 3000 })
         .toEqual(['program', 'preview', 'off', 'program']);
@@ -756,7 +754,7 @@ test.describe('REGIE broadcast and slates', () => {
   const state = (page: import('@playwright/test').Page) => page.locator('.c-live b');
 
   test(
-    'E2E-SWITCH-12 [regie] broadcast lifecycle: READY -> LIVE with a running clock -> confirmed end -> ENDED -> start again from 00:00:00 -> back to READY; the output shows the slates; the other operator follows',
+    'E2E-SWITCH-12 [regie] broadcast lifecycle: Off air -> confirmed start (pre-flight) -> On air with a running clock -> confirmed end -> Ended -> start again from 00:00:00 -> back to standby; the output shows the slates; the other operator follows',
     t.smoke,
     async ({ regie, openRegie, openOutput, api, production }) => {
       test.setTimeout(120_000);
@@ -768,8 +766,8 @@ test.describe('REGIE broadcast and slates', () => {
       const slate = () => output.slateText();
 
       // Before the start: standby slate with the production name as subtitle.
-      await expect(state(page)).toHaveText('READY');
-      await expect(state(operatorB.page)).toHaveText('READY');
+      await expect(state(page)).toHaveText('Off air');
+      await expect(state(operatorB.page)).toHaveText('Off air');
       await expect.poll(slate, { message: 'standby slate' }).toContain(TEXT.slate.standby);
       expect(await slate()).toContain(production.name);
       await expect
@@ -778,12 +776,21 @@ test.describe('REGIE broadcast and slates', () => {
         })
         .toBe(1);
 
-      // Start.
+      // Start asks first and shows the pre-flight check; "Cancel" changes nothing.
       await page.getByRole('button', { name: 'Start broadcast' }).click();
-      await expect(state(page)).toHaveText('LIVE');
-      await expect(state(operatorB.page), 'operator B sees LIVE within 1 s').toHaveText('LIVE', {
-        timeout: 1000,
-      });
+      const preflight = page.getByRole('dialog', { name: 'Start the broadcast?' });
+      await expect(preflight).toContainText('The output switches from the slate to the program.');
+      await expect(preflight).toContainText('No open issues');
+      await expect(preflight).toContainText('Program: ');
+      await preflight.getByRole('button', { name: 'Cancel' }).click();
+      await expect(preflight).toBeHidden();
+      await expect(state(page)).toHaveText('Off air');
+      await startBroadcast(page);
+      await expect(state(page)).toHaveText('On air');
+      await expect(state(operatorB.page), 'operator B sees "On air" within 1 s').toHaveText(
+        'On air',
+        { timeout: 1000 },
+      );
       const clock = page.locator('.c-live__time');
       await expect(clock).toHaveText(/^00:00:0\d$/);
       // The runtime counts up: sampled every 400 ms for 4.4 s it never goes back and reaches at least 00:00:03.
@@ -808,40 +815,32 @@ test.describe('REGIE broadcast and slates', () => {
 
       // End needs a confirmation: “Cancel” changes nothing, “End broadcast” ends.
       await page.getByRole('button', { name: 'End broadcast' }).click();
-      const dialog = page.getByRole('dialog', { name: 'End broadcast' });
+      const dialog = page.getByRole('dialog', { name: 'End the broadcast?' });
       await expect(dialog).toContainText(
         'The broadcast will end. The output then shows “Thanks for watching”.',
       );
       await dialog.getByRole('button', { name: 'Cancel' }).click();
       await expect(dialog).toBeHidden();
-      await expect(state(page)).toHaveText('LIVE');
-      await page.getByRole('button', { name: 'End broadcast' }).click();
-      await dialog
-        .getByRole('group', { name: 'End broadcast' })
-        .getByRole('button', { name: 'End broadcast' })
-        .click();
-      await expect(state(page)).toHaveText('ENDED');
-      await expect(state(operatorB.page)).toHaveText('ENDED', { timeout: 1000 });
+      await expect(state(page)).toHaveText('On air');
+      await endBroadcast(page);
+      await expect(state(page)).toHaveText('Ended');
+      await expect(state(operatorB.page)).toHaveText('Ended', { timeout: 1000 });
       await expect.poll(slate, { message: 'end slate' }).toContain(TEXT.slate.end);
-      await expect(page.getByRole('button', { name: 'Back to Ready' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Back to standby' })).toBeVisible();
       await expect(regie.statusLine()).toContainText('Broadcast ended');
 
       // Start again: the runtime restarts at 00:00:00.
-      await page.getByRole('button', { name: 'Start broadcast' }).click();
-      await expect(state(page)).toHaveText('LIVE');
+      await startBroadcast(page);
+      await expect(state(page)).toHaveText('On air');
       await expect(clock).toHaveText(/^00:00:0[0-2]$/);
       await expect.poll(slate).not.toContain(TEXT.slate.end);
 
-      // Reset (from ended): end again, then “Back to Ready”.
-      await page.getByRole('button', { name: 'End broadcast' }).click();
-      await dialog
-        .getByRole('group', { name: 'End broadcast' })
-        .getByRole('button', { name: 'End broadcast' })
-        .click();
-      await expect(state(page)).toHaveText('ENDED');
-      await page.getByRole('button', { name: 'Back to Ready' }).click();
-      await expect(state(page)).toHaveText('READY');
-      await expect(state(operatorB.page)).toHaveText('READY', { timeout: 1000 });
+      // Reset (from ended): end again, then “Back to standby”.
+      await endBroadcast(page);
+      await expect(state(page)).toHaveText('Ended');
+      await page.getByRole('button', { name: 'Back to standby' }).click();
+      await expect(state(page)).toHaveText('Off air');
+      await expect(state(operatorB.page)).toHaveText('Off air', { timeout: 1000 });
       await expect.poll(slate, { message: 'standby slate again' }).toContain(TEXT.slate.standby);
       expect(regie.problems.pageErrors).toEqual([]);
     },
@@ -873,7 +872,7 @@ test.describe('REGIE broadcast and slates', () => {
         await page.waitForTimeout(150);
       }
       expect(await output.slateText()).toContain(TEXT.slate.standby);
-      await page.getByRole('button', { name: 'Start broadcast' }).click();
+      await startBroadcast(page);
       await expect
         .poll(
           async () => {
@@ -891,7 +890,7 @@ test.describe('REGIE broadcast and slates', () => {
   );
 
   test(
-    'E2E-SWITCH-19 [regie] the slates are editable in the production menu: texts and an image reach the output without a reload; a used image cannot be deleted',
+    'E2E-SWITCH-19 [settings] the slates are editable on the settings page Slates: texts and an image reach the output without a reload; a used image cannot be deleted',
     t.p2,
     async ({ regie, openOutput, api, production }) => {
       await seedColoured(api, production);
@@ -899,18 +898,21 @@ test.describe('REGIE broadcast and slates', () => {
       const image = await uploadSolid(api, production, 'Background', COLOR.violet);
       const output = await openOutput(production);
       await output.stage();
-      await page.getByRole('button', { name: /^Production .*, menu$/ }).click();
-      await page.getByRole('button', { name: 'Edit slates', exact: true }).click();
-      const form = page.locator('.c-prod__form');
-      await expect(form).toContainText('Before the broadcast');
-      await form.getByLabel('Title', { exact: true }).first().fill('Starting soon, hello');
-      await form.getByLabel('Subtitle', { exact: true }).first().fill('with Lea and Jonas');
-      await form
+      await page.goto('/settings/slates');
+      await expect(page.getByRole('heading', { level: 1, name: 'Slates' })).toBeVisible();
+      // One slate per tab: "Before the broadcast" is in front, "After the broadcast" one tab further.
+      const before = page.getByRole('tabpanel', { name: /^Before the broadcast/ });
+      await before.getByLabel('Title', { exact: true }).fill('Starting soon, hello');
+      await before.getByLabel('Subtitle', { exact: true }).fill('with Lea and Jonas');
+      await before
         .getByLabel('Background')
-        .first()
         .selectOption({ label: `${image.code} · ${image.name}` });
-      await form.getByLabel('Title', { exact: true }).nth(1).fill('See you next time');
-      await form.getByRole('button', { name: 'Save' }).click();
+      await page.getByRole('tab', { name: /^After the broadcast/ }).click();
+      await page
+        .getByRole('tabpanel', { name: /^After the broadcast/ })
+        .getByLabel('Title', { exact: true })
+        .fill('See you next time');
+      await page.getByRole('button', { name: 'Save slates' }).click();
       await expect
         .poll(() => output.slateText(), {
           message: 'the output shows the new texts',
@@ -922,7 +924,8 @@ test.describe('REGIE broadcast and slates', () => {
         .poll(
           async () => {
             const stage = await output.stagePixels();
-            return stage.image.shareOfColor(
+            // Under the scrim that keeps the slate text readable: the violet, darkened.
+            return stage.image.shareOfShade(
               hex(COLOR.violet),
               { x: 0, y: 0, width: stage.image.width, height: stage.image.height },
               30,
@@ -954,9 +957,10 @@ test.describe('REGIE two operators and rapid input', () => {
       await expect.poll(() => previewId(api, production)).toBe(b);
       const operatorB = await openRegie();
       await operatorB.transitionOption('Cut').click();
-      await expect(pageA.locator('.c-header__presence-label')).toHaveText('2 in the control room');
-      await expect(operatorB.page.locator('.c-header__presence-label')).toHaveText(
-        '2 in the control room',
+      await expect(pageA.locator('.c-header__presence-count')).toHaveText('2');
+      await expect(operatorB.page.locator('.c-header__presence-count')).toHaveText('2');
+      await expect(pageA.locator('.c-header__presence .u-sr-only')).toHaveText(
+        '2 people in the control room',
       );
       const putsB = recordRequests(
         operatorB.page,
@@ -992,7 +996,7 @@ test.describe('REGIE two operators and rapid input', () => {
 
       // B leaves: presence drops; A alone turns the mode off and the preview is cleared.
       await operatorB.page.context().close();
-      await expect(pageA.locator('.c-header__presence-label')).toHaveText('1 in the control room', {
+      await expect(pageA.locator('.c-header__presence-count')).toHaveText('1', {
         timeout: 10_000,
       });
       await regie.setStudioMode(false);

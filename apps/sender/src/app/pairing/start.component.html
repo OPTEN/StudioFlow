@@ -1,26 +1,50 @@
-<main class="c-pairing">
-  <div class="c-pairing__inner">
-    <sf-brand-mark class="c-pairing__brand" />
+<main class="c-page">
+  <div class="c-page__inner">
+    <sf-brand-mark class="c-page__brand" />
 
-    <h1 class="c-pairing__title" data-route-focus tabindex="-1">
-      {{ t('sender.pairing.start.title') }}
-    </h1>
-    <p class="c-pairing__lead">{{ t('sender.pairing.start.lead') }}</p>
+    <header class="c-page__head">
+      <h1 class="c-page__title" data-route-focus tabindex="-1">
+        {{ t('sender.pairing.start.title') }}
+      </h1>
+      @if (!phoneFirst) {
+        <p class="c-page__lead">{{ t('sender.pairing.start.lead') }}</p>
+      }
+    </header>
 
     @if (notice(); as text) {
       <div class="c-notice c-notice--warn" role="status">
-        <sf-icon class="c-notice__icon" name="alert" />
+        <sf-icon name="alert" />
         <p class="c-notice__text">{{ t(text) }}</p>
       </div>
     }
 
-    <form class="c-pairing__form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    @if (!secure) {
+      <div class="c-notice c-notice--bad" role="status">
+        <sf-icon name="lock" />
+        <p class="c-notice__text">{{ t('sender.pairing.start.insecure') }}</p>
+      </div>
+    }
+
+    @if (phoneFirst) {
+      <section class="c-qr" aria-labelledby="qr-title">
+        <span class="c-qr__art"><sf-icon name="qr" /></span>
+        <h2 class="c-qr__title" id="qr-title">{{ t('sender.pairing.start.qrTitle') }}</h2>
+        <p class="c-qr__text">{{ t('sender.pairing.start.qrText') }}</p>
+      </section>
+
+      <div class="c-start__code">
+        <h2 class="c-start__heading">{{ t('sender.pairing.start.codeTitle') }}</h2>
+        <p class="c-start__lead">{{ t('sender.pairing.start.lead') }}</p>
+      </div>
+    }
+
+    <form class="c-start__form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
       <div class="c-field">
         <label class="c-field__label" for="device-name">{{
           t('sender.pairing.start.nameLabel')
         }}</label>
         <input
-          class="c-field__input"
+          class="c-input"
           id="device-name"
           type="text"
           formControlName="name"
@@ -34,62 +58,93 @@
             nameError() ? 'device-name-hint device-name-error' : 'device-name-hint'
           "
         />
-        <p class="c-field__hint" id="device-name-hint">
-          {{ t('sender.pairing.start.nameExample') }}
-        </p>
+        <p class="c-hint" id="device-name-hint">{{ t('sender.pairing.start.nameExample') }}</p>
         @if (nameError(); as message) {
-          <p class="c-field__error" id="device-name-error">{{ message }}</p>
+          <p class="c-field-error" id="device-name-error">{{ message }}</p>
         }
       </div>
 
-      <fieldset class="c-segmented">
-        <legend class="c-segmented__legend">{{ t('sender.pairing.start.kindLegend') }}</legend>
-        <div class="c-segmented__options">
-          <label class="c-segmented__option">
-            <input class="c-segmented__input" type="radio" formControlName="kind" value="phone" />
-            <span>{{ t('sender.pairing.start.kindPhone') }}</span>
-          </label>
-          <label class="c-segmented__option">
-            <input class="c-segmented__input" type="radio" formControlName="kind" value="laptop" />
-            <span>{{ t('sender.pairing.start.kindLaptop') }}</span>
-          </label>
-          <label class="c-segmented__option">
+      <fieldset class="c-choices">
+        <legend class="c-choices__legend">{{ t('sender.pairing.start.kindLegend') }}</legend>
+        <div class="c-choices__list">
+          <label class="c-choice">
             <input
-              class="c-segmented__input"
+              class="c-choice__input"
+              type="radio"
+              formControlName="kind"
+              value="phone"
+              aria-labelledby="kind-phone"
+              aria-describedby="kind-phone-hint"
+            />
+            <span class="c-choice__icon"><sf-icon name="phone" /></span>
+            <span class="c-choice__title" id="kind-phone">{{
+              t('sender.pairing.start.kindPhone')
+            }}</span>
+            <span class="c-choice__text" id="kind-phone-hint">{{
+              t('sender.pairing.start.kindPhoneHint')
+            }}</span>
+            <sf-icon class="c-choice__mark" name="check" />
+          </label>
+          <label class="c-choice">
+            <input
+              class="c-choice__input"
+              type="radio"
+              formControlName="kind"
+              value="laptop"
+              aria-labelledby="kind-laptop"
+              aria-describedby="kind-laptop-hint"
+            />
+            <span class="c-choice__icon"><sf-icon name="laptop" /></span>
+            <span class="c-choice__title" id="kind-laptop">{{
+              t('sender.pairing.start.kindLaptop')
+            }}</span>
+            <span class="c-choice__text" id="kind-laptop-hint">{{
+              t('sender.pairing.start.kindLaptopHint')
+            }}</span>
+            <sf-icon class="c-choice__mark" name="check" />
+          </label>
+          <label class="c-choice">
+            <input
+              class="c-choice__input"
               type="radio"
               formControlName="kind"
               value="audioStation"
+              aria-labelledby="kind-audioStation"
+              aria-describedby="kind-audioStation-hint"
             />
-            <span>{{ t('sender.pairing.start.kindAudioStation') }}</span>
+            <span class="c-choice__icon"><sf-icon name="mixer" /></span>
+            <span class="c-choice__title" id="kind-audioStation">{{
+              t('sender.pairing.start.kindAudioStation')
+            }}</span>
+            <span class="c-choice__text" id="kind-audioStation-hint">{{
+              t('sender.pairing.start.kindAudioStationHint')
+            }}</span>
+            <sf-icon class="c-choice__mark" name="check" />
           </label>
         </div>
       </fieldset>
 
-      @if (kind() === 'laptop' && !canShareScreen) {
+      @if (kind() === 'laptop' && !canShareScreen && secure) {
         <div class="c-notice c-notice--warn" role="status">
-          <sf-icon class="c-notice__icon" name="alert" />
+          <sf-icon name="alert" />
           <p class="c-notice__text">{{ t('sender.pairing.start.noScreenShare') }}</p>
         </div>
       }
 
       @if (error(); as message) {
         <div class="c-notice c-notice--bad" role="alert">
-          <sf-icon class="c-notice__icon" name="alert" />
+          <sf-icon name="alert" />
           <p class="c-notice__text">{{ message }}</p>
         </div>
       }
 
-      <button
-        class="c-button c-button--fill c-button--large c-button--block"
-        type="submit"
-        [disabled]="busy()"
-      >
+      <button class="c-btn c-btn--fill c-btn--lg c-btn--block" type="submit" [disabled]="busy()">
         {{ busy() ? t('sender.pairing.start.submitting') : t('sender.pairing.start.submit') }}
       </button>
     </form>
 
-    <p class="c-pairing__foot">{{ t('sender.pairing.start.foot') }}</p>
-
-    <sf-language-select />
+    <footer class="c-page__foot">
+      <sf-language-select />
+    </footer>
   </div>
 </main>

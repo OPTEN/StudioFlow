@@ -1,0 +1,63 @@
+// A collapsible section of the Properties dock (disclosure group).
+@use 'mixins' as *;
+
+:host {
+  display: block;
+}
+
+.c-insp-sec {
+  border-top: 1px solid var(--seam);
+}
+
+.c-insp-sec__head {
+  @include state-transition(color);
+  align-items: center;
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  cursor: pointer;
+  display: flex;
+  gap: 6px;
+  list-style: none;
+  min-height: 36px;
+  padding: 6px 2px;
+  user-select: none;
+
+  &::-webkit-details-marker {
+    display: none;
+  }
+
+  &:focus-visible {
+    outline-offset: -2px;
+  }
+}
+
+.c-insp-sec__chev {
+  color: var(--muted);
+  transition: transform var(--dur-state) var(--ease);
+}
+
+.c-insp-sec[open] > .c-insp-sec__head .c-insp-sec__chev {
+  transform: rotate(90deg);
+}
+
+.c-insp-sec__title {
+  @include heading-text;
+  @include ellipsis;
+  flex: 0 1 auto;
+}
+
+.c-insp-sec__note {
+  @include mono;
+  @include ellipsis;
+  color: var(--muted);
+  flex: 0 100 auto;
+  font-size: var(--fs-footnote);
+  margin-left: auto;
+}
+
+.c-insp-sec__body {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr);
+  padding: 2px 0 16px;
+}

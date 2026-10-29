@@ -64,7 +64,7 @@ export function withBorderEnabled(item: SceneItemDto, enabled: boolean): SceneIt
   return item.border ? { ...item, border: null } : item;
 }
 
-/** A choice of "On failure". */
+/** A choice of "When the source fails › First". */
 export interface HoldChoice {
   /** Value of the `<option>`: the hold time in ms or `hold`. */
   readonly value: string;
@@ -85,25 +85,29 @@ export function parseHoldValue(value: string): number | null | undefined {
   return Number.isInteger(ms) && ms >= 0 && ms <= ITEM_BOUNDS.maxHoldMs ? ms : undefined;
 }
 
+/** Label of a hold time: "Last picture for 3 s", or "Last picture until the source is back" without a limit. */
+export function holdLabel(holdMs: number | null): string {
+  return holdMs === null
+    ? t('regie.properties.hold.forever')
+    : t('regie.properties.hold.timed', { seconds: formatDecimal(holdMs / 1000, 1) });
+}
+
 /**
- * The "On failure" options (`HOLD_OPTIONS`), plus the item's current hold time when it is none of them (set through
- * the API), so the select never shows a wrong value.
+ * The choices of "When the source fails › First" (`HOLD_OPTIONS`), plus the item's current hold time when it is none
+ * of them (set through the API), so the select never shows a wrong value.
  */
 export function holdChoices(current: number | null): HoldChoice[] {
   const choices = HOLD_OPTIONS.map((option) => ({
     value: holdValue(option.holdMs),
-    label: option.label,
+    label: holdLabel(option.holdMs),
   }));
   if (!HOLD_OPTIONS.some((option) => option.holdMs === current) && current !== null) {
-    choices.unshift({
-      value: holdValue(current),
-      label: t('regie.properties.hold.custom', { seconds: formatDecimal(current / 1000, 1) }),
-    });
+    choices.unshift({ value: holdValue(current), label: holdLabel(current) });
   }
   return choices;
 }
 
-/** A group of the "Fallback source" select. */
+/** A group of the "When the source fails › Then" select. */
 export interface FallbackGroup {
   readonly id: 'media' | 'camera' | 'screen';
   readonly label: string;

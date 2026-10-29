@@ -5,6 +5,7 @@ import {
   Injector,
   computed,
   inject,
+  input,
   output,
   signal,
 } from '@angular/core';
@@ -30,8 +31,10 @@ import { ToastService } from '../../core/ui/toast.service';
 type Field = 'current' | 'password' | 'repeat';
 
 /**
- * Change of the Regie password, inside the production menu: the current password and the new one (twice, with the
- * same rules as the first-run setup). The server ends every other session; this one continues. Reports `done` after
+ * Change of the Regie password: the current password and the new one (twice, with the same rules as the first-run
+ * setup). The consequence (every other session is signed out, this one continues) is stated before the button, whose
+ * label "Update password" differs from the heading. `layout="page"` is the grouped form of Settings › Account (Cancel
+ * appears once something is typed and clears the form); `menu` is the compact form of a popover. Reports `done` after
  * success and `cancelled` when the operator backs out.
  */
 @Component({
@@ -48,6 +51,8 @@ export class ChangePasswordFormComponent {
   private readonly injector = inject(Injector);
   private readonly refused = new RefusedFields<Field>();
 
+  /** `page`: the grouped form of the account page; `menu`: the compact form of a popover. */
+  readonly layout = input<'menu' | 'page'>('menu');
   /** The password was changed. */
   readonly done = output();
   /** The operator closed the form without changing anything. */
@@ -122,12 +127,25 @@ export class ChangePasswordFormComponent {
     try {
       await this.auth.changePassword(current, password);
       this.toasts.show(t('regie.account.change.done'));
+      if (this.layout() === 'page') {
+        this.form.reset();
+      }
       this.done.emit();
     } catch (error) {
       this.showFailure(ApiError.from(error));
     } finally {
       this.busy.set(false);
     }
+  }
+
+  /** Backs out: the page form forgets what was typed. */
+  protected cancel(): void {
+    if (this.layout() === 'page') {
+      this.form.reset();
+      this.refused.set({});
+      this.error.set(null);
+    }
+    this.cancelled.emit();
   }
 
   /** A refusal about a field goes next to it; anything else (lockout, no connection) is a general error. */

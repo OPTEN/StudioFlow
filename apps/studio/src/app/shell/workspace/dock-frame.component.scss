@@ -1,4 +1,5 @@
-// Dock chrome (prototype .panel-h, .panel-t, .panel-sub, .panel-b, .grip, .count).
+// Dock chrome: a 40 px header (grip on hover, sentence-case title, count badge, actions on the right) above a scrolling
+// body with scroll-edge fades.
 @use 'mixins' as *;
 
 :host {
@@ -15,8 +16,8 @@
   display: flex;
   flex: none;
   gap: 8px;
-  min-height: 40px;
-  padding: 6px 8px 6px 6px;
+  height: var(--dock-header-h);
+  padding: 0 8px 0 4px;
 
   &.is-draggable {
     cursor: grab;
@@ -24,8 +25,7 @@
   }
 
   @include short-laptop {
-    min-height: 36px;
-    padding-block: 4px;
+    height: 36px;
   }
 
   @include stacked {
@@ -36,17 +36,19 @@
   }
 }
 
+// The grip keeps its place, so the title never moves; it shows on hover and on keyboard focus, and always on touch.
 .c-dock-frame__grip {
+  @include state-transition(opacity, background-color, color);
   background: transparent;
   border: 0;
-  border-radius: 3px;
+  border-radius: var(--radius-xs);
   color: var(--muted);
   cursor: grab;
   display: inline-grid;
   flex: none;
-  height: 26px;
-  margin-right: -2px;
-  opacity: 0.6;
+  height: 24px;
+  margin-right: -4px;
+  opacity: 0;
   padding: 0;
   place-items: center;
   touch-action: none;
@@ -57,8 +59,16 @@
     width: 14px;
   }
 
+  &:hover {
+    background: var(--fill);
+    color: var(--text);
+  }
+
   &:focus-visible {
-    color: var(--text-2);
+    opacity: 1;
+  }
+
+  @media (hover: none) {
     opacity: 1;
   }
 
@@ -68,27 +78,27 @@
 }
 
 .c-dock-frame__head:hover .c-dock-frame__grip {
-  color: var(--text-2);
   opacity: 1;
 }
 
 .c-dock-frame__title {
-  @include label-text;
+  @include heading-text(var(--fs-body));
+  border-radius: var(--radius-xs);
+  white-space: nowrap;
 }
 
 .c-dock-frame__title--solo {
-  padding-left: 6px;
+  padding-left: 8px;
 }
 
 .c-dock-frame__sub {
   @include ellipsis;
-  color: var(--text-2);
-  font-size: 13px;
+  color: var(--muted);
+  font-size: var(--fs-body);
 }
 
 .c-dock-frame__count {
-  color: var(--muted);
-  font: 500 11px var(--font-mono);
+  flex: none;
 }
 
 // Scroll-edge fades: panel-coloured masks scroll with the content (local), the dark fades stay (scroll), so the

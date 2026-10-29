@@ -54,6 +54,14 @@ $DESKTOP_BREAKPOINTS: (
   }
 }
 
+/// Forced colours (Windows contrast themes): the browser replaces backgrounds and drops box-shadows, so every state
+/// painted only by them needs a border, an outline or a weight in system colours here (A11Y-11).
+@mixin forced-colors {
+  @media (forced-colors: active) {
+    @content;
+  }
+}
+
 /// Short laptops: height ≤ 820 px on screens wider than 1180 px (one-line scene rows, 36 px dock headers).
 @mixin short-laptop {
   @media (max-height: map.get($DESKTOP_BREAKPOINTS, short-height)) and (min-width: map.get($DESKTOP_BREAKPOINTS, stacked) + 1px) {
@@ -83,29 +91,50 @@ $DESKTOP_BREAKPOINTS: (
   }
 }
 
-/// Windows high-contrast mode (forced colours): backgrounds and box shadows are replaced by the system colours, so a
-/// state that is only painted (a switch, a selected segment) needs a border, outline or weight of its own.
-@mixin forced-colors {
-  @media (forced-colors: active) {
-    @content;
-  }
-}
-
-/// Uppercase group label (DESIGN.md "Label"): dock titles, tally names, TRANSITION, APPLY TEMPLATE.
-/// @param {Length} $size - 11.5px for dock titles and tally names, 11px for control-group labels
-@mixin label-text($size: 11.5px) {
+/// Group label (DESIGN.md "Labels"): dock titles, control-group names such as Transition, section headings in
+/// popovers. Sentence case in the system font; hierarchy comes from weight and colour, never from tracking or capitals.
+/// @param {Length} $size - 12px for group labels, 11px for compact captions
+@mixin label-text($size: 12px) {
   color: var(--muted);
   font-size: $size;
-  font-weight: 700;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
   white-space: nowrap;
 }
 
-/// Mono figures (DESIGN.md "The Instrument Mono Rule").
+/// Section heading inside docks, popovers and settings groups (13 px semibold, primary text).
+@mixin heading-text($size: 13px) {
+  color: var(--text);
+  font-size: $size;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+/// Figures that must line up (time codes, rates, levels): the UI font with tabular numerals (DESIGN.md "Numbers").
 @mixin mono {
+  font-feature-settings: 'tnum' 1;
+  font-variant-numeric: tabular-nums;
+}
+
+/// Codes, addresses and keys that are read character by character (pairing codes, URLs, IPs): the system mono font.
+@mixin code {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
+}
+
+/// Floating material of popovers, menus and the toast: a solid float surface with a soft shadow and a hairline ring.
+@mixin floating {
+  background: var(--float);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-pop);
+}
+
+/// Focus ring for controls with their own shape (a soft halo in the accent, DESIGN.md "Focus").
+@mixin focus-ring {
+  box-shadow: var(--shadow-focus);
+  outline: 2px solid var(--blue);
+  outline-offset: 1px;
 }
 
 /// Single-line text with an ellipsis.

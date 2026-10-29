@@ -124,7 +124,7 @@ describe('StationComponent: sound', () => {
       expect(query(element, '#mic-title')?.textContent?.trim()).toBe('Sound from the mixing desk');
       expect(query(element, '[data-testid=slot-mic] .c-code')?.textContent?.trim()).toBe('A1');
       expect(media.audio.calls).toEqual(['publishMic:station:default']);
-      expect(query(element, '[data-testid=mic-state]')?.textContent?.trim()).toBe('Starting …');
+      expect(query(element, '[data-testid=mic-state]')?.textContent?.trim()).toBe('Starting…');
       expect(element.textContent).toContain('Stereo, sent as it comes');
       expect(query(element, '.c-phone')).toBeNull();
     });
@@ -183,21 +183,64 @@ describe('StationComponent: sound', () => {
       expect(element.textContent).toContain('The microphone is live in the program.');
     });
 
-    it('“Switch microphone off” stops it and “Switch microphone on” starts it again', async () => {
+    it('“Stop sending sound” stops the desk and “Start sending sound” starts it again', async () => {
       const element = await render(audioStationSelf());
       media.audio.emit('live');
       fixture.detectChanges();
+      expect(query(element, '[data-testid=mic-toggle]')?.textContent).toContain(
+        'Stop sending sound',
+      );
 
       (query(element, '[data-testid=mic-toggle]') as HTMLButtonElement).click();
       fixture.detectChanges();
       expect(media.audio.calls).toContain('unpublish');
       expect(query(element, '[data-testid=mic-toggle]')?.textContent).toContain(
-        'Switch microphone on',
+        'Start sending sound',
       );
 
       (query(element, '[data-testid=mic-toggle]') as HTMLButtonElement).click();
       await settle();
       expect(media.audio.calls.filter((call) => call.startsWith('publishMic'))).toHaveLength(2);
+    });
+
+    it('asks before it stops the sound while the broadcast uses it', async () => {
+      const element = await render(audioStationSelf());
+      media.audio.emit('live');
+      hub.emit('tally', { overall: 'off', slots: { mic: 'program' } });
+      fixture.detectChanges();
+
+      (query(element, '[data-testid=mic-toggle]') as HTMLButtonElement).click();
+      fixture.detectChanges();
+      expect(media.audio.calls).not.toContain('unpublish');
+      const confirm = query(element, '[data-testid=slot-mic] .c-confirm');
+      expect(confirm?.textContent).toContain('Stopping it silences the broadcast.');
+
+      (confirm?.querySelector('.c-btn--danger-fill') as HTMLButtonElement).click();
+      fixture.detectChanges();
+      expect(media.audio.calls).toContain('unpublish');
+    });
+
+    it('Escape keeps the sound and Enter stops it in that confirmation', async () => {
+      const element = await render(audioStationSelf());
+      media.audio.emit('live');
+      hub.emit('tally', { overall: 'off', slots: { mic: 'program' } });
+      fixture.detectChanges();
+      const ask = (): HTMLElement => {
+        (query(element, '[data-testid=mic-toggle]') as HTMLButtonElement).click();
+        fixture.detectChanges();
+        return query(element, '[data-testid=slot-mic] .c-confirm')!;
+      };
+
+      ask().dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      fixture.detectChanges();
+      expect(query(element, '[data-testid=slot-mic] .c-confirm')).toBeNull();
+      expect(media.audio.calls).not.toContain('unpublish');
+
+      const confirm = ask();
+      expect(confirm.getAttribute('tabindex')).toBe('-1');
+      confirm.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      fixture.detectChanges();
+      expect(media.audio.calls).toContain('unpublish');
     });
 
     it('explains a microphone that does not work', async () => {
@@ -283,7 +326,7 @@ describe('StationComponent: sound', () => {
     it('has a microphone button that is off until pressed', async () => {
       const element = await render(phoneSelf(), { cameraOn: true });
       const toggle = query(element, '[data-testid=slot-mic]') as HTMLButtonElement;
-      expect(toggle.textContent?.trim()).toBe('Microphone off');
+      expect(toggle.textContent?.trim()).toBe('Microphone');
       expect(toggle.getAttribute('aria-pressed')).toBe('false');
       api.allocateSlot.mockResolvedValue({ slot: 'mic', code: 'A1', kind: 'audio' });
 
@@ -292,13 +335,12 @@ describe('StationComponent: sound', () => {
       fixture.detectChanges();
 
       expect(media.audio.calls).toEqual(['publishMic:voice:default']);
-      expect(toggle.textContent?.trim()).toBe('Microphone on');
       expect(toggle.getAttribute('aria-pressed')).toBe('true');
 
       toggle.click();
       fixture.detectChanges();
       expect(media.audio.calls).toContain('unpublish');
-      expect(toggle.textContent?.trim()).toBe('Microphone off');
+      expect(toggle.getAttribute('aria-pressed')).toBe('false');
     });
 
     it('shows “Mic live” next to the name while the microphone is in the program', async () => {

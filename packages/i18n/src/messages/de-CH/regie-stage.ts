@@ -3,13 +3,26 @@ import type { regieStage as en } from '../en/regie-stage';
 
 export const regieStage: Translation<typeof en> = {
   'regie.stage.control.cut': 'Schnitt',
+  'regie.stage.control.cutDuration': 'Ein Schnitt schaltet sofort und hat keine Dauer.',
+  'regie.stage.control.duration': 'Dauer',
   'regie.stage.control.fade': 'Blende',
   'regie.stage.control.fadeDuration': 'Dauer der Blende',
   'regie.stage.control.fadeLonger': 'Blende länger',
   'regie.stage.control.fadeShorter': 'Blende kürzer',
+  'regie.stage.control.noAudio': 'Noch keine Tonquellen',
+  'regie.stage.control.programAudio': 'Program-Ton',
+  'regie.stage.control.programAudioTitle': 'Spitzenpegel dessen, was der Output abspielt',
+  'regie.stage.control.silent': 'Stille',
   'regie.stage.control.space': 'Leerschlag',
   'regie.stage.control.studioMode': 'Studio-Modus',
+  'regie.stage.control.studioModeTitle':
+    'Die nächste Szene in der Preview vorbereiten und mit Take (Leerschlag) live schalten',
   'regie.stage.control.take': 'Take',
+  'regie.stage.control.takeFading': 'Blende läuft …',
+  'regie.stage.control.takeNoPreview': 'Keine Szene in der Preview',
+  'regie.stage.control.takeOffline': 'Keine Verbindung zum Server',
+  'regie.stage.control.takeSame': 'Die Preview ist schon live',
+  'regie.stage.control.takeSwitching': 'Schaltet …',
   'regie.stage.control.transition': 'Übergang',
   'regie.stage.control.transitionKind': 'Art des Übergangs',
 
@@ -41,10 +54,34 @@ export const regieStage: Translation<typeof en> = {
   'regie.stage.editor.undone': 'Rückgängig gemacht',
 
   'regie.stage.monitor.connecting': 'Verbindet …',
+  'regie.stage.monitor.hidden': '{count} ausgeblendet',
   'regie.stage.monitor.liveEdit': 'Änderungen gehen sofort live',
   'regie.stage.monitor.liveNote':
     'Diese Szene ist gerade live. Bearbeiten geht erst, wenn eine andere Szene im Program ist.',
-  'regie.stage.monitor.noScene': 'Keine Szene',
+  'regie.stage.monitor.locked': 'Live, nicht bearbeitbar',
+  'regie.stage.menu.back': 'In den Hintergrund',
+  'regie.stage.menu.backward': 'Eine Ebene nach hinten',
+  'regie.stage.menu.copyName': 'Szenennamen kopieren',
+  'regie.stage.menu.fill': 'Füllen',
+  'regie.stage.menu.fit': 'Einpassen',
+  'regie.stage.menu.forward': 'Eine Ebene nach vorne',
+  'regie.stage.menu.front': 'In den Vordergrund',
+  'regie.stage.menu.fullScreen': 'Vollbild',
+  'regie.stage.menu.hide': 'Ausblenden',
+  'regie.stage.menu.itemMore': 'Optionen für {name}',
+  'regie.stage.menu.lock': 'Sperren',
+  'regie.stage.menu.monitorMore': 'Optionen für {monitor}',
+  'regie.stage.menu.nextScene': 'Nächste Szene laden',
+  'regie.stage.menu.programToPreview': 'Program in die Preview holen',
+  'regie.stage.menu.properties': 'Eigenschaften …',
+  'regie.stage.menu.remove': 'Aus der Szene entfernen',
+  'regie.stage.menu.resetCrop': 'Zuschnitt zurücksetzen',
+  'regie.stage.menu.safeArea': 'Sicheren Bereich zeigen',
+  'regie.stage.menu.studioOff': 'Studio-Modus ausschalten',
+  'regie.stage.menu.unlock': 'Entsperren',
+
+  'regie.stage.monitor.noScene': 'Noch keine Szene',
+  'regie.stage.monitor.noSceneHint': 'Füge im Dock «Szenen» eine Szene hinzu.',
   'regie.stage.monitor.noSceneName': 'keine Szene',
   'regie.stage.monitor.preview': 'Preview',
   'regie.stage.monitor.previewLabel': 'Preview-Monitor: {name}',
@@ -52,21 +89,25 @@ export const regieStage: Translation<typeof en> = {
   'regie.stage.monitor.programLabel': 'Program-Monitor: {name}, entspricht dem Output',
 
   'regie.stage.overlay.label':
-    'Elemente der Szene. Ziehen zum Verschieben, Ecken zum Skalieren, Pfeiltasten zum Feinjustieren.',
+    'Elemente der Szene. Ziehen zum Verschieben, Ecken zum Skalieren, Pfeiltasten zum Feinjustieren, Tab für das nächste Element, Entf zum Entfernen.',
+  'regie.stage.overlay.locked': 'Gesperrt. In den Quellen entsperren, um es zu verschieben.',
 
-  'regie.stage.previewOff.hint': 'Mit Studio-Modus erscheint hier die Preview.',
-  'regie.stage.previewOff.title': 'Preview aus',
+  'regie.stage.previewOff.action': 'Studio-Modus einschalten',
+  'regie.stage.previewOff.hint':
+    'Ein Klick auf eine Szene geht sofort live. Schalte ihn ein, um die nächste Szene zuerst in der Preview vorzubereiten.',
+  'regie.stage.previewOff.state': 'Aus',
+  'regie.stage.previewOff.title': 'Studio-Modus ist aus',
 
   'regie.stage.split.label': 'Grösse von Preview und Program',
 
-  'regie.stage.switch.hintDirect': 'Klick auf eine Szene schaltet sie direkt live.',
-  'regie.stage.switch.hintStudio':
-    'Klick auf eine Szene lädt sie in die Preview. Take schaltet live.',
+  'regie.stage.switch.hintDirect': 'Ein Klick schaltet die Szene sofort live.',
+  'regie.stage.switch.hintStudio': 'Ein Klick lädt die Szene in die Preview.',
   'regie.stage.switch.live': '«{name}» ist live',
   'regie.stage.switch.offline':
     'Keine Verbindung zum Server. Schalten geht wieder, sobald die Regie verbunden ist.',
-  'regie.stage.switch.studioOff': 'Studio-Modus aus: Szenen schalten direkt live',
-  'regie.stage.switch.studioOn': 'Studio-Modus an: Preview und Take',
+  'regie.stage.switch.studioOff':
+    'Studio-Modus ist aus. Ein Klick auf eine Szene geht sofort live.',
+  'regie.stage.switch.studioOn': 'Studio-Modus ist an. Take schaltet die Preview live.',
 
   'regie.stage.view.label': 'Szene',
 };

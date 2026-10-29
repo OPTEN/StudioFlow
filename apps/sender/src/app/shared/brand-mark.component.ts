@@ -31,10 +31,10 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
     :host {
       align-items: center;
       display: inline-flex;
-      font-size: 17px;
-      font-weight: 700;
+      font-size: var(--fs-headline);
+      font-weight: 600;
       gap: 9px;
-      letter-spacing: 0.01em;
+      letter-spacing: -0.01em;
       white-space: nowrap;
     }
 

@@ -145,7 +145,7 @@ describe('PlaceholderListComponent', () => {
     assignButton('K7').click();
     await render();
     expect(text(element.querySelector('.c-ph__picker .c-pop-note'))).toBe(
-      'There is no camera, screen or medium to assign yet. Pair a device first.',
+      'Nothing to assign yet. Add a device under Devices first.',
     );
   });
 
@@ -157,7 +157,7 @@ describe('PlaceholderListComponent', () => {
     await render();
     harness.http.expectNone(`${BASE}/${K7.id}`);
     expect(text(element.querySelector('.c-confirm span'))).toBe(
-      'The 3 elements that show K7 · Stage phone are removed from their scenes.',
+      'The 3 places in the scenes that show K7 · Stage phone are removed.',
     );
     element.querySelector<HTMLButtonElement>('.c-btn--danger-fill')!.click();
     const request = harness.http.expectOne(`${BASE}/${K7.id}`);

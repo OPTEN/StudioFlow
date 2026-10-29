@@ -16,18 +16,24 @@ import { ConfirmBoxComponent } from '../../core/ui/confirm-box.component';
 import { EditorService } from '../../stage/editor.service';
 import { SwitcherService } from '../../stage/switcher.service';
 import { SceneCommandsService } from '../scenes/scene-commands.service';
+import { InspectorSectionComponent } from './inspector-section.component';
 import { TemplatePickerComponent } from './template-picker.component';
 
 /**
- * Scene inspector (prototype `renderInspector` without a selection): name, background colour and optional image,
- * "Apply template" with the eight templates (Auto grid pressed while active) and "Delete scene" in its danger zone
- * behind a dashed red confirmation. The live scene cannot be deleted (prototype hint texts). The name is saved on
- * Enter or when the field loses the focus; Escape restores it. Everything is disabled while the scene is live in
- * Studio Mode or the Regie is offline.
+ * Scene inspector: the name, then the collapsible sections "Layout templates" (the eight templates as tiles, Auto grid
+ * pressed and explained while active) and "Background" (colour with its hex value, optional image), and at the end
+ * "Delete scene…" behind a confirmation. The live scene cannot be deleted (the hint says why and where other scenes are
+ * deleted). The name is saved on Enter or when the field loses the focus; Escape restores it. Everything is disabled
+ * while the scene is live in Studio Mode or the Regie is offline (the dock's status line says why).
  */
 @Component({
   selector: 'sf-scene-inspector',
-  imports: [ConfirmBoxComponent, ReactiveFormsModule, TemplatePickerComponent],
+  imports: [
+    ConfirmBoxComponent,
+    InspectorSectionComponent,
+    ReactiveFormsModule,
+    TemplatePickerComponent,
+  ],
   templateUrl: './scene-inspector.component.html',
   styleUrl: './scene-inspector.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

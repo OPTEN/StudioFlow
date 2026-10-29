@@ -96,18 +96,31 @@ describe('text editor in the Properties dock', () => {
   it('shows the editor of a hidden text with its content, the preview and the geometry only', async () => {
     await setup();
 
-    expect(text(element.querySelector('.c-dock-frame__title'))).toBe('Item');
-    expect(text(element.querySelector('.c-dock-frame__sub'))).toBe('T1 · Mia Meier');
+    expect(element.querySelector('.c-insp-head')?.getAttribute('data-view')).toBe('item');
+    expect(text(element.querySelector('.c-insp-head .c-code'))).toBe('T1');
+    expect(text(element.querySelector('.c-insp-head__name'))).toBe('Mia Meier');
     expect(field('sf-text-line1').value).toBe('Mia Meier');
     expect(field('sf-text-line2').value).toBe('Moderator');
-    expect(text(element.querySelector('#sf-text-line1-count'))).toBe('9 of 120');
+    // The counter appears only near the limit.
+    expect(element.querySelector('#sf-text-line1-count')).toBeNull();
     expect(previewText()).toBe('Mia MeierModerator');
     expect(element.querySelector('#sf-insp-x')).not.toBeNull();
     // No crop, fit, border or fallback for a text.
     expect(element.querySelector('#sf-insp-fit')).toBeNull();
     expect(element.querySelector('#sf-insp-crop')).toBeNull();
     expect(element.querySelector('#sf-insp-fallback')).toBeNull();
-    expect(text(element.querySelector('.c-text__state'))).toBe('Hidden');
+    // The output switch comes first; the text is hidden, so it is off and not on air.
+    const toggle = element.querySelector<HTMLInputElement>(
+      '[data-text-toggle]',
+    ) as HTMLInputElement;
+    expect(element.querySelector('.c-text input')).toBe(toggle);
+    expect(toggle.checked).toBe(false);
+    expect(toggle.getAttribute('role')).toBe('switch');
+    expect(element.querySelector('.c-text__output .c-tag--pgm')).toBeNull();
+    // One footer with both destructive actions.
+    expect(
+      Array.from(element.querySelectorAll('.c-insp__danger button')).map((entry) => text(entry)),
+    ).toEqual(['Remove from scene', 'Delete text…']);
   });
 
   it('shows the lower third without an alignment and the title with one', async () => {
@@ -213,6 +226,19 @@ describe('text editor in the Properties dock', () => {
     expect(text(element.querySelector('#sf-text-align'))).toBe('Alignment');
   });
 
+  it('keeps the alignment when a title becomes a note', async () => {
+    await setup({ style: 'title' });
+
+    button('Right')?.click();
+    harness.http.expectOne(`${BASE}/texts/${TEXT_ID}`).flush({});
+    await render();
+    button('Note')?.click();
+
+    const update = harness.http.expectOne(`${BASE}/texts/${TEXT_ID}`);
+    expect(update.request.body).toMatchObject({ style: 'note', align: 'right' });
+    update.flush({});
+  });
+
   it('changes the alignment of a title', async () => {
     await setup({ style: 'title' });
 
@@ -252,12 +278,13 @@ describe('text editor in the Properties dock', () => {
     harness.http.expectOne(`${BASE}/texts/${TEXT_ID}`).flush({});
   });
 
-  it('shows and hides the text with the button, also while it is live', async () => {
+  it('shows and hides the text with the switch, also while it is live', async () => {
     await setup();
-    const toggle = element.querySelector<HTMLButtonElement>(
+    const toggle = element.querySelector<HTMLInputElement>(
       '[data-text-toggle]',
-    ) as HTMLButtonElement;
-    expect(toggle.getAttribute('aria-label')).toBe('Show T1 on the output');
+    ) as HTMLInputElement;
+    expect(text(toggle.closest('label'))).toContain('Show on the output');
+    expect(toggle.checked).toBe(false);
 
     toggle.click();
 
@@ -275,8 +302,9 @@ describe('text editor in the Properties dock', () => {
       ),
     });
     await render();
-    expect(text(element.querySelector('.c-text__state'))).toBe('Shown');
-    expect(toggle.getAttribute('aria-label')).toBe('Hide T1 on the output');
+    expect(toggle.checked).toBe(true);
+    // Shown in the Program scene: on air.
+    expect(text(element.querySelector('.c-text__output .c-tag--pgm'))).toBe('Live');
   });
 
   it('says in how many scenes a change applies', async () => {
@@ -288,7 +316,7 @@ describe('text editor in the Properties dock', () => {
   it('deletes the text after the confirmation and names the scenes it is removed from', async () => {
     await setup();
 
-    button('Delete text')?.click();
+    button('Delete text…')?.click();
     await render();
     expect(text(element.querySelector('.c-confirm span'))).toBe(
       'T1 is deleted and removed from 2 scenes.',

@@ -42,13 +42,41 @@ describe('BackupSectionComponent', () => {
     await fixture.whenStable();
   }
 
-  function field(id: string): HTMLInputElement & HTMLTextAreaElement {
-    return element.querySelector<HTMLInputElement & HTMLTextAreaElement>(`#${id}`)!;
+  function field(id: string): HTMLInputElement & HTMLTextAreaElement & HTMLSelectElement {
+    return element.querySelector<HTMLInputElement & HTMLTextAreaElement & HTMLSelectElement>(
+      `#${id}`,
+    )!;
   }
 
   function type(id: string, value: string): void {
     field(id).value = value;
     field(id).dispatchEvent(new Event('input'));
+  }
+
+  function select(id: string, value: string): void {
+    field(id).value = value;
+    field(id).dispatchEvent(new Event('change'));
+  }
+
+  /** The schedule presets Off | Daily | Weekly | Custom. */
+  function presets(): HTMLButtonElement[] {
+    return Array.from(
+      element.querySelectorAll<HTMLButtonElement>('[aria-labelledby="backup-preset-label"] button'),
+    );
+  }
+
+  async function preset(label: 'Off' | 'Daily' | 'Weekly' | 'Custom'): Promise<void> {
+    presets()
+      .find((button) => button.textContent?.trim() === label)
+      ?.click();
+    await render();
+  }
+
+  async function offsite(on: boolean): Promise<void> {
+    const box = field('backup-offsite');
+    box.checked = on;
+    box.dispatchEvent(new Event('change'));
+    await render();
   }
 
   async function submit(): Promise<void> {
@@ -62,6 +90,14 @@ describe('BackupSectionComponent', () => {
     return element.querySelector(`#${id}-error`)?.textContent?.trim() ?? '';
   }
 
+  function preview(): string {
+    return (
+      element
+        .querySelector('section[aria-labelledby="backup-schedule-heading"] .c-group__footer')
+        ?.textContent?.trim() ?? ''
+    );
+  }
+
   const NO_OFFSITE = {
     schedule: null,
     timezone: null,
@@ -69,7 +105,7 @@ describe('BackupSectionComponent', () => {
     keepWeekly: 4,
     rcloneRemote: null,
     rcloneConfig: null,
-    ageRecipients: [''],
+    ageRecipients: [],
     offsiteUnencrypted: false,
   };
 
@@ -85,7 +121,7 @@ describe('BackupSectionComponent', () => {
 
   afterEach(() => http.verify());
 
-  it('shows the saved schedule, retention and off-site target without any secret', async () => {
+  it('shows the saved schedule as a preset, the retention and the off-site target without any secret', async () => {
     await setup({
       backup: {
         schedule: '0 3 * * *',
@@ -97,10 +133,24 @@ describe('BackupSectionComponent', () => {
         ageRecipients: [AGE_KEY],
       },
     });
-    expect(field('backup-schedule').value).toBe('0 3 * * *');
+    expect(presets().map((button) => button.textContent?.trim())).toEqual([
+      'Off',
+      'Daily',
+      'Weekly',
+      'Custom',
+    ]);
+    expect(presets().map((button) => button.getAttribute('aria-pressed'))).toEqual([
+      'false',
+      'true',
+      'false',
+      'false',
+    ]);
+    expect(field('backup-time').value).toBe('03:00');
     expect(field('backup-timezone').value).toBe('Europe/Zurich');
+    expect(preview()).toMatch(/^Next backup (today|tomorrow) at 03:00\.$/);
     expect(field('backup-keep-daily').value).toBe('10');
     expect(field('backup-keep-weekly').value).toBe('6');
+    expect(field('backup-offsite').checked).toBe(true);
     expect(field('backup-remote').value).toBe('offsite:studioflow');
     expect(field('backup-config').value).toBe('');
     expect(field('backup-config').placeholder).toBe('••••••••');
@@ -108,17 +158,70 @@ describe('BackupSectionComponent', () => {
     expect(field('backup-age').value).toBe(AGE_KEY);
   });
 
-  it('saves the schedule and switches automatic backups off with an empty one', async () => {
+  it('starts with automatic backups off and the off-site copy closed', async () => {
     await setup();
-    type('backup-schedule', ' 0 3 * * * ');
-    type('backup-timezone', 'Europe/Zurich');
+    expect(presets()[0].getAttribute('aria-pressed')).toBe('true');
+    expect(field('backup-time')).toBeNull();
+    expect(field('backup-timezone')).toBeNull();
+    expect(preview()).toBe('No automatic backups. “Back up now” still works.');
+    expect(field('backup-offsite').getAttribute('role')).toBe('switch');
+    expect(field('backup-remote')).toBeNull();
+  });
+
+  it('saves a daily schedule as cron in the chosen time zone', async () => {
+    await setup();
+    await preset('Daily');
+    type('backup-time', '04:30');
+    select('backup-timezone', 'Europe/Zurich');
+    await render();
+    expect(preview()).toMatch(/^Next backup (today|tomorrow) at 04:30\.$/);
     await submit();
-    await accept({ ...NO_OFFSITE, schedule: '0 3 * * *', timezone: 'Europe/Zurich' });
+    await accept({ ...NO_OFFSITE, schedule: '30 4 * * *', timezone: 'Europe/Zurich' });
     expect(saved).toHaveBeenCalledOnce();
+  });
+
+  it('saves a weekly schedule on the chosen day', async () => {
+    await setup();
+    await preset('Weekly');
+    select('backup-day', '1: 0');
+    type('backup-time', '02:00');
+    select('backup-timezone', 'UTC');
+    await render();
+    expect(preview()).toMatch(/at 02:00\.$/);
+    await submit();
+    await accept({ ...NO_OFFSITE, schedule: '0 2 * * 0', timezone: 'UTC' });
+  });
+
+  it('starts a custom schedule from the preset and saves it as typed', async () => {
+    await setup({ backup: { schedule: '0 3 * * *', timezone: 'UTC' } });
+    await preset('Custom');
+    expect(field('backup-schedule').value).toBe('0 3 * * *');
+    expect(preview()).toBe('The server runs this schedule in the chosen time zone.');
+    type('backup-schedule', '15 1 * * 1-5');
+    await submit();
+    await accept({ ...NO_OFFSITE, schedule: '15 1 * * 1-5', timezone: 'UTC' });
+  });
+
+  it('switches automatic backups off with an empty schedule and keeps the stored zone', async () => {
+    await setup({ backup: { schedule: '0 3 * * *', timezone: 'Europe/Zurich' } });
+    await preset('Off');
+    await submit();
+    await accept({ ...NO_OFFSITE, timezone: 'Europe/Zurich' });
+  });
+
+  it('asks for a time when the time field is empty', async () => {
+    await setup();
+    await preset('Daily');
+    type('backup-time', '');
+    await submit();
+    expect(errorOf('backup-schedule')).toBe('Enter a time such as 03:00.');
+    expect(field('backup-time').getAttribute('aria-invalid')).toBe('true');
+    http.expectNone('/api/settings/backup');
   });
 
   it('sends the off-site target with the configuration it was given', async () => {
     await setup();
+    await offsite(true);
     type('backup-remote', 'offsite:studioflow');
     type('backup-config', '[offsite]\ntype = s3\n');
     type('backup-age', `${AGE_KEY}\n`);
@@ -127,27 +230,38 @@ describe('BackupSectionComponent', () => {
       ...NO_OFFSITE,
       rcloneRemote: 'offsite:studioflow',
       rcloneConfig: '[offsite]\ntype = s3\n',
-      ageRecipients: [AGE_KEY, ''],
+      ageRecipients: [AGE_KEY],
     });
     expect(field('backup-config').value).toBe('');
   });
 
   it('asks for a public age key, or the statement that the remote encrypts itself', async () => {
     await setup();
+    await offsite(true);
     type('backup-remote', 'offsite:studioflow');
     await submit();
     expect(errorOf('backup-age')).toContain('Enter at least one public age key');
     http.expectNone('/api/settings/backup');
-    field('backup-age').dispatchEvent(new Event('input'));
-    const box = element.querySelector<HTMLInputElement>('input[type="checkbox"]')!;
+    const box = element.querySelector<HTMLInputElement>('.c-check input[type="checkbox"]')!;
     box.checked = true;
     box.dispatchEvent(new Event('change'));
     await submit();
     await accept({ ...NO_OFFSITE, rcloneRemote: 'offsite:studioflow', offsiteUnencrypted: true });
   });
 
+  it('asks for the remote, or to switch the off-site copy off', async () => {
+    await setup();
+    await offsite(true);
+    type('backup-age', AGE_KEY);
+    await submit();
+    expect(errorOf('backup-remote')).toBe('Enter the remote, or switch the off-site copy off.');
+    http.expectNone('/api/settings/backup');
+  });
+
   it('names the line that is no age key', async () => {
     await setup();
+    await offsite(true);
+    type('backup-remote', 'offsite:studioflow');
     type('backup-age', `${AGE_KEY}\nnot a key`);
     await submit();
     expect(errorOf('backup-age')).toBe('Line 2 is not a public age key (it starts with age1).');
@@ -169,8 +283,9 @@ describe('BackupSectionComponent', () => {
 
   it('shows what the server found wrong, field by field', async () => {
     await setup();
+    await preset('Custom');
     type('backup-schedule', '61 * * * *');
-    type('backup-timezone', 'Mars Base');
+    await offsite(true);
     type('backup-remote', 'offsite:x');
     type('backup-config', '[other]\n');
     type('backup-age', AGE_KEY);
@@ -194,11 +309,11 @@ describe('BackupSectionComponent', () => {
     expect(errorOf('backup-config')).toContain('not an rclone configuration');
   });
 
-  it('keeps the form when the backup service is slow to read the settings', async () => {
+  it('keeps the form and says so calmly when the backup service is slow to read the settings', async () => {
     vi.useFakeTimers();
     try {
       await setup();
-      type('backup-schedule', '0 3 * * *');
+      await preset('Daily');
       await submit();
       http.expectOne('/api/settings/backup').flush(configuredSettingsFixture());
       await vi.advanceTimersByTimeAsync(0);
@@ -209,9 +324,9 @@ describe('BackupSectionComponent', () => {
         await vi.advanceTimersByTimeAsync(1000);
       }
       fixture.detectChanges();
-      expect(element.querySelector('.c-srv__warning')?.textContent).toContain(
-        'docker compose ps backup',
-      );
+      const notice = element.querySelector('.c-problem--quiet')!;
+      expect(notice.getAttribute('role')).toBe('status');
+      expect(notice.textContent).toContain('docker compose ps backup');
       expect(saved).toHaveBeenCalledOnce();
     } finally {
       vi.useRealTimers();

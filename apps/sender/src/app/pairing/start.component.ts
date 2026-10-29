@@ -17,8 +17,9 @@ import { KnockService } from './knock.service';
 
 /**
  * `/join/`: the pairing form (spec 4.6, way 2). Name (1–60 characters, prefilled from the platform) and kind
- * (detected, switchable); “Continue” knocks and opens the waiting screen with the check code. Paired browsers and tabs
- * with a pending knock never get here (see `startGuard`).
+ * (detected, switchable: phone camera, laptop screen, audio station); “Continue” knocks and opens the waiting screen
+ * with the check code. A phone is led to the faster way first: scanning the QR code of the control room. Paired
+ * browsers and tabs with a pending knock never get here (see `startGuard`).
  */
 @Component({
   selector: 'sf-start',
@@ -35,6 +36,9 @@ export class StartComponent {
   protected readonly t = t;
   protected readonly nameMax = LIMITS.deviceNameLength;
   protected readonly canShareScreen = this.environment.canShareScreen();
+  protected readonly secure = this.environment.secure();
+  /** A phone (or a browser that can only send a camera) sees the QR code way first. */
+  protected readonly phoneFirst = detectDeviceKind(this.environment) === 'phone';
   protected readonly notice = signal(inject(NoticeService).takePairingNotice());
   protected readonly submitted = signal(false);
   protected readonly busy = computed(() => this.knock.phase() === 'requesting');

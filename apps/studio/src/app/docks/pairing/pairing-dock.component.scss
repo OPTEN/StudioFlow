@@ -1,29 +1,51 @@
-// Pairing dock layout (prototype .pair-grid, .pair-main, .pair-side; one column below 560 px dock width).
+// "Add device" dock: the tab row pinned on top of the main column, the tab content scrolling below it, and a side
+// column for the waiting requests and the tips (one column below 560 px of dock width or on narrow screens).
 @use 'mixins' as *;
 
 .c-pair {
   display: grid;
   flex: 1 1 auto;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
   min-height: 0;
 
   @include narrow {
+    grid-auto-rows: max-content;
     grid-template-columns: minmax(0, 1fr);
   }
 }
 
-.c-pair__main,
-.c-pair__side {
-  align-content: start;
+// The tabs never shrink: only the panel below them scrolls (DEV-04).
+.c-pair__main {
+  border-right: 1px solid var(--seam);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+
+  @include narrow {
+    border-bottom: 1px solid var(--seam);
+    border-right: 0;
+    min-height: auto;
+  }
+}
+
+.c-pair__tabs {
+  flex: none;
+  margin: 12px 14px 0;
+
+  @include short-laptop {
+    margin-top: 8px;
+  }
+}
+
+.c-pair__panel {
   display: grid;
-  gap: 12px;
+  flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
   overflow-anchor: none;
-  padding: 12px 14px 16px;
+  padding: 14px 14px 16px;
 
   @include short-laptop {
-    gap: 8px;
     padding-block: 10px 12px;
   }
 
@@ -32,39 +54,53 @@
   }
 }
 
-.c-pair__main {
-  border-right: 1px solid var(--seam);
+.c-pair__side {
+  align-content: start;
+  display: grid;
+  gap: 16px;
+  min-height: 0;
+  overflow: auto;
+  overflow-anchor: none;
+  padding: 14px 14px 16px;
 
-  @include narrow {
-    border-bottom: 1px solid var(--seam);
-    border-right: 0;
+  @include short-laptop {
+    gap: 12px;
+    padding-block: 10px 12px;
+  }
+
+  @include stacked {
+    overflow: visible;
   }
 }
 
-.c-pair__panel {
+.c-pair__tips {
   display: grid;
+  gap: 4px;
 }
 
 .c-pair__side-title {
-  font-size: 15.5px;
-  font-weight: 700;
-  margin: 0;
+  color: var(--text);
+  font-size: var(--fs-body);
+  font-weight: 600;
+  letter-spacing: 0;
 }
 
 .c-pair__side-text {
-  color: var(--text-2);
-  font-size: 13.5px;
-  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-footnote);
+  line-height: 1.45;
 }
 
-// The dock slot is the size container (every dock slot is one): a narrow pairing dock stacks its columns.
+// The dock slot is the size container (every dock slot is one): a narrow pairing dock stacks its columns, the rows
+// take their content's height and the whole dock scrolls, with the tabs first.
 @container (max-width: 560px) {
   .c-pair {
+    grid-auto-rows: max-content;
     grid-template-columns: minmax(0, 1fr);
     overflow: auto;
   }
 
-  .c-pair__main,
+  .c-pair__panel,
   .c-pair__side {
     overflow: visible;
   }
@@ -72,5 +108,6 @@
   .c-pair__main {
     border-bottom: 1px solid var(--seam);
     border-right: 0;
+    min-height: auto;
   }
 }

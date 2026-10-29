@@ -1,5 +1,5 @@
 <div class="c-insp">
-  <div class="c-insp__row">
+  <div class="c-insp__row c-insp__name">
     <label class="c-insp__label" for="sf-insp-name">{{ t('regie.properties.scene.name') }}</label>
     <input
       class="c-input"
@@ -16,21 +16,28 @@
     />
   </div>
 
-  <div class="c-insp__sub">
-    {{ t('regie.properties.scene.templates') }}
-    @if (autoGrid()) {
-      <span class="c-insp__mode">{{ t('regie.properties.scene.autoGridActive') }}</span>
-    }
-  </div>
-  <sf-template-picker
-    [autoGridActive]="autoGrid()"
-    [disabled]="disabled()"
-    (pick)="applyTemplate($event)"
-  />
+  <sf-inspector-section section="layout" [title]="t('regie.properties.section.layout')">
+    <p class="c-hint" [class.c-insp__mode]="autoGrid()">
+      {{
+        autoGrid()
+          ? t('regie.properties.scene.autoGridActive')
+          : t('regie.properties.scene.templatesHint')
+      }}
+    </p>
+    <sf-template-picker
+      [autoGridActive]="autoGrid()"
+      [disabled]="disabled()"
+      [sceneName]="scene().name"
+      (pick)="applyTemplate($event)"
+    />
+  </sf-inspector-section>
 
-  <div class="c-insp__row">
-    <span class="c-insp__label" id="sf-insp-bg">{{ t('regie.properties.scene.background') }}</span>
-    <div class="c-insp__background" role="group" aria-labelledby="sf-insp-bg">
+  <sf-inspector-section section="background" [title]="t('regie.properties.section.background')">
+    <div
+      class="c-insp__background"
+      role="group"
+      [attr.aria-label]="t('regie.properties.scene.background')"
+    >
       <input
         class="c-insp__color"
         type="color"
@@ -39,6 +46,7 @@
         [disabled]="disabled()"
         (change)="setColor($event)"
       />
+      <span class="c-insp__hex" aria-hidden="true">{{ scene().background.color }}</span>
       <select
         class="c-select"
         [attr.aria-label]="t('regie.properties.scene.imageLabel')"
@@ -60,7 +68,7 @@
         }
       </select>
     </div>
-  </div>
+  </sf-inspector-section>
 
   <div class="c-insp__danger">
     @if (confirming()) {
@@ -81,7 +89,7 @@
         [disabled]="isLiveScene() || disabled()"
         (click)="confirming.set(true)"
       >
-        {{ t('regie.properties.scene.delete') }}
+        {{ t('regie.properties.scene.deleteButton') }}
       </button>
     }
   </div>

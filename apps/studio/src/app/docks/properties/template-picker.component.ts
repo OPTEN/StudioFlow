@@ -6,7 +6,9 @@ import {
   type LayoutTemplate,
   type LayoutTemplateId,
 } from '@studioflow/scene-model';
+import { t } from '@studioflow/i18n';
 import { ProductionStoreService } from '../../core/state/production-store.service';
+import { ContextMenuDirective, type ContextMenuEntry } from '../../core/ui/context-menu';
 import { LayoutPreviewComponent, type PreviewBlock } from '../shared/layout-preview.component';
 
 /** Templates whose first slot is the main picture (prototype `presetThumb`: `full`, `pip`, `col`, `onetwo`). */
@@ -38,13 +40,14 @@ function tilesFor(canvas: CanvasSize): readonly TemplateTile[] {
 }
 
 /**
- * "Apply template" (prototype `.presets`): the eight layout templates as previews in the shape of the production's
- * canvas in a 4-column grid (2 columns at ≤ 900 px). Auto grid shows as pressed while the scene uses it. Emits the chosen template; the scene
- * inspector applies it through `EditorService.applyTemplate`.
+ * "Layout templates": the eight layout templates as tiles with a preview in the shape of the production's canvas, the
+ * name and what it is for (two columns in a dock of usual width, more where there is room). Auto grid shows as pressed
+ * while the scene uses it. The accessible name of a tile is its name; the purpose is its description (tooltip). Emits
+ * the chosen template; the scene inspector applies it through `EditorService.applyTemplate`.
  */
 @Component({
   selector: 'sf-template-picker',
-  imports: [LayoutPreviewComponent],
+  imports: [ContextMenuDirective, LayoutPreviewComponent],
   template: `
     @for (tile of tiles(); track tile.id) {
       <button
@@ -54,10 +57,13 @@ function tilesFor(canvas: CanvasSize): readonly TemplateTile[] {
         [attr.aria-pressed]="tile.id === 'auto' ? autoGridActive() : null"
         [class.is-active]="tile.id === 'auto' && autoGridActive()"
         [disabled]="disabled()"
+        [sfContextMenu]="tileMenu(tile)"
+        [sfContextMenuLabel]="tile.template.name"
         (click)="pick.emit(tile.id)"
       >
-        <sf-layout-preview [blocks]="tile.blocks" [canvas]="canvas()" />
+        <sf-layout-preview class="c-preset__preview" [blocks]="tile.blocks" [canvas]="canvas()" />
         <span class="c-preset__name">{{ tile.template.name }}</span>
+        <span class="c-preset__info" aria-hidden="true">{{ tile.template.description }}</span>
       </button>
     }
   `,
@@ -70,10 +76,26 @@ export class TemplatePickerComponent {
   /** Editing is not possible (live scene, offline). */
   readonly disabled = input(false);
 
+  /** Name of the scene the templates apply to (for the right-click menu). */
+  readonly sceneName = input('');
+
   /** The operator chose a template. */
   readonly pick = output<LayoutTemplateId>();
 
   private readonly store = inject(ProductionStoreService);
+
+  /** Right click on a tile: "Apply to “Interview”" (the same as a click, named with its target). */
+  protected tileMenu(tile: TemplateTile): () => readonly ContextMenuEntry[] {
+    return () => [
+      {
+        label: t('regie.properties.scene.applyTo', { scene: this.sceneName() }),
+        icon: 'check',
+        shortcut: 'Enter',
+        disabled: this.disabled(),
+        run: () => this.pick.emit(tile.id),
+      },
+    ];
+  }
 
   protected readonly canvas = this.store.canvas;
   protected readonly tiles = computed(() => tilesFor(this.store.canvas()));

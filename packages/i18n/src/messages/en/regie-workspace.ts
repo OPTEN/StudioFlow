@@ -1,13 +1,13 @@
 import type { Namespace } from '../../types';
 
-/** The dock workspace: dock titles and region names, splitters, the drop strips and the layout toasts. */
+/** The dock workspace: dock titles and region names, splitters, the drop strips, the layout toasts and the reset confirmation. */
 export const regieWorkspace = {
   'regie.workspace.dock.audio': 'Audio',
   'regie.workspace.dock.insp': 'Properties',
-  'regie.workspace.dock.pair': 'Pair device',
+  'regie.workspace.dock.pair': 'Add device',
   'regie.workspace.dock.scenes': 'Scenes',
   'regie.workspace.dock.src': 'Sources',
-  'regie.workspace.dock.st': 'Stations',
+  'regie.workspace.dock.st': 'Devices',
   'regie.workspace.dockRegion.src': 'Sources of the scene',
 
   'regie.workspace.docked.bottom': '{dock} is docked at the bottom',
@@ -19,9 +19,24 @@ export const regieWorkspace = {
   'regie.workspace.dropStrip.right': 'Dock on the right',
 
   'regie.workspace.grip': 'Move dock {title} with the arrow keys',
+  'regie.workspace.gripTitle': 'Drag to move the dock, or use the arrow keys',
 
+  'regie.workspace.layout.moveUndone': 'Move of {dock} undone',
   'regie.workspace.layout.reset': 'Reset layout',
+  'regie.workspace.layout.resetConfirm':
+    'Every dock goes back to the bottom, hidden docks reappear and all sizes return to their defaults.',
   'regie.workspace.layout.resetDone': 'Layout reset',
+  'regie.workspace.layout.resetMenu': 'Reset layout…',
+  'regie.workspace.layout.stacked':
+    'The window is narrow, so the docks stack below the monitors. Widen it to move and resize docks.',
+  'regie.workspace.layout.undo': 'Undo',
+
+  'regie.workspace.menu.bottom': 'Move to the bottom',
+  'regie.workspace.menu.hidden': '{dock} is hidden',
+  'regie.workspace.menu.hide': 'Hide dock',
+  'regie.workspace.menu.left': 'Move to the left',
+  'regie.workspace.menu.resetSize': 'Reset size',
+  'regie.workspace.menu.right': 'Move to the right',
 
   'regie.workspace.splitter.between': 'Size of {first} and {second}',
   'regie.workspace.splitter.bottom': 'Height of the docks at the bottom',

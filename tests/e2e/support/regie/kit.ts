@@ -467,8 +467,11 @@ export function recordRequests(
 
 // --- feedback -------------------------------------------------------------------------------------------------------
 
-/** The visible toast (`sf-toast-host`), without the message strip or other `role=status` regions. */
-export const toastOf = (page: Page): Locator => page.locator('sf-toast-host .c-toast');
+/**
+ * The newest toast (`sf-toast-host`), without the activity bar or other `role=status` regions. Toasts queue up (the
+ * newest is the last one), so this is the one a test just caused.
+ */
+export const toastOf = (page: Page): Locator => page.locator('sf-toast-host .c-toast').last();
 
 export async function expectToast(page: Page, text: string | RegExp): Promise<void> {
   await expect(toastOf(page), `toast ${String(text)}`).toContainText(text);
@@ -483,33 +486,84 @@ export const sourcesDock = (page: Page): Locator =>
 export const inspector = (page: Page): Locator =>
   page.getByRole('region', { name: 'Properties' });
 export const stationsDock = (page: Page): Locator =>
-  page.getByRole('region', { name: 'Stations', exact: true });
+  page.getByRole('region', { name: 'Devices', exact: true });
 
-const escapeForRegExp = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+// --- broadcast ------------------------------------------------------------------------------------------------------
 
 /**
- * A row of the Sources dock by the accessible name of its select button (its accessible name is the visible text, followed by the
- * state and the timer), e.g. `K1 Phone One`.
+ * Starts the broadcast through the toolbar: "Start broadcast" (or "Start again…" after an end) opens the confirmation
+ * with the pre-flight check, and its "Start broadcast" starts.
  */
+export async function startBroadcast(page: Page): Promise<void> {
+  await page.getByRole('button', { name: /^(Start broadcast|Start again…)$/ }).click();
+  await page
+    .getByRole('dialog', { name: 'Start the broadcast?' })
+    .getByRole('button', { name: 'Start broadcast' })
+    .click();
+}
+
+/** Ends the broadcast through the toolbar: "End broadcast" and the confirmation's "End broadcast". */
+export async function endBroadcast(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'End broadcast' }).click();
+  await page
+    .getByRole('dialog', { name: 'End the broadcast?' })
+    .getByRole('button', { name: 'End broadcast' })
+    .click();
+}
+
+// --- settings window ------------------------------------------------------------------------------------------------
+
+/**
+ * Opens "Appearance and language" of the settings window the way an operator does: the gear of the toolbar, then the
+ * page in the sidebar (client-side navigation, no reload).
+ */
+export async function openAppearanceSettings(page: Page): Promise<void> {
+  await page.locator('a.c-header__settings').click();
+  await page.waitForURL((url) => url.pathname.startsWith('/settings'));
+  await page.locator('a[href="/settings/appearance"]').click();
+  await page.waitForURL((url) => url.pathname === '/settings/appearance');
+}
+
+/** The language select of the appearance settings (and of the login page). */
+export const languageSelect = (page: Page): Locator => page.locator('sf-language-select select');
+
+/** Back from the settings window to the control room through the link of the sidebar (no reload). */
+export async function backToControlRoom(page: Page): Promise<void> {
+  await page.locator('a[href="/"]').first().click();
+  await page.waitForURL((url) => url.pathname === '/');
+}
+
+/** Chooses the interface language in the settings window and returns to the control room. */
+export async function chooseLanguage(page: Page, tag: 'en' | 'de-CH' | 'auto'): Promise<void> {
+  await openAppearanceSettings(page);
+  await languageSelect(page).selectOption(tag);
+  await backToControlRoom(page);
+}
+
+/** A row of the Sources dock by the accessible name of its select button, e.g. `K1 Phone One`. */
 export const sourceRow = (page: Page, codeAndName: string | RegExp): Locator =>
-  sourcesDock(page)
-    .getByRole('button', {
-      name:
-        typeof codeAndName === 'string'
-          ? new RegExp(`^${escapeForRegExp(codeAndName)}(\\s|$)`)
-          : codeAndName,
-    })
-    .and(page.locator('.c-src__select'));
+  sourcesDock(page).getByRole('button', {
+    name: typeof codeAndName === 'string' ? `Select: ${codeAndName}` : codeAndName,
+  });
 
 /** A number field of the element inspector: `x`, `y`, `w`, `h`. */
 export const field = (page: Page, key: 'x' | 'y' | 'w' | 'h'): Locator =>
   page.locator(`#sf-insp-${key}`);
 export const radiusField = (page: Page): Locator => page.getByLabel('Corner radius');
 
-/** Dock title text in the inspector header (`Scene` or `Item`) and its subtitle. */
-export const inspectorTitle = (page: Page): Locator =>
-  inspector(page).locator('.c-dock-frame__title');
-export const inspectorSub = (page: Page): Locator => inspector(page).locator('.c-dock-frame__sub');
+/**
+ * The head of the Properties dock: `data-view` is `scene` or `item`; {@link inspectorSub} is the name it shows (the
+ * scene name, or the name of the selected item's source without its code).
+ */
+export const inspectorTitle = (page: Page): Locator => inspector(page).locator('.c-insp-head');
+export const inspectorSub = (page: Page): Locator => inspector(page).locator('.c-insp-head__name');
+
+/** Opens a tab of the element inspector (`Layout`, `Style`, `When it fails`, `Text`). */
+export async function inspectorTab(page: Page, name: string): Promise<void> {
+  const tab = inspector(page).getByRole('tab', { name, exact: true });
+  await tab.click();
+  await expect(tab).toHaveAttribute('aria-selected', 'true');
+}
 
 /** Rounds like the product does for comparisons of canvas pixels. */
 export const near = (actual: number, expected: number, tolerance = 1): boolean =>
@@ -520,7 +574,18 @@ export async function selectViaRow(page: Page, codeAndName: string | RegExp): Pr
   const row = sourceRow(page, codeAndName);
   if ((await row.getAttribute('aria-pressed')) !== 'true') await row.click();
   await expect(row).toHaveAttribute('aria-pressed', 'true');
-  await expect(inspectorTitle(page)).toHaveText('Item');
+  await expect(inspectorTitle(page)).toHaveAttribute('data-view', 'item');
+}
+
+/**
+ * The eye or lock of a Sources row by its accessible name (`Hide: Phone One`, `Lock: Phone Two`). In a narrow dock the
+ * quiet toggles come in only on hover, focus or selection, so the row is hovered first, like an operator does.
+ */
+export async function rowToggle(page: Page, name: string): Promise<Locator> {
+  // By attribute: a toggle with `display: none` is not in the accessibility tree yet, so getByRole cannot find its row.
+  const quiet = page.locator(`button[aria-label=${JSON.stringify(name)}]`);
+  await sourcesDock(page).locator('.c-src').filter({ has: quiet }).hover();
+  return sourcesDock(page).getByRole('button', { name, exact: true });
 }
 
 // --- animations, toasts and probes (installed into a page at run time) ---------------------------------------------
@@ -705,7 +770,7 @@ export async function trackToasts(page: Page): Promise<void> {
     const host = document.querySelector('sf-toast-host');
     if (!host) return;
     const take = () => {
-      const text = host.querySelector('.c-toast span')?.textContent?.trim();
+      const text = [...host.querySelectorAll('.c-toast__text')].at(-1)?.textContent?.trim();
       if (text && w.__sfToasts![w.__sfToasts!.length - 1] !== text) w.__sfToasts!.push(text);
     };
     w.__sfToastObserver = new MutationObserver(take);

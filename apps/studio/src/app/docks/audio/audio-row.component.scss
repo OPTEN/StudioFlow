@@ -1,23 +1,34 @@
-// One channel of the Audio dock: head (code, name, PGM, PFL, mute, details), meter + fader + dB, details.
+// One channel of the Audio dock: head (code, name, role · mode · state, Live, Listen, Mute, details), then the meter
+// above the fader with the value in dB, then the details.
 @use 'mixins' as *;
+@use '../stations/range' as *;
+
+// Diameter of the fader knob; the 0 dB notch is placed with the same geometry.
+$knob: 14px;
 
 :host {
   display: block;
 }
 
 .c-audio {
-  border-bottom: 1px solid var(--seam);
-  padding: 8px 10px 9px;
+  @include state-transition(background-color, box-shadow);
+  border-radius: var(--radius-sm);
+  padding: 7px 8px 8px;
 
   &.is-selected {
-    background: var(--raised);
-    box-shadow: inset 2px 0 0 var(--blue);
+    background: var(--fill);
+    box-shadow: var(--shadow-selected);
+
+    @include forced-colors {
+      outline: 2px solid Highlight;
+      outline-offset: -2px;
+    }
   }
 
   // A muted or switched-off channel keeps its place but reads quieter.
   &.is-muted .c-audio__name,
   &.is-off .c-audio__name {
-    opacity: 0.6;
+    color: var(--muted);
   }
 
   &.is-silent {
@@ -29,7 +40,7 @@
   align-items: center;
   display: grid;
   gap: 7px;
-  grid-template-columns: 16px auto minmax(0, 1fr) auto auto auto auto;
+  grid-template-columns: 16px auto minmax(0, 1fr) auto;
 }
 
 .c-audio__icon {
@@ -38,55 +49,63 @@
 }
 
 .c-audio__main {
+  display: grid;
+  gap: 1px;
   min-width: 0;
 }
 
 .c-audio__name {
   @include ellipsis;
-  display: block;
-  font-size: 13.5px;
+  font-size: var(--fs-body);
   font-weight: 600;
 }
 
 .c-audio__sub {
-  @include ellipsis;
   color: var(--muted);
-  display: block;
-  font-size: 12px;
-  margin-top: 2px;
+  display: flex;
+  font-size: var(--fs-footnote);
+  min-width: 0;
+  white-space: nowrap;
 }
 
+// The role gives way first: the mode and the state word always stay readable.
+.c-audio__role {
+  @include ellipsis;
+  flex: 0 1 auto;
+}
+
+.c-audio__mode,
 .c-audio__state {
-  margin-left: 6px;
+  flex: none;
 }
 
-// PFL and mute: small toggle buttons; pressed = raised with the selected shadow, like a segment.
-.c-audio__btn {
-  @include state-transition(background-color, color);
-  background: transparent;
-  border: 1px solid var(--seam-strong);
-  border-radius: var(--radius-md);
+.c-audio__dot::before {
+  content: '·';
+  padding: 0 5px;
+}
+
+.c-audio__mode {
   color: var(--text-2);
-  cursor: pointer;
-  font: 700 11.5px / 1 var(--font-ui);
-  height: 26px;
-  letter-spacing: 0.04em;
-  min-width: 30px;
-  padding: 0 7px;
+}
 
-  &:hover {
-    background: var(--raised);
-  }
+.c-audio__end {
+  align-items: center;
+  display: inline-flex;
+  gap: 1px;
 
-  &[aria-pressed='true'] {
-    background: var(--raised-2);
-    box-shadow: var(--shadow-selected);
-    color: var(--text);
+  > .c-tag {
+    margin-right: 5px;
   }
 }
 
-// A muted channel is cut off from the program: the row says so in the one hue that means "cut off".
-.c-audio__btn--mute[aria-pressed='true'] {
+// Listen: pressed = the accent (this browser plays it in the headphones).
+.c-audio__listen[aria-pressed='true'] {
+  background: var(--blue-wash);
+  color: var(--blue);
+}
+
+// Mute: pressed = the channel is cut off from the program, in the one hue that means "cut off".
+.c-audio__mute[aria-pressed='true'] {
   background: var(--red-wash);
   color: var(--red);
 }
@@ -103,29 +122,28 @@
   align-items: center;
   display: grid;
   gap: 10px;
-  grid-template-columns: minmax(0, 1fr) 9ch;
-  margin-top: 6px;
+  grid-template-columns: minmax(0, 1fr) 8ch;
+  margin-top: 4px;
+  padding-left: 23px;
 }
 
-// The meter sits behind the fader: one 6 px bar, the fader's track is transparent over it.
-.c-audio__track {
-  height: 22px;
+// The meter (3 px, neutral) above the fader: level and gain never share one bar.
+.c-audio__levels {
+  display: grid;
+  gap: 3px;
   position: relative;
 }
 
 .c-audio__meter {
-  background: var(--raised-2);
-  border-radius: 3px;
-  height: 6px;
-  left: 0;
+  background: var(--fill);
+  border-radius: var(--radius-pill);
+  height: 3px;
+  margin-inline: 1px;
   overflow: hidden;
-  position: absolute;
-  right: 0;
-  top: 8px;
 }
 
 .c-audio__fill {
-  background: var(--text-2);
+  background: var(--muted);
   height: 100%;
   transform-origin: left center;
   transition: transform 50ms linear;
@@ -141,36 +159,54 @@
 }
 
 .c-audio__fader {
-  accent-color: var(--blue);
-  background: transparent;
-  height: 22px;
-  inset: 0;
-  margin: 0;
+  @include range(3px, $knob);
+}
+
+// 0 dB notch under the fader track (unity gain), at the knob centre for that value.
+.c-audio__unity {
+  background: var(--seam-strong);
+  border-radius: 1px;
+  height: 5px;
+  left: calc(#{$knob * 0.5} + (100% - #{$knob}) * var(--unity, 0.86));
+  pointer-events: none;
   position: absolute;
-  width: 100%;
+  top: calc(6px + #{($knob + 6px) * 0.5} + 3px);
+  width: 1px;
 }
 
 .c-audio__db {
+  @include mono;
   color: var(--text-2);
-  font-size: 12px;
+  font-size: var(--fs-footnote);
   text-align: right;
   white-space: nowrap;
 }
 
 .c-audio__details {
-  align-items: end;
+  align-items: start;
   display: flex;
   flex-wrap: wrap;
   gap: 10px 18px;
   margin-top: 8px;
+  padding-left: 23px;
 }
 
 .c-audio__field {
   display: grid;
-  gap: 4px;
+  gap: 5px;
+  justify-items: start;
+  max-width: 100%;
+}
+
+.c-audio__sync {
+  width: 112px;
 }
 
 .c-audio__hint {
-  flex-basis: 100%;
-  margin: 0;
+  max-width: 34ch;
+}
+
+// The visible twin of the double-click on the fader, aligned with the fields' labels.
+.c-audio__reset {
+  margin-top: 21px;
 }

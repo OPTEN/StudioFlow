@@ -1,137 +1,129 @@
-// Monitoring page: header bar like the Regie, one hairline, then the station table.
+// Monitoring in the settings window: the status line under the title, then the device table in a rounded group that
+// scrolls sideways on its own when the window is narrow (the device column stays in place).
 @use 'mixins' as *;
 
 :host {
   display: block;
-  height: 100%;
 }
 
-.c-mon {
-  background: var(--seam);
-  display: grid;
-  gap: 1px;
-  grid-template-rows: auto minmax(0, 1fr);
-  height: 100%;
-}
-
-.c-mon__top {
+.c-mon__status {
   align-items: center;
-  background: var(--panel);
+  color: var(--text-2);
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
-  min-height: 50px;
-  padding: 6px var(--gr) 6px var(--gl);
-}
-
-.c-mon__brand {
-  align-items: center;
-  display: flex;
-  font-size: 16.5px;
-  font-weight: 700;
-  gap: 9px;
-  letter-spacing: 0.01em;
-  white-space: nowrap;
-}
-
-.c-mon__title {
-  @include label-text;
-  margin: 0;
-}
-
-.c-mon__prod {
-  @include ellipsis;
-  color: var(--text-2);
-  flex: 1 1 auto;
-  font-size: 14px;
+  font-size: 13px;
+  gap: 4px 16px;
+  margin-top: 6px;
 }
 
 .c-mon__conn {
   align-items: center;
-  color: var(--text-2);
   display: inline-flex;
-  font-size: 13px;
+  font-weight: 500;
   gap: 8px;
   white-space: nowrap;
 }
 
-.c-mon__clock {
-  color: var(--text-2);
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.c-mon__back {
-  text-decoration: none;
-}
-
-.c-mon__main {
-  background: var(--panel);
-  overflow: auto;
-  padding: 12px var(--gr) 24px var(--gl);
-}
-
-.c-mon__bar {
-  align-items: baseline;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 14px;
-  margin-bottom: 8px;
-}
-
 .c-mon__summary {
   color: var(--text-2);
-  font-size: 13px;
 }
 
-.c-mon__note {
+.c-mon__clock {
+  color: var(--muted);
   margin-left: auto;
 }
 
-.c-mon__scroll {
+// Empty and loading: a title, one sentence and (when there is nothing yet) the way to add a device.
+.c-mon__empty {
+  background: var(--group);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 0 0 0.5px var(--seam);
+  color: var(--muted);
+  display: grid;
+  font-size: 13px;
+  gap: 6px;
+  justify-items: center;
+  padding: 40px 24px;
+  text-align: center;
+
+  strong {
+    color: var(--text);
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  .c-btn {
+    margin-top: 8px;
+  }
+}
+
+.c-mon__table {
+  background: var(--group);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 0 0 0.5px var(--seam);
   overflow-x: auto;
 }
 
 .c-mon-table {
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: 13px;
-  min-width: 1140px;
   width: 100%;
 
+  // Compact cells, so all the columns fit the wide page at 1440 px; a narrower window scrolls the table sideways.
   th,
   td {
-    border-bottom: 1px solid var(--seam);
-    line-height: 22px;
-    padding: 8px 10px;
+    background: var(--group);
+    line-height: 20px;
+    padding: 9px 7px;
     text-align: left;
     vertical-align: top;
     white-space: nowrap;
   }
 
+  tbody th,
+  tbody td {
+    box-shadow: inset 0 1px 0 var(--seam);
+  }
+
+  // Headings wrap between words (the cells never do), the unit sits on a line of its own.
   thead th {
-    @include label-text(11px);
-    background: var(--panel);
-    padding-block: 4px;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 16px;
+    padding-block: 6px;
+    vertical-align: bottom;
+    white-space: normal;
+  }
+
+  th:first-child {
+    left: 0;
+    padding-left: 14px;
     position: sticky;
-    top: 0;
     z-index: 1;
+  }
+
+  th:last-child,
+  td:last-child {
+    padding-right: 14px;
   }
 
   .is-num {
     text-align: right;
   }
 
-  tbody tr.is-warn {
-    background: var(--amber-wash);
+  // Problem rows carry a wash in their state hue (the sticky device cell paints it over the group surface).
+  tbody tr.is-warn > * {
+    background: linear-gradient(var(--amber-wash), var(--amber-wash)), var(--group);
   }
 
-  tbody tr.is-bad {
-    background: var(--red-wash);
+  tbody tr.is-bad > * {
+    background: linear-gradient(var(--red-wash), var(--red-wash)), var(--group);
   }
 
   tbody td.u-mono {
     color: var(--text-2);
-    font-size: 12px;
   }
 
   tbody tr.is-stale td.u-mono {
@@ -139,31 +131,85 @@
   }
 }
 
+// Sortable heading: the label with a quiet arrow right after its last word, the unit on the line below; the sorted
+// column shows its arrow in full.
 .c-mon-table__sort {
-  align-items: center;
   background: transparent;
   border: 0;
   border-radius: var(--radius-xs);
   color: inherit;
   cursor: pointer;
-  display: inline-flex;
+  display: inline-block;
   font: inherit;
-  gap: 4px;
-  letter-spacing: inherit;
   min-height: 28px;
   padding: 0;
-  text-transform: inherit;
+  text-align: inherit;
 
   &:hover {
     color: var(--text);
   }
+
+  &:hover .c-mon-table__dir,
+  &:focus-visible .c-mon-table__dir {
+    opacity: 0.8;
+  }
+}
+
+.c-mon-table__label {
+  display: block;
+}
+
+.c-mon-table__last {
+  white-space: nowrap;
+}
+
+.c-mon-table__unit {
+  display: block;
+  font-weight: 400;
 }
 
 .c-mon-table__dir {
-  transition: transform var(--dur-state) var(--ease);
+  @include state-transition(opacity, transform);
+  margin-left: 2px;
+  opacity: 0.3;
+  vertical-align: -2px;
 
   &.is-up {
     transform: rotate(180deg);
+  }
+}
+
+.is-sorted {
+  color: var(--text);
+
+  .c-mon-table__dir {
+    opacity: 1;
+  }
+}
+
+// The device cell: name and platform, and the ⋯ button of the row (quiet until the row is hovered or focused).
+.c-mon-table__station {
+  align-items: flex-start;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.c-mon-table__who {
+  min-width: 0;
+}
+
+.c-mon-table__menu {
+  margin-block: -4px;
+  opacity: 0;
+
+  tr:hover &,
+  &:focus-visible {
+    opacity: 1;
+  }
+
+  @media (hover: none) {
+    opacity: 1;
   }
 }
 
@@ -178,13 +224,24 @@
   display: inline-block;
   font-family: var(--font-ui);
   font-size: 12px;
+  font-weight: 400;
+}
+
+// One line per source: the lines of a row have the same height in every column and a hairline between them, so they
+// read as sub-rows (the code in the Source column names each one).
+.c-mon-table__lines {
+  padding-block: 4px;
 }
 
 .c-mon-table__line {
   align-items: center;
   display: flex;
   gap: 6px;
-  min-height: 22px;
+  min-height: 30px;
+
+  & + & {
+    box-shadow: 0 -1px 0 var(--seam);
+  }
 }
 
 .is-num .c-mon-table__line {
@@ -195,7 +252,7 @@
   align-items: center;
   display: inline-flex;
   gap: 8px;
-  min-height: 22px;
+  min-height: 20px;
 }
 
 .c-state--muted {

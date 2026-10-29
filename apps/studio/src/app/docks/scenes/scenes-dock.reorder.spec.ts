@@ -7,6 +7,7 @@ import {
   studioTestProviders,
   type StoreHarness,
 } from '../../../testing/store-harness';
+import { ContextMenuService, type ContextMenuItem } from '../../core/ui/context-menu';
 import { ToastService } from '../../core/ui/toast.service';
 import { dockSnapshot } from '../testing/dock-fixtures';
 import { centre, dragRow, pointer, pressKey, stubRowLayout } from '../testing/sortable-test-kit';
@@ -52,7 +53,7 @@ describe('ScenesDockComponent reordering', () => {
   function list(): string[] {
     return Array.from(element.querySelectorAll('button.c-scene')).map(
       (button) =>
-        `${button.querySelector('.c-keycap')?.getAttribute('data-key')} ${button.querySelector('.c-scene__name')?.textContent?.trim()}`,
+        `${button.querySelector('.c-keycap')?.textContent?.trim()} ${button.querySelector('.c-scene__name')?.textContent?.trim()}`,
     );
   }
 
@@ -152,10 +153,15 @@ describe('ScenesDockComponent reordering', () => {
     await setup();
     element.querySelector<HTMLButtonElement>('.c-scene__more')?.click();
     await render();
-    const moveDown = Array.from(
-      element.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'),
-    ).find((item) => item.textContent?.includes('Move down'));
-    moveDown?.click();
+    const menus = TestBed.inject(ContextMenuService);
+    const moveDown = menus
+      .current()
+      ?.entries.find(
+        (entry): entry is ContextMenuItem => entry !== 'separator' && entry.label === 'Move down',
+      );
+    if (moveDown) {
+      menus.run(moveDown);
+    }
     await render();
     expect(list()).toEqual(['1 Presentation', '2 Welcome', '3 Break']);
     harness.http.expectOne(ORDER).flush(null, NO_CONTENT);

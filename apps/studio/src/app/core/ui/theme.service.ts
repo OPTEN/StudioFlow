@@ -18,8 +18,8 @@ export const SYSTEM_LIGHT_QUERY = '(prefers-color-scheme: light)';
 
 /** The Panel token of each theme (styles/_tokens.scss): the colour of the browser chrome around the Regie. */
 const THEME_CHROME_COLOUR: Readonly<Record<ResolvedTheme, string>> = {
-  dark: '#151a22',
-  light: '#f3f5f8',
+  dark: '#1e1e21',
+  light: '#f7f7f9',
 };
 
 /**

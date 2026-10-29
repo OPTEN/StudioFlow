@@ -18,15 +18,15 @@ describe('StationsDockComponent language switch', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     const element = fixture.nativeElement as HTMLElement;
-    const rowLine = (): string | null =>
-      element.querySelector('.c-st__row .c-tag--pgm')?.textContent?.trim() ?? null;
-    expect(rowLine()).toBe('PGM');
-    expect(element.querySelector('.c-btn--primary')?.textContent).toContain('Pair device');
+    const rowLabel = (): string | null =>
+      element.querySelector('.c-st__row')?.getAttribute('aria-label') ?? null;
+    expect(rowLabel()).toBe('K1 Phone stage left, on Program');
+    expect(element.querySelector('.c-btn--primary')?.textContent).toContain('Add device');
 
     i18n.setSetting('de-CH');
     fixture.detectChanges();
     await fixture.whenStable();
-    expect(rowLine()).toBe('PGM');
-    expect(element.querySelector('.c-btn--primary')?.textContent).toContain('Gerät koppeln');
+    expect(rowLabel()).toBe('K1 Phone stage left, im Program');
+    expect(element.querySelector('.c-btn--primary')?.textContent).toContain('Gerät hinzufügen');
   });
 });

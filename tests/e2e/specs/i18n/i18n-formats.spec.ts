@@ -1,5 +1,6 @@
 import type { Locator } from '@playwright/test';
 import { pairPhone } from '../../support/production';
+import { chooseLanguage } from '../../support/regie/kit';
 import { expect, test } from '../../support/ui/fixtures';
 import { t } from '../../support/tags';
 
@@ -38,18 +39,15 @@ test.describe('I18N formats', () => {
     const shorter = page.getByRole('button', { name: 'Shorter fade' });
     await stepTo(shorter, value, '0.2 s');
 
-    await page.getByRole('button', { name: 'Open settings' }).click();
-    await page.getByRole('dialog', { name: 'Settings' }).getByLabel('Interface language').selectOption('de-CH');
+    // The language is chosen in the settings window; back in the control room the same duration reads in German.
+    await chooseLanguage(page, 'de-CH');
     await expect(value).toHaveText('0,2 s');
-    await page.keyboard.press('Escape');
 
     const longer = page.getByRole('button', { name: 'Blende länger' });
     await stepTo(longer, value, '2 s');
 
-    await page.getByRole('button', { name: 'Einstellungen öffnen' }).click();
-    await page.getByRole('dialog', { name: 'Einstellungen' }).getByLabel('Sprache der Oberfläche').selectOption('en');
+    await chooseLanguage(page, 'en');
     await expect(value).toHaveText('2 s');
-    await page.keyboard.press('Escape'); // the open settings popover would take the click
     await shorter.click();
     await expect(value).toHaveText('1.5 s');
   });
@@ -59,9 +57,8 @@ test.describe('I18N formats', () => {
     const clock = page.locator('.c-header__clock');
     await expect(clock).toHaveText(/^([01]\d|2[0-3]):[0-5]\d:[0-5]\d$/);
 
-    await page.getByRole('button', { name: 'Open settings' }).click();
-    await page.getByRole('dialog', { name: 'Settings' }).getByLabel('Interface language').selectOption('de-CH');
-    await expect(page.getByRole('button', { name: 'Einstellungen öffnen' })).toBeVisible();
+    await chooseLanguage(page, 'de-CH');
+    await expect(page.getByRole('link', { name: 'Einstellungen', exact: true })).toBeVisible();
     await expect(clock).toHaveText(/^([01]\d|2[0-3]):[0-5]\d:[0-5]\d$/);
   });
 
@@ -71,8 +68,7 @@ test.describe('I18N formats', () => {
     const log = page.locator('.c-status__log');
     await expect(log).toContainText('K1 Phone 1 paired');
 
-    await page.getByRole('button', { name: 'Open settings' }).click();
-    await page.getByRole('dialog', { name: 'Settings' }).getByLabel('Interface language').selectOption('de-CH');
+    await chooseLanguage(page, 'de-CH');
     await expect(log).toContainText('K1 Phone 1 gekoppelt');
     await expect(log).not.toContainText('paired');
   });

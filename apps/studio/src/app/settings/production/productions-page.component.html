@@ -1,0 +1,291 @@
+<div class="c-page">
+  <sf-settings-page-head
+    [title]="t('regie.settings.nav.productions')"
+    [note]="t('regie.production.list.footer')"
+  />
+
+  <div class="c-page__body">
+    @if (!store.canCommand()) {
+      <p class="c-hint c-prods__offline" role="status">
+        <svg sfIcon="alert" aria-hidden="true"></svg>{{ t('regie.production.list.offline') }}
+      </p>
+    }
+
+    <section class="c-group" aria-labelledby="sf-prods-list">
+      <h2 class="c-group__title" id="sf-prods-list">{{ t('regie.production.switcher.title') }}</h2>
+      <div class="c-group__body">
+        @if (productions(); as list) {
+          @for (production of list; track production.id) {
+            @if (confirmSwitch()?.id === production.id) {
+              <div class="c-group__row c-group__row--stack">
+                <sf-confirm-box
+                  [flush]="true"
+                  [label]="t('regie.header.production.switchTitle')"
+                  [message]="t('regie.production.switch.confirm', { live: name() })"
+                  [confirmLabel]="t('regie.header.production.switchTitle')"
+                  [busy]="busy()"
+                  (confirm)="switchTo(production)"
+                  (cancel)="confirmSwitch.set(null)"
+                />
+              </div>
+            } @else if (renamingId() === production.id) {
+              <form
+                class="c-group__row c-group__row--stack c-prods__rename"
+                novalidate
+                (submit)="rename($event, production)"
+              >
+                <label class="c-prod-page__label" [for]="'rename-' + production.id">{{
+                  t('regie.production.menu.renameLabel', { name: production.name })
+                }}</label>
+                <div class="c-prod-page__inline">
+                  <input
+                    class="c-input"
+                    type="text"
+                    autocomplete="off"
+                    data-rename-input
+                    [id]="'rename-' + production.id"
+                    [maxlength]="nameMax"
+                    [formControl]="renameControl"
+                    [class.is-invalid]="renameControl.invalid && renameControl.touched"
+                    [attr.aria-invalid]="
+                      renameControl.invalid && renameControl.touched ? 'true' : null
+                    "
+                    (keydown.escape)="cancelRename()"
+                  />
+                  <button class="c-btn" type="button" [disabled]="busy()" (click)="cancelRename()">
+                    {{ t('common.cancel') }}
+                  </button>
+                  <button class="c-btn c-btn--fill" type="submit" [disabled]="busy()">
+                    {{ t('regie.production.name.save') }}
+                  </button>
+                </div>
+                @if (renameControl.invalid && renameControl.touched) {
+                  <p class="c-field-error" role="alert">
+                    {{ t('regie.production.name.invalid', { max: nameMax }) }}
+                  </p>
+                }
+              </form>
+            } @else {
+              <div
+                class="c-group__row c-prods__row"
+                data-testid="production-row"
+                [class.is-active]="production.isActive"
+                [attr.aria-current]="production.isActive ? 'true' : null"
+                [sfContextMenu]="menuOf(production)"
+                [sfContextMenuLabel]="production.name"
+                (keydown)="onRowKeyDown($event, production)"
+              >
+                <span class="c-prods__mark">
+                  @if (production.isActive) {
+                    <svg sfIcon="check" aria-hidden="true"></svg>
+                  }
+                </span>
+                <span class="c-group__label">
+                  <span class="c-prods__name">{{ production.name }}</span>
+                  <span class="c-group__sub">{{ created(production) }}</span>
+                </span>
+                @if (production.isActive) {
+                  <span class="c-prods__badges">
+                    @if (live()) {
+                      <span class="c-tag c-tag--pgm">{{ t('regie.production.state.onAir') }}</span>
+                    }
+                    <span class="c-prod-page__tag">{{ t('regie.production.state.active') }}</span>
+                  </span>
+                } @else {
+                  <button
+                    class="c-btn c-btn--sm"
+                    type="button"
+                    [attr.aria-label]="
+                      t('regie.production.switch.toLabel', { name: production.name })
+                    "
+                    [disabled]="busy() || !store.canCommand()"
+                    (click)="requestSwitch(production)"
+                  >
+                    {{ t('regie.production.switch.to') }}
+                  </button>
+                }
+                <button
+                  class="c-ibtn c-prods__more"
+                  type="button"
+                  aria-haspopup="menu"
+                  aria-keyshortcuts="F2 Control+D Meta+D"
+                  [attr.data-more]="production.id"
+                  [attr.aria-label]="t('regie.production.menu.more', { name: production.name })"
+                  [title]="t('regie.production.menu.more', { name: production.name })"
+                  (click)="openMenuAt($event, production)"
+                >
+                  <svg sfIcon="more"></svg>
+                </button>
+              </div>
+              @if (form() === 'duplicate' && duplicateSource()?.id === production.id) {
+                <div class="c-group__row c-group__row--stack c-prods__panel" data-form="duplicate">
+                  <sf-duplicate-production-form
+                    [source]="production"
+                    (done)="duplicated($event)"
+                    (cancelled)="closeForm()"
+                  />
+                </div>
+              }
+            }
+          }
+        } @else if (listError()) {
+          <div class="c-empty" role="alert">
+            <strong>{{ t('regie.header.production.listError') }}</strong>
+            <button class="c-btn c-btn--sm" type="button" (click)="load()">
+              {{ t('common.retry') }}
+            </button>
+          </div>
+        } @else {
+          <p class="c-empty">{{ t('regie.production.list.loading') }}</p>
+        }
+      </div>
+      <p class="c-group__footer">{{ t('regie.production.menu.keys') }}</p>
+    </section>
+
+    <section class="c-group" aria-labelledby="sf-prods-add">
+      <h2 class="c-group__title" id="sf-prods-add">{{ t('regie.production.add.title') }}</h2>
+      <div class="c-group__body">
+        <div class="c-group__row">
+          <span class="c-group__label" id="sf-prods-new">
+            {{ t('regie.header.production.new') }}
+            <span class="c-group__sub">{{ t('regie.production.add.newSub') }}</span>
+          </span>
+          @if (form() !== 'new') {
+            <button
+              class="c-btn c-btn--sm"
+              type="button"
+              data-open="new"
+              [disabled]="!store.canCommand()"
+              (click)="openForm('new')"
+            >
+              <svg sfIcon="plus"></svg>{{ t('regie.header.production.newMenu') }}
+            </button>
+          }
+        </div>
+        @if (form() === 'new') {
+          <form
+            class="c-prods__form"
+            data-form="new"
+            novalidate
+            aria-labelledby="sf-prods-new"
+            (submit)="create($event)"
+          >
+            <div class="c-group__row c-group__row--stack">
+              <label class="c-prod-page__label" for="new-production-name">{{
+                t('regie.header.production.name')
+              }}</label>
+              <input
+                id="new-production-name"
+                class="c-input"
+                type="text"
+                autocomplete="off"
+                aria-describedby="new-production-name-error"
+                [maxlength]="nameMax"
+                [placeholder]="t('regie.production.add.placeholder')"
+                [formControl]="createControl"
+                [class.is-invalid]="createControl.invalid && createControl.touched"
+                [attr.aria-invalid]="createControl.invalid && createControl.touched ? 'true' : null"
+              />
+              @if (createControl.invalid && createControl.touched) {
+                <p class="c-field-error" id="new-production-name-error" role="alert">
+                  {{ t('regie.production.name.invalid', { max: nameMax }) }}
+                </p>
+              }
+            </div>
+            <sf-canvas-picker
+              class="c-prod-page__picker"
+              [(format)]="newFormat"
+              [(resolution)]="newResolution"
+            />
+            @if (live()) {
+              <p class="c-group__row c-prod-page__notice">
+                <svg sfIcon="info" aria-hidden="true"></svg>
+                <span>{{ t('regie.production.add.liveHint', { name: name() }) }}</span>
+              </p>
+            }
+            <div class="c-group__row c-prods__actions">
+              <button class="c-btn" type="button" [disabled]="busy()" (click)="closeForm()">
+                {{ t('common.cancel') }}
+              </button>
+              <button class="c-btn c-btn--fill" type="submit" [disabled]="busy()">
+                {{ t('regie.production.add.create') }}
+              </button>
+            </div>
+          </form>
+        }
+
+        <div class="c-group__row">
+          <span class="c-group__label">
+            {{ t('regie.transfer.import.title') }}
+            <span class="c-group__sub">{{ t('regie.transfer.import.sub') }}</span>
+          </span>
+          @if (form() !== 'import') {
+            <button
+              class="c-btn c-btn--sm"
+              type="button"
+              data-open="import"
+              [disabled]="!store.canCommand()"
+              (click)="openForm('import')"
+            >
+              <svg sfIcon="upload"></svg>{{ t('regie.transfer.menu.import') }}
+            </button>
+          }
+        </div>
+        @if (form() === 'import') {
+          <div class="c-group__row c-group__row--stack c-prods__panel" data-form="import">
+            <sf-import-production-form (done)="imported($event)" (cancelled)="closeForm()" />
+          </div>
+        }
+      </div>
+    </section>
+
+    @if (store.production(); as production) {
+      <section class="c-group" aria-labelledby="sf-prods-this">
+        <h2 class="c-group__title c-prods__this" id="sf-prods-this">
+          {{ t('regie.production.this.title') }}
+          <span class="c-prods__this-name">{{ production.name }}</span>
+        </h2>
+        <div class="c-group__body">
+          <div class="c-group__row">
+            <span class="c-group__label">
+              {{ t('regie.transfer.duplicate.title') }}
+              <span class="c-group__sub">{{ t('regie.transfer.duplicate.sub') }}</span>
+            </span>
+            @if (form() !== 'duplicate' || duplicateSource()) {
+              <button
+                class="c-btn c-btn--sm"
+                type="button"
+                data-open="duplicate"
+                [disabled]="!store.canCommand()"
+                (click)="openForm('duplicate')"
+              >
+                <svg sfIcon="copy"></svg>{{ t('regie.transfer.duplicate.open') }}
+              </button>
+            }
+          </div>
+          @if (form() === 'duplicate' && !duplicateSource()) {
+            <div class="c-group__row c-group__row--stack c-prods__panel" data-form="duplicate">
+              <sf-duplicate-production-form (done)="duplicated($event)" (cancelled)="closeForm()" />
+            </div>
+          }
+          <div class="c-group__row">
+            <span class="c-group__label">
+              {{ t('regie.transfer.export.title') }}
+              <span class="c-group__sub">{{ t('regie.transfer.export.sub') }}</span>
+            </span>
+            @if (exportHref(); as href) {
+              <a
+                class="c-btn c-btn--sm"
+                download
+                data-testid="export-production"
+                [href]="href"
+                (click)="exported()"
+                ><svg sfIcon="download"></svg>{{ t('regie.transfer.menu.export') }}</a
+              >
+            }
+          </div>
+        </div>
+      </section>
+    }
+  </div>
+</div>

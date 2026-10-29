@@ -215,7 +215,7 @@ test.describe('AUD Regie', () => {
       // The desk goes quiet (the track stays: a cable that fell out, a muted channel strip).
       await setFakeTone(station.page, 'mic', { level: 0 });
       const quietAt = Date.now();
-      await expect(word).toHaveText('no signal for 10 s', { timeout: 30_000 });
+      await expect(word).toHaveText('silent for 10 s', { timeout: 30_000 });
       const waited = Date.now() - quietAt;
       expect(waited, 'not before 10 s of silence').toBeGreaterThanOrEqual(9_000);
       expect(waited, 'and not much later').toBeLessThanOrEqual(25_000);
@@ -224,7 +224,7 @@ test.describe('AUD Regie', () => {
       // A warning is not an incident: no incident, the station is "ok", the header lamp is not red.
       const snapshot = await production.snapshot();
       expect(snapshot.incidents, 'no incident').toEqual([]);
-      await expect(page.getByText('1 station ok')).toBeVisible();
+      await expect(page.getByText('1 device OK')).toBeVisible();
 
       // The signal comes back: the warning goes.
       await setFakeTone(station.page, 'mic', { level: 0.5 });

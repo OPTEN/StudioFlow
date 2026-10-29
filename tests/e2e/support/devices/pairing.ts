@@ -4,9 +4,9 @@ import type { LaptopSender } from '../ui/sender';
 import type { UiPairedDevice } from '../ui/pairing';
 
 /**
- * Pairing helpers with a workaround for DEV-04: at 1280 x 720 the tab row of the pairing dock collapses to 2 px while the
- * “Phone” tab shows its QR code, and the tab buttons are covered by the panel, so a pointer click on “Laptop” / “Link” is
- * intercepted. The tab is switched with a DOM click (what a keyboard user gets with Enter) instead.
+ * Pairing helpers. They were written around DEV-04 (fixed: the tab row of the pairing dock no longer collapses at
+ * 1280 x 720, the panel below it scrolls); the tab is still switched with a DOM click (what a keyboard user gets with
+ * Enter), which works whatever covers the tab.
  */
 
 /** Opens the pairing dock on a tab (the dock stays open between calls). */

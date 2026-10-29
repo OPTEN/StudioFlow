@@ -124,29 +124,31 @@ describe('StationComponent', () => {
     expect(query(element, '[data-testid=tally]')?.dataset['tally']).toBe('off');
   });
 
-  it('renders the tally: red “LIVE” in the program, green “Up next” in the preview', async () => {
+  it('renders the tally: a red frame and “Live”, a green frame and “Preview”, nothing off air', async () => {
     const element = await render(phoneSelf());
+    const tag = () => query(element, '[data-testid=tally-tag]');
 
     hub.emit('tally', { overall: 'program', slots: { camera: 'program' } });
     fixture.detectChanges();
     let tally = query(element, '[data-testid=tally]');
     expect(tally?.dataset['tally']).toBe('program');
     expect(tally?.classList).toContain('is-program');
-    expect(tally?.textContent?.trim()).toBe('LIVE');
+    expect(tag()?.textContent?.trim()).toBe('Live');
+    expect(tag()?.classList).toContain('c-tag--pgm');
     expect(element.textContent).toContain('Live: this device is now on Program.');
 
     hub.emit('tally', { overall: 'preview', slots: { camera: 'preview' } });
     fixture.detectChanges();
     tally = query(element, '[data-testid=tally]');
     expect(tally?.dataset['tally']).toBe('preview');
-    expect(tally?.textContent?.trim()).toBe('Up next');
+    expect(tag()?.textContent?.trim()).toBe('Preview');
 
     hub.emit('tally', { overall: 'off', slots: { camera: 'off' } });
     fixture.detectChanges();
-    expect(query(element, '[data-testid=tally]')?.textContent?.trim()).toBe('');
+    expect(tag()).toBeNull();
   });
 
-  it('shows a Regie message as a banner with “OK”', async () => {
+  it('shows a Regie message as a banner that stays until “Dismiss”', async () => {
     const element = await render(phoneSelf());
 
     hub.emit('command', {
@@ -161,8 +163,9 @@ describe('StationComponent', () => {
     const banner = query(element, '[data-testid=message-banner]');
     expect(banner?.textContent).toContain('In 10 s live');
     expect(banner?.getAttribute('role')).toBe('alert');
+    expect(document.title).toContain('Message');
 
-    button(element, 'OK').click();
+    button(element, 'Dismiss').click();
     fixture.detectChanges();
     expect(query(element, '[data-testid=message-banner]')).toBeNull();
   });
@@ -231,15 +234,77 @@ describe('StationComponent', () => {
     );
   });
 
-  it('phone: “Dark” blacks out the picture and keeps the thin tally frame', async () => {
+  it('phone: “Screen off” blacks out the picture, keeps the thin tally frame and wakes on a tap', async () => {
     const element = await render(phoneSelf());
 
-    button(element, 'Dark').click();
+    button(element, 'Screen off').click();
     fixture.detectChanges();
 
-    expect(query(element, '.c-phone')?.classList).toContain('is-dark');
-    expect(query(element, '.c-phone__dark')?.textContent).toContain('K3');
+    expect(query(element, '.c-phone')?.classList).toContain('is-screen-off');
+    const overlay = query(element, '.c-phone__screen-off');
+    expect(overlay?.textContent).toContain('K3');
+    expect(overlay?.textContent).toContain('Connected');
+    // The name is the visible text (WCAG 2.5.3), so it carries the hint as well as the code and the state.
+    expect(overlay?.hasAttribute('aria-label')).toBe(false);
+    expect(overlay?.textContent).toContain('Tap to show the controls');
     expect(query(element, '[data-testid=tally]')?.classList).toContain('c-tally--thin');
+
+    overlay?.click();
+    fixture.detectChanges();
+    expect(query(element, '.c-phone__screen-off')).toBeNull();
+    expect(
+      element.querySelector('.c-phone__control--screen-off')?.getAttribute('aria-pressed'),
+    ).toBe('true');
+  });
+
+  it('phone: switching or stopping the camera while it is live asks first', async () => {
+    const element = await render(phoneSelf());
+    media.publisher.emitSlot('camera', 'live');
+    hub.emit('tally', { overall: 'program', slots: { camera: 'program' } });
+    fixture.detectChanges();
+
+    button(element, 'Switch camera').click();
+    fixture.detectChanges();
+    await settle();
+    let sheet = query(element, '[data-testid=confirm-sheet]');
+    expect(sheet?.textContent).toContain('Switch the camera while live?');
+    expect(media.publisher.calls).not.toContain('switchCamera');
+
+    (sheet?.querySelector('[data-testid=confirm-sheet-ok]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    await settle();
+    fixture.detectChanges();
+    expect(media.publisher.calls).toContain('switchCamera');
+    expect(query(element, '[data-testid=confirm-sheet]')).toBeNull();
+
+    button(element, 'Stop camera').click();
+    fixture.detectChanges();
+    await settle();
+    sheet = query(element, '[data-testid=confirm-sheet]');
+    expect(sheet?.textContent).toContain('Stop the camera while live?');
+    expect(media.publisher.calls).not.toContain('unpublish:camera');
+    (sheet?.querySelector('[data-testid=confirm-sheet-ok]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(media.publisher.calls).toContain('unpublish:camera');
+  });
+
+  it('phone: the quality sheet offers Standard and High and changes the running camera', async () => {
+    const element = await render(phoneSelf());
+    media.publisher.emitSlot('camera', 'live');
+    fixture.detectChanges();
+    const quality = query(element, '.c-phone__control--quality');
+    expect(quality?.getAttribute('aria-label')).toBe('Picture quality: Standard');
+
+    quality?.click();
+    fixture.detectChanges();
+    await settle();
+    const sheet = query(element, '[data-testid=quality-sheet]');
+    expect(sheet?.textContent).toContain('Picture quality');
+    sheet?.querySelector<HTMLInputElement>('input[value="1080"]')?.click();
+    fixture.detectChanges();
+
+    expect(media.publisher.calls).toContain('setCameraResolution:1080');
+    expect(quality?.getAttribute('aria-label')).toBe('Picture quality: High');
   });
 
   it('laptop: “Share screen” calls the publisher synchronously in the click', async () => {
@@ -253,47 +318,150 @@ describe('StationComponent', () => {
     expect(media.publisher.calls).toContain('publishScreen:screen-1');
   });
 
-  it('laptop: an ended share and a reshare request offer a large “Share again”', async () => {
+  it('laptop: a reshare request highlights the ended screen and offers one large “Share again”', async () => {
     const element = await render(laptopSelf(), undefined, true);
     media.publisher.emitSlot('screen-1', 'ended', 'media.slot.shareEnded');
     hub.emit('command', { id: 'cmd_9', kind: 'reshare', slot: 'screen-1', text: null, at: '' });
     fixture.detectChanges();
 
-    expect(element.textContent).toContain('The control room asks you to share the screen again');
-    expect(query(element, '[data-testid=slot-screen-1]')?.dataset['state']).toBe('ended');
+    const card = query(element, '[data-testid=slot-screen-1]');
+    expect(card?.dataset['state']).toBe('ended');
+    expect(card?.classList).toContain('is-requested');
+    expect(card?.textContent).toContain('The control room asks you to share this screen again');
+    const again = button(card!, 'Share again');
+    expect(again.classList).toContain('c-btn--lg');
+    expect(
+      [...element.querySelectorAll('button')].filter((candidate) =>
+        candidate.textContent?.includes('Share again'),
+      ),
+    ).toHaveLength(1);
 
-    button(element, 'Share again').click();
+    again.click();
     expect(media.publisher.calls).toContain('publishScreen:screen-1');
   });
 
-  it('laptop: “Video in screen” is a toggle per screen that switches to 30 fps and says what it costs', async () => {
+  it('laptop: “Smooth motion” in the ⋯ menu switches a screen to 30 fps and says what it costs', async () => {
     const element = await render(laptopSelf(), undefined, true);
-    const toggle = query(element, '[data-testid=slot-screen-1] [data-testid=video-screen]');
-    expect(toggle?.getAttribute('aria-pressed')).toBe('false');
+    const openMenu = (): HTMLElement => {
+      (query(element, '[aria-label="More for Screen 1"]') as HTMLButtonElement).click();
+      fixture.detectChanges();
+      return query(element, '[data-testid=slot-screen-1] [data-testid=video-screen]')!;
+    };
     expect(query(element, '[data-testid=video-screen-hint]')).toBeNull();
 
-    button(element, 'Video in screen').click();
+    let item = openMenu();
+    expect(item.getAttribute('role')).toBe('menuitemcheckbox');
+    expect(item.getAttribute('aria-checked')).toBe('false');
+    item.click();
     fixture.detectChanges();
 
     expect(media.publisher.calls).toContain('setScreenFrameRate:screen-1:30');
-    expect(toggle?.getAttribute('aria-pressed')).toBe('true');
     expect(query(element, '[data-testid=video-screen-hint]')?.textContent).toContain(
       '30 frames per second',
     );
 
-    button(element, 'Video in screen').click();
+    item = openMenu();
+    expect(item.getAttribute('aria-checked')).toBe('true');
+    item.click();
     fixture.detectChanges();
-
     expect(media.publisher.calls).toContain('setScreenFrameRate:screen-1:15');
-    expect(toggle?.getAttribute('aria-pressed')).toBe('false');
   });
 
-  it('laptop: greets with “Paired” right after pairing', async () => {
+  it('laptop: “Remove from the control room…” asks in a sheet; Escape keeps the source', async () => {
+    const element = await render(laptopSelf(), undefined, true);
+    (query(element, '[aria-label="More for Screen 1"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    button(element, 'Remove from the control room').click();
+    fixture.detectChanges();
+    await settle();
+    fixture.detectChanges();
+
+    const sheet = query(element, '[data-testid=confirm-sheet]');
+    expect(sheet?.querySelector('h2')?.textContent).toContain('Remove Screen 1?');
+    expect(sheet?.textContent).toContain(
+      'Screen 1 disappears from the control room and from every scene that shows it.',
+    );
+    const ok = query(sheet!, '[data-testid=confirm-sheet-ok]');
+    expect(ok?.textContent).toContain('Remove');
+    expect(ok?.getAttribute('aria-keyshortcuts')).toBe('Enter');
+
+    query(sheet!, '.c-sheet__body')!.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+    );
+    fixture.detectChanges();
+    expect(query(element, '[data-testid=confirm-sheet]')).toBeNull();
+    expect(TestBed.inject(DeviceApiService).releaseSlot).not.toHaveBeenCalled();
+  });
+
+  it('laptop: Enter in the remove sheet confirms and removes the source', async () => {
+    const element = await render(laptopSelf(), undefined, true);
+    (query(element, '[aria-label="More for Screen 1"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    button(element, 'Remove from the control room').click();
+    fixture.detectChanges();
+    await settle();
+    fixture.detectChanges();
+
+    query(element, '[data-testid=confirm-sheet] .c-sheet__body')!.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }),
+    );
+    fixture.detectChanges();
+    expect(TestBed.inject(DeviceApiService).releaseSlot).toHaveBeenCalledWith('screen-1');
+  });
+
+  it('laptop: the ⋯ menu holds the commands of the card and opens on a right-click', async () => {
+    const element = await render(laptopSelf(), undefined, true);
+    const card = query(element, '[data-testid=slot-screen-1]')!;
+    const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+    card.querySelector('.c-source__info')!.dispatchEvent(event);
+    fixture.detectChanges();
+
+    expect(event.defaultPrevented).toBe(true);
+    const items = [...card.querySelectorAll('[role=menu] [role^=menuitem]')].map((item) =>
+      item.textContent?.trim().replace(/\s+/g, ' '),
+    );
+    expect(items[0]).toBe('Share screen');
+    expect(items.at(-1)).toBe('Remove from the control room…');
+
+    card.querySelector<HTMLButtonElement>('[role=menuitem]')!.click();
+    expect(media.publisher.calls).toContain('publishScreen:screen-1');
+    fixture.detectChanges();
+    expect(card.querySelector('[role=menu]')).toBeNull();
+  });
+
+  it('laptop: stopping a live screen from the ⋯ menu asks first', async () => {
+    const element = await render(laptopSelf(), undefined, true);
+    button(element, 'Share screen').click();
+    await settle();
+    media.publisher.emitSlot('screen-1', 'live');
+    hub.emit('tally', { overall: 'program', slots: { 'screen-1': 'program' } });
+    fixture.detectChanges();
+
+    (query(element, '[aria-label="More for Screen 1"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const stop = [
+      ...element.querySelectorAll<HTMLButtonElement>('[data-testid=slot-screen-1] [role=menuitem]'),
+    ].find((item) => item.textContent?.includes('Stop sharing'));
+    stop!.click();
+    fixture.detectChanges();
+    await settle();
+    fixture.detectChanges();
+
+    expect(query(element, '[data-testid=confirm-sheet] h2')?.textContent).toContain(
+      'Stop Screen 1 while live?',
+    );
+    expect(media.publisher.calls).not.toContain('unpublish:screen-1');
+  });
+
+  it('laptop: greets with “Paired” right after pairing and keeps the device name as the title', async () => {
     const notices = new NoticeService();
     notices.justPaired.set(true);
     const element = await renderWithNotices(notices);
 
-    expect(query(element, 'h1')?.textContent?.trim()).toBe('Paired');
+    expect(query(element, 'h1')?.textContent?.trim()).toBe(laptopSelf().name);
+    expect(element.textContent).toContain(
+      'Paired. Next time StudioFlow recognises this computer by itself.',
+    );
   });
 
   it('removed by the Regie: back to the pairing form', async () => {

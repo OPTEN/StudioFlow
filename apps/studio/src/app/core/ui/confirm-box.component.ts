@@ -10,8 +10,8 @@ import {
 import { t } from '@studioflow/i18n';
 
 /**
- * Dashed red confirmation box for risky actions (DESIGN.md "Danger"): message, a solid red confirm button and
- * "Cancel". The focus moves to "Cancel" when the box appears, so a second Enter never confirms by accident.
+ * Confirmation box for risky actions (DESIGN.md "Danger"): a red-tinted box that names the consequence, a solid red
+ * confirm button and "Cancel". The focus moves to "Cancel" when the box appears, so a second Enter never confirms by accident.
  * `[busy]` disables both buttons while the request runs.
  *
  * ```html

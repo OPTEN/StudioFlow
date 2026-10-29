@@ -16,9 +16,12 @@ describe('scene list helpers in German', () => {
       health: { code: 'K2', bad: false },
       codeOf: () => 'K1',
     };
+    expect(sceneRowView(scene, 0, base).ariaLabel).toBe(
+      'Lea präsentiert, live im Program, in der Preview, K2 gestört',
+    );
     expect(
       sceneRowView(sceneFixture('scn_x', 'Pause', 1), 1, { ...base, health: null }).codes,
-    ).toBe('leer');
+    ).toBe('Keine Quellen');
   });
 
   it('names new scenes and copies with the German words', () => {

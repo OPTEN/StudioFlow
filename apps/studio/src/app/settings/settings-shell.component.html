@@ -1,0 +1,63 @@
+<div class="c-settings">
+  <nav class="c-settings__sidebar" [attr.aria-label]="t('regie.settings.nav.label')">
+    <a class="c-settings__back" routerLink="/">
+      <svg sfIcon="chev-left" [size]="15"></svg>
+      {{ t('regie.settings.nav.back') }}
+    </a>
+    <div class="c-settings__brand">
+      <svg sfIcon="mark"></svg>
+      <span>{{ t('regie.settings.nav.label') }}</span>
+    </div>
+
+    <div class="c-settings__groups">
+      @for (group of groups; track group.id) {
+        <section class="c-settings__group" [attr.aria-labelledby]="'sf-nav-' + group.id">
+          <h2 class="c-settings__group-label" [id]="'sf-nav-' + group.id">
+            {{ t(group.labelKey) }}
+            @if (group.id === 'production' && store.production(); as production) {
+              <span class="c-settings__group-meta">{{ production.name }}</span>
+            }
+          </h2>
+          <ul class="c-settings__list">
+            @for (item of group.items; track item.id) {
+              <li>
+                <a
+                  class="c-settings__item"
+                  routerLinkActive="is-active"
+                  ariaCurrentWhenActive="page"
+                  [routerLink]="item.path"
+                >
+                  <span class="c-settings__tile" [class]="'c-settings__tile--' + item.tile">
+                    <svg [sfIcon]="item.icon" [size]="14"></svg>
+                  </span>
+                  <span class="c-settings__item-label">{{ t(item.labelKey) }}</span>
+                </a>
+              </li>
+            }
+          </ul>
+        </section>
+      }
+    </div>
+
+    <footer class="c-settings__footer">
+      <a
+        class="c-settings__sponsor"
+        href="https://www.opten.ch"
+        target="_blank"
+        rel="noopener"
+        data-testid="sponsor"
+      >
+        <span>{{ t('regie.header.sponsor.prefix') }}&ngsp;</span>
+        <svg sfIcon="opten"></svg>
+        <span>OPTEN</span>
+      </a>
+      @if (system.version(); as version) {
+        <span class="c-settings__version">{{ version }}</span>
+      }
+    </footer>
+  </nav>
+
+  <main class="c-settings__main" id="sf-main">
+    <router-outlet />
+  </main>
+</div>

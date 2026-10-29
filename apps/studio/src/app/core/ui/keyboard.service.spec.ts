@@ -43,6 +43,35 @@ describe('KeyboardService', () => {
     expect(scenes).toEqual([0, 8]);
   });
 
+  it('maps ? to the help shortcut, but not while typing', () => {
+    let calls = 0;
+    cleanup.push(keyboard.register('help', () => (calls++, true)));
+    expect(press('?', { shiftKey: true }).defaultPrevented).toBe(true);
+    press('?', { shiftKey: true, repeat: true });
+    focus('<input type="text">');
+    press('?', { shiftKey: true });
+    expect(calls).toBe(1);
+  });
+
+  it('maps Ctrl+, and Cmd+, to the settings, but not while typing', () => {
+    let calls = 0;
+    cleanup.push(keyboard.register('settings', () => (calls++, true)));
+    expect(press(',', { ctrlKey: true }).defaultPrevented).toBe(true);
+    press(',', { metaKey: true });
+    press(',');
+    focus('<input type="text">');
+    press(',', { ctrlKey: true });
+    expect(calls).toBe(2);
+  });
+
+  it('closes an open sheet with Escape before anything else', () => {
+    const order: string[] = [];
+    cleanup.push(keyboard.registerEscape('popover', () => (order.push('popover'), true)));
+    cleanup.push(keyboard.registerEscape('sheet', () => (order.push('sheet'), true)));
+    press('Escape');
+    expect(order).toEqual(['sheet']);
+  });
+
   it('maps M to the mute shortcut of the audio mixer and leaves it alone when nothing handles it', () => {
     const calls: string[] = [];
     cleanup.push(keyboard.register('mute', () => (calls.push('mute'), true)));
@@ -82,31 +111,6 @@ describe('KeyboardService', () => {
     expect(isTypingTarget(document.createElement('textarea'))).toBe(true);
     expect(isTypingTarget(document.createElement('button'))).toBe(false);
     expect(isTypingTarget(null)).toBe(false);
-  });
-
-  it('does not count a switch, checkbox, radio or slider as a text field', () => {
-    for (const type of ['checkbox', 'radio', 'range', 'button']) {
-      const input = document.createElement('input');
-      input.type = type;
-      expect(isTypingTarget(input)).toBe(false);
-    }
-    for (const type of ['text', 'search', 'number', 'password', 'email']) {
-      const input = document.createElement('input');
-      input.type = type;
-      expect(isTypingTarget(input)).toBe(true);
-    }
-  });
-
-  it('keeps the scene keys alive on a focused switch, but leaves Space to the switch', () => {
-    const scenes: number[] = [];
-    let takes = 0;
-    cleanup.push(keyboard.register('scene', (index) => (scenes.push(index), true)));
-    cleanup.push(keyboard.register('take', () => (takes++, true)));
-    focus('<input type="checkbox" role="switch">');
-    press('4');
-    press(' ');
-    expect(scenes).toEqual([3]);
-    expect(takes).toBe(0);
   });
 
   it('runs Space as take unless a button or link has the focus', () => {

@@ -1,0 +1,101 @@
+@use 'mixins' as *;
+@use 'tokens' as *;
+
+// Grouped inset section, as in the Regie's settings and iOS: a title above, rounded rows inside, a footer note below.
+.c-group {
+  display: grid;
+  gap: $SPACE_SM;
+  margin: 0;
+  min-width: 0;
+}
+
+.c-group__title {
+  color: var(--text-2);
+  font-size: var(--fs-subhead);
+  font-weight: 600;
+  padding: 0 $SPACE_XS;
+}
+
+.c-group__body {
+  background: var(--group);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 0 0 0.5px var(--seam);
+  display: grid;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.c-group__row {
+  align-items: center;
+  display: grid;
+  gap: $SPACE_XS $SPACE_GUTTER;
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-height: $TOUCH_TARGET + 6px;
+  padding: $SPACE_ROW $SPACE_GUTTER;
+
+  & + & {
+    box-shadow: inset 0 1px 0 var(--seam);
+  }
+}
+
+.c-group__row--stack {
+  align-items: stretch;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.c-group__label {
+  color: var(--text);
+  font-size: var(--fs-body);
+  min-width: 0;
+}
+
+.c-group__value {
+  color: var(--muted);
+  font-size: var(--fs-callout);
+  min-width: 0;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
+.c-group__footer {
+  color: var(--muted);
+  font-size: var(--fs-footnote);
+  line-height: 1.45;
+  padding: 0 $SPACE_XS;
+}
+
+// A card: one thing with its state and actions (a source of the laptop, the sound of the audio station).
+.c-card {
+  background: var(--group);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 0 0 0.5px var(--seam);
+  display: grid;
+  gap: $SPACE_LG;
+  min-width: 0;
+  padding: $SPACE_GUTTER;
+}
+
+// Confirmation inside a card or a sheet: a tinted box that names the consequence; its final action is the filled red
+// button.
+.c-confirm {
+  background: var(--red-wash);
+  border-radius: var(--radius-md);
+  color: var(--text);
+  display: grid;
+  font-size: var(--fs-callout);
+  gap: $SPACE_LG;
+  line-height: 1.4;
+  padding: $SPACE_LG $SPACE_GUTTER;
+
+  // It holds the focus so Enter confirms and Escape cancels at once (sfConfirmKeys); a quiet ring marks it.
+  &:focus-visible {
+    outline: 2px solid var(--red);
+    outline-offset: 2px;
+  }
+}
+
+.c-confirm__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $SPACE_MD $SPACE_LG;
+}

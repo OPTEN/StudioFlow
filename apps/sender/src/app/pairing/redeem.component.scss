@@ -8,6 +8,6 @@
   align-items: center;
   color: var(--text-2);
   display: flex;
-  font-size: 16px;
+  font-size: var(--fs-body);
   gap: $SPACE_LG;
 }

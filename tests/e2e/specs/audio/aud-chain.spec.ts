@@ -58,7 +58,7 @@ test.describe('AUD audio chain', () => {
       expect(JSON.stringify(audioRequest)).toMatch(/channelCount":(\{"ideal":)?2/);
 
       // The station page shows the level of the desk and that it is not on air yet.
-      await expect(station.levelText()).not.toHaveText('−∞ dB', { timeout: 15_000 });
+      await expect(station.levelText()).not.toHaveText('No sound', { timeout: 15_000 });
       await expect(station.micLive()).toBeHidden();
 
       // Before the broadcast the output page is silent, although the source is there.

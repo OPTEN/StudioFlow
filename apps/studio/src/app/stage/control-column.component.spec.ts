@@ -66,6 +66,11 @@ describe('ControlColumnComponent', () => {
     return element.querySelector('.c-take');
   }
 
+  /** The line under Take that says why it cannot take. */
+  function reason(): string {
+    return element.querySelector('.c-take__reason')?.textContent?.trim() ?? '';
+  }
+
   function studioSwitch(): HTMLInputElement {
     return element.querySelector('input[role="switch"]') as HTMLInputElement;
   }
@@ -82,8 +87,12 @@ describe('ControlColumnComponent', () => {
     expect(element.querySelector('.c-duration__value')?.textContent).toBe('0.3 s');
     expect(take()).toBeNull();
     expect(element.querySelector('.c-control-column__hint')?.textContent).toBe(
-      'Click a scene to switch it live directly.',
+      'A click on a scene puts it live at once.',
     );
+    // The explanation belongs to the switch.
+    const hintId = studioSwitch().getAttribute('aria-describedby') as string;
+    expect(element.querySelector(`#${hintId}`)?.classList).toContain('c-control-column__hint');
+    expect(element.querySelector('.c-control-column__duration')?.classList).not.toContain('is-off');
   });
 
   it('turns Studio Mode on: Take with "Space" appears and the hint changes', async () => {
@@ -97,16 +106,21 @@ describe('ControlColumnComponent', () => {
     expect(take()?.textContent?.replace(/\s+/g, ' ').trim()).toBe('Take Space');
     expect(take()?.getAttribute('aria-keyshortcuts')).toBe('Space');
     expect(element.querySelector('.c-control-column__hint')?.textContent).toBe(
-      'Click a scene to load it into Preview. Take switches it live.',
+      'A click on a scene loads it into Preview.',
     );
   });
 
-  it('switches to Cut: the duration is muted and both steppers are disabled', async () => {
+  it('switches to Cut: the duration row stays, dimmed, with both steppers disabled and the reason', async () => {
     await setup();
     button('Cut').click();
     await render();
     expect(button('Cut').getAttribute('aria-pressed')).toBe('true');
     expect(element.querySelector('.c-duration')?.classList.contains('is-off')).toBe(true);
+    const row = element.querySelector('.c-control-column__duration') as HTMLElement;
+    expect(row.classList).toContain('is-off');
+    expect(row.getAttribute('title')).toBe('A cut switches at once, so it has no duration.');
+    // The duration is kept for the next fade.
+    expect(element.querySelector('.c-duration__value')?.textContent).toBe('0.3 s');
     expect(button('Shorter fade').disabled).toBe(true);
     expect(button('Longer fade').disabled).toBe(true);
     expect(switcher.transition()).toEqual({ kind: 'cut', durationMs: 0 });
@@ -130,9 +144,12 @@ describe('ControlColumnComponent', () => {
   it('takes once and is disabled while the request is in flight (no double take)', async () => {
     await setup({ studio: true, preview: 'scn_b' });
     expect(take()?.disabled).toBe(false);
+    expect(reason()).toBe('');
+    expect(take()?.getAttribute('aria-describedby')).toBeNull();
     take()?.click();
     await render();
     expect(take()?.disabled).toBe(true);
+    expect(reason()).toBe('Switching…');
     take()?.click();
     const request = harness.http.expectOne(`${BASE}/take`);
     expect(request.request.body).toEqual({ transition: { kind: 'fade', durationMs: 300 } });
@@ -156,6 +173,9 @@ describe('ControlColumnComponent', () => {
   it('disables Take while editing is locked (preview = program) and while offline', async () => {
     await setup({ studio: true, preview: 'scn_a' });
     expect(take()?.disabled).toBe(true);
+    expect(reason()).toBe('Preview is already on air');
+    const reasonId = take()?.getAttribute('aria-describedby') as string;
+    expect(element.querySelector(`#${reasonId}`)?.classList).toContain('c-take__reason');
     harness.emitEvent({
       type: 'programSwitched',
       programSceneId: 'scn_a',
@@ -170,6 +190,7 @@ describe('ControlColumnComponent', () => {
     hub.drop();
     await render();
     expect(take()?.disabled).toBe(true);
+    expect(reason()).toBe('No connection to the server');
   });
 
   it('disables Take while a fade runs', async () => {
@@ -186,5 +207,15 @@ describe('ControlColumnComponent', () => {
     await render();
     expect(switcher.transitionRunning()).toBe(true);
     expect(take()?.disabled).toBe(true);
+    expect(reason()).toBe('Fading…');
+  });
+
+  it('says when there is no scene in the Preview', async () => {
+    await setup({ studio: true, preview: null });
+    // Studio Mode asks for a preview at once; until its event arrives there is none.
+    harness.http.expectOne(`${BASE}/preview`).flush(productionFixture({ previewSceneId: 'scn_b' }));
+    await render();
+    expect(take()?.disabled).toBe(true);
+    expect(reason()).toBe('No scene in Preview');
   });
 });

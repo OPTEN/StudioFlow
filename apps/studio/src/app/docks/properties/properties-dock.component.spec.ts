@@ -11,6 +11,7 @@ import {
 import { PREFERENCE_KEYS } from '../../core/ui/preferences.service';
 import { EditorService } from '../../stage/editor.service';
 import { dockSnapshot } from '../testing/dock-fixtures';
+import { InspectorSectionsService } from './inspector-sections.service';
 import { PropertiesDockComponent } from './properties-dock.component';
 
 const BASE = `/api/productions/${PRODUCTION_ID}`;
@@ -20,12 +21,13 @@ describe('PropertiesDockComponent', () => {
   let fixture: ComponentFixture<PropertiesDockComponent>;
   let element: HTMLElement;
   let editor: EditorService;
+  let storage: MemoryStorage;
 
   async function setup(
     options: { program?: string; preview?: string | null; studio?: boolean } = {},
   ): Promise<void> {
     const hub = new FakeStudioHub();
-    const storage = new MemoryStorage();
+    storage = new MemoryStorage();
     if (options.studio) {
       storage.setItem(PREFERENCE_KEYS.studioMode, '1');
     }
@@ -70,18 +72,51 @@ describe('PropertiesDockComponent', () => {
     );
   }
 
+  /** Which view the inspector head shows: `scene` or `item`. */
+  function view(): string | null {
+    return element.querySelector('.c-insp-head')?.getAttribute('data-view') ?? null;
+  }
+
+  function headName(): string {
+    return text(element.querySelector('.c-insp-head__name'));
+  }
+
   afterEach(() => harness.http.verify());
 
-  it('shows the scene inspector with the templates and the live-scene hint', async () => {
+  it('shows the scene inspector with the templates, the live status and the live-scene hint', async () => {
     await setup();
-    expect(text(element.querySelector('.c-dock-frame__title'))).toBe('Scene');
-    expect(text(element.querySelector('.c-dock-frame__sub'))).toBe('Presentation');
+    expect(text(element.querySelector('.c-dock-frame__title'))).toBe('Properties');
+    expect(view()).toBe('scene');
+    expect(headName()).toBe('Presentation');
+    expect(text(element.querySelector('.c-insp-head .c-tag--pgm'))).toBe('Live');
+    expect(text(element.querySelector('.c-edit-status'))).toBe(
+      'Live scene: every change goes on air at once.',
+    );
     expect(field('sf-insp-name').value).toBe('Presentation');
     expect(element.querySelectorAll('.c-preset')).toHaveLength(8);
+    expect(
+      Array.from(element.querySelectorAll('.c-insp-sec__title')).map((title) => text(title)),
+    ).toEqual(['Layout templates', 'Background']);
     expect(text(element.querySelector('.c-insp__danger .c-hint'))).toBe(
-      'The live scene cannot be deleted. Edit other scenes in Studio Mode.',
+      'The live scene cannot be deleted. Other scenes can be deleted from their menu in Scenes.',
     );
-    expect(button('Delete scene')?.disabled).toBe(true);
+    expect(button('Delete scene…')?.disabled).toBe(true);
+  });
+
+  it('remembers a collapsed section in this browser', async () => {
+    await setup();
+    const details = element.querySelector<HTMLDetailsElement>(
+      'details.c-insp-sec',
+    ) as HTMLDetailsElement;
+    expect(details.open).toBe(true);
+    details.open = false;
+    details.dispatchEvent(new Event('toggle'));
+    await render();
+    expect(storage.getItem('studioflow.inspector')).toBe('["layout"]');
+    details.open = true;
+    details.dispatchEvent(new Event('toggle'));
+    await render();
+    expect(storage.getItem('studioflow.inspector')).toBe('[]');
   });
 
   it('applies a template', async () => {
@@ -97,11 +132,13 @@ describe('PropertiesDockComponent', () => {
 
   it('deletes another scene only after the dashed confirmation', async () => {
     await setup({ studio: true, preview: 'scn_c', program: 'scn_a' });
-    expect(text(element.querySelector('.c-dock-frame__sub'))).toBe('Break');
+    expect(headName()).toBe('Break');
+    expect(text(element.querySelector('.c-insp-head .c-tag--pvw'))).toBe('Preview');
+    expect(element.querySelector('.c-edit-status')).toBeNull();
     expect(text(element.querySelector('.c-insp__danger .c-hint'))).toBe(
-      'Deleting removes the scene with all its items.',
+      'Removes the scene with everything in it.',
     );
-    button('Delete scene')?.click();
+    button('Delete scene…')?.click();
     await render();
     expect(text(element.querySelector('.c-confirm span'))).toBe(
       '“Break” will be deleted. This cannot be undone.',
@@ -122,8 +159,28 @@ describe('PropertiesDockComponent', () => {
     await setup();
     editor.select('itm_b1');
     await render();
-    expect(text(element.querySelector('.c-dock-frame__title'))).toBe('Item');
-    expect(text(element.querySelector('.c-dock-frame__sub'))).toBe('S1 · Laptop Lea · Slides');
+    expect(view()).toBe('item');
+    expect(text(element.querySelector('.c-insp-head .c-code'))).toBe('S1');
+    expect(headName()).toBe('Laptop Lea · Slides');
+    expect(
+      Array.from(element.querySelectorAll('.c-insp-sec__title')).map((title) => text(title)),
+    ).toEqual(['Position & size', 'Fit & crop', 'Layer']);
+    const tabs = Array.from(element.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
+    expect(tabs.map((tab) => [text(tab), tab.getAttribute('aria-selected')])).toEqual([
+      ['Layout', 'true'],
+      ['Style', 'false'],
+      ['When it fails', 'false'],
+    ]);
+    expect(element.querySelector<HTMLElement>('#sf-insp-panel-style')?.hidden).toBe(true);
+    tabs[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    await render();
+    expect(tabs[1].getAttribute('aria-selected')).toBe('true');
+    expect(document.activeElement).toBe(tabs[1]);
+    expect(element.querySelector<HTMLElement>('#sf-insp-panel-style')?.hidden).toBe(false);
+    expect(element.querySelector<HTMLElement>('#sf-insp-panel-layout')?.hidden).toBe(true);
+    TestBed.inject(InspectorSectionsService).setTab('layout');
+    await render();
+    expect(text(element.querySelector('.c-insp-sec__note'))).toBe('Canvas 1920 × 1080');
     const x = field('sf-insp-x');
     expect(x.value).toBe('40');
     x.focus();
@@ -184,9 +241,9 @@ describe('PropertiesDockComponent', () => {
     await render();
     const hold = element.querySelector<HTMLSelectElement>('#sf-insp-hold') as HTMLSelectElement;
     expect(Array.from(hold.options).map((option) => option.text.trim())).toEqual([
-      'Freeze frame 3 s, then dim',
-      'Freeze frame 10 s, then dim',
-      'Hold freeze frame',
+      'Last picture for 3 s',
+      'Last picture for 10 s',
+      'Last picture until the source is back',
     ]);
     hold.value = 'hold';
     hold.dispatchEvent(new Event('change'));
@@ -195,16 +252,19 @@ describe('PropertiesDockComponent', () => {
     held.flush({ ...(harness.store.sceneById('scn_b') as SceneDto), version: 4 });
     await render();
     expect(element.querySelector<HTMLSelectElement>('#sf-insp-fallback')?.disabled).toBe(true);
+    expect(text(element.querySelector('#sf-insp-fallback-hint'))).toBe(
+      'The last picture stays until the source is back.',
+    );
   });
 
   function backButton(): HTMLButtonElement | null {
     return element.querySelector<HTMLButtonElement>(
-      '.c-dock-frame__head button[aria-label="Clear selection, back to scene"]',
+      '.c-insp-head button[aria-label="Clear selection, back to scene"]',
     );
   }
 
   function heading(): HTMLElement {
-    return element.querySelector<HTMLElement>('.c-dock-frame__title') as HTMLElement;
+    return element.querySelector<HTMLElement>('.c-insp-head__title') as HTMLElement;
   }
 
   it('"Back to scene" goes back from the element to the scene, focuses the heading and the templates work', async () => {
@@ -223,8 +283,8 @@ describe('PropertiesDockComponent', () => {
     await render();
     expect(editor.selectedItemId()).toBeNull();
     expect(backButton()).toBeNull();
-    expect(text(heading())).toBe('Scene');
-    expect(text(element.querySelector('.c-dock-frame__sub'))).toBe('Presentation');
+    expect(view()).toBe('scene');
+    expect(headName()).toBe('Presentation');
     expect(document.activeElement).toBe(heading());
     expect(heading().tabIndex).toBe(-1);
     // The scene inspector is back: "Apply template" with all eight templates.
@@ -304,6 +364,9 @@ describe('PropertiesDockComponent', () => {
     await render();
     expect(field('sf-insp-x').disabled).toBe(true);
     expect(button('Remove from scene')?.disabled).toBe(true);
+    expect(text(element.querySelector('.c-edit-status'))).toBe(
+      'This scene is live in Program. Switch another scene to Program to edit it.',
+    );
     harness.http.expectNone(() => true);
   });
 });

@@ -1,72 +1,199 @@
-// Login: the console surface with the brand mark and one quiet form column (no card, no frame).
+// The standalone pages (sign-in, first-run setup and the server wizard) in the style of a setup assistant: one centred
+// card on the grouped surface with the mark, a large title, one sentence, the fields, and the filled action at the
+// bottom right; the language and the sponsor below the card. setup-page and server-wizard load this file first.
 @use 'mixins' as *;
 
 :host {
-  background: var(--panel);
+  background: var(--grouped);
   display: block;
   height: 100%;
   overflow: auto;
 }
 
 .c-login {
+  align-content: center;
   display: grid;
+  gap: 16px;
+  justify-items: center;
   min-height: 100%;
-  padding: 32px var(--gr) 32px var(--gl);
-  place-items: center;
+  padding: 40px var(--gr) 32px var(--gl);
+
+  @include narrow {
+    align-content: start;
+    padding-top: 24px;
+  }
 }
 
-.c-login__col {
+.c-login__card {
+  background: var(--group);
+  border-radius: 16px;
+  box-shadow: 0 0 0 0.5px var(--seam);
   display: grid;
-  gap: 18px;
-  width: min(320px, 100%);
+  gap: 22px;
+  padding: 32px 36px 28px;
+  width: min(440px, 100%);
+
+  @include narrow {
+    padding: 24px 20px 20px;
+  }
+}
+
+.c-login__card--wide {
+  width: min(560px, 100%);
+}
+
+.c-login__head {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  text-align: center;
+}
+
+.c-login__mark {
+  color: var(--text);
+  height: 32px;
+  margin-bottom: 6px;
+  width: 44px;
+}
+
+.c-login__title {
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: var(--fs-large-title);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  text-wrap: balance;
+}
+
+.c-login__lead {
+  color: var(--text-2);
+  font-size: 14px;
+  line-height: 1.45;
+  max-width: 44ch;
+  text-wrap: pretty;
 }
 
 .c-login__form {
   display: grid;
+  gap: 16px;
+}
+
+.c-login__fields {
+  display: grid;
   gap: 14px;
-}
-
-.c-login__brand {
-  align-items: center;
-  display: flex;
-  font-size: 22px;
-  font-weight: 700;
-  gap: 10px;
-  letter-spacing: 0.01em;
-}
-
-.c-login__lead {
-  @include label-text;
-  border-bottom: 1px solid var(--seam);
-  margin-top: -8px;
-  padding-bottom: 14px;
 }
 
 .c-login__field {
   display: grid;
   gap: 6px;
+
+  .c-input {
+    font-size: 14px;
+    height: var(--control-h-lg);
+  }
 }
 
 .c-login__label {
-  color: var(--muted);
-  font-size: 12.5px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
 }
 
+// A password with its show toggle inside the field, on the right.
+.c-login__secret {
+  position: relative;
+
+  .c-input {
+    padding-right: 38px;
+  }
+}
+
+.c-login__reveal {
+  position: absolute;
+  right: 3px;
+  top: 3px;
+}
+
+// The general problem of a form; its height is reserved so the button does not jump.
 .c-login__error {
-  align-items: center;
+  align-items: flex-start;
   color: var(--red);
   display: flex;
   font-size: 13px;
   gap: 8px;
+  line-height: 1.4;
   min-height: 20px;
+
+  .c-icon {
+    margin-top: 1px;
+  }
+}
+
+// Secondary actions on the left as plain buttons, the one filled action on the right.
+.c-login__actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.c-login__secondary {
+  margin-right: auto;
 }
 
 .c-login__submit {
-  height: 34px;
-  width: 100%;
+  min-width: 120px;
+}
+
+.c-login__help {
+  background: var(--fill);
+  border-radius: var(--radius-lg);
+  color: var(--text-2);
+  display: grid;
+  font-size: 13px;
+  gap: 8px;
+  line-height: 1.45;
+  padding: 12px 14px;
+
+  code {
+    @include code;
+    color: var(--text);
+    font-size: 12px;
+    overflow-wrap: anywhere;
+    user-select: all;
+  }
 }
 
 .c-login__footer {
-  border-top: 1px solid var(--seam);
-  padding-top: 14px;
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 12px;
+  gap: 12px 24px;
+  justify-content: space-between;
+  width: min(440px, 100%);
+}
+
+.c-login__footer--wide {
+  width: min(560px, 100%);
+}
+
+.c-login__sponsor {
+  align-items: center;
+  color: var(--muted);
+  display: inline-flex;
+  gap: 5px;
+
+  .c-icon--opten {
+    height: 13px;
+    width: 13px;
+  }
+
+  &:hover {
+    color: var(--text);
+    text-decoration: none;
+  }
 }

@@ -72,13 +72,38 @@ describe('StartComponent (pairing form)', () => {
     expect(checkedKind(element)).toBe('laptop');
     expect(nameInput(element).value).toBe('Laptop Windows');
     expect(nameInput(element).maxLength).toBe(60);
+    expect(element.textContent).not.toContain('Scan the QR code');
   });
 
-  it('defaults a phone (or a browser without getDisplayMedia) to phone', async () => {
+  it('defaults a phone (or a browser without getDisplayMedia) to phone and leads with the QR code', async () => {
     const element = await render({ isPhone: () => true, platform: () => 'Android · Chrome' });
 
     expect(checkedKind(element)).toBe('phone');
     expect(nameInput(element).value).toBe('Phone Android');
+    const qr = element.querySelector('.c-qr');
+    expect(qr?.textContent).toContain('Scan the QR code shown in the control room');
+    expect(
+      qr!.compareDocumentPosition(element.querySelector('form')!) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(element.textContent).toContain('No QR code? Pair with a check code');
+  });
+
+  it('names each kind with a title and a one-line description', async () => {
+    const element = await render({ isPhone: () => false, canShareScreen: () => true });
+    const names = [...element.querySelectorAll<HTMLInputElement>('input[type=radio]')].map(
+      (radio) =>
+        element.querySelector(`#${radio.getAttribute('aria-labelledby')}`)?.textContent?.trim(),
+    );
+
+    expect(names).toEqual(['Phone camera', 'Laptop screen', 'Audio station']);
+    expect(element.querySelector('#kind-laptop-hint')?.textContent).toContain('Shares screens');
+  });
+
+  it('explains a page that is not on a secure connection', async () => {
+    const element = await render({ secure: () => false });
+
+    expect(element.textContent).toContain('not opened over a secure connection');
   });
 
   it('knocks and opens the waiting screen', async () => {
@@ -111,7 +136,8 @@ describe('StartComponent (pairing form)', () => {
     });
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     const option = element.querySelector<HTMLInputElement>('input[value="audioStation"]')!;
-    expect(option.closest('label')?.textContent).toContain('Audio station (mixing desk)');
+    expect(option.closest('label')?.textContent).toContain('Audio station');
+    expect(option.closest('label')?.textContent).toContain('Sends the sound of the mixing desk.');
 
     option.click();
     await settle();

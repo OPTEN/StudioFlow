@@ -62,7 +62,12 @@ describe('AuditPageComponent in German', () => {
     const cells = Array.from(element.querySelectorAll('tbody td')).map((cell) =>
       (cell.textContent ?? '').replace(/\s+/g, ' ').trim(),
     );
-    expect(cells).toEqual([
+    expect(element.querySelector('.c-audit-table__menu')?.getAttribute('aria-label')).toBe(
+      de('regie.audit.row.menu', {
+        time: formatDateTime(new Date(auditEntryFixture(2).at), { seconds: true }),
+      }),
+    );
+    expect(cells.slice(0, 4)).toEqual([
       formatDateTime(new Date(auditEntryFixture(2).at), { seconds: true }),
       de('regie.audit.actor.admin'),
       de('regie.log.cameraLensSwitched', {
@@ -79,11 +84,14 @@ describe('AuditPageComponent in German', () => {
 
   it('asks the server for a CSV with the semicolon, which Excel expects in a German installation', async () => {
     const element = fixture.nativeElement as HTMLElement;
-    const exportCsv = Array.from(element.querySelectorAll('button')).find(
-      (button) => button.textContent?.trim() === de('regie.audit.export.csv'),
-    );
+    const buttonNamed = (label: string): HTMLButtonElement | undefined =>
+      Array.from(element.querySelectorAll('button')).find((button) =>
+        (button.textContent ?? '').replace(/\s+/g, ' ').trim().startsWith(label),
+      );
 
-    exportCsv?.click();
+    buttonNamed(de('regie.audit.export.menu'))?.click();
+    await render();
+    buttonNamed(de('regie.audit.export.csv'))?.click();
     await flushMicrotasks();
     const request = http.expectOne((r) => r.url === '/api/audit/export.csv');
     expect(request.request.params.get('separator')).toBe('semicolon');

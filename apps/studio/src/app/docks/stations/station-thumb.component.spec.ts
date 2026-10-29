@@ -91,11 +91,11 @@ describe('StationThumbComponent', () => {
 
     expect(provider.attach).toHaveBeenCalledWith('dev_aaaaaaaaaaaaaaaa/camera', video());
     expect(video().muted).toBe(true);
-    // 56 × 31.5 CSS px at 1.5 (a ratio of 2 is capped), in steps of 16.
+    // 64 × 36 CSS px at 1.5 (a ratio of 2 is capped), in steps of 16.
     expect(provider.setDesiredSize).toHaveBeenCalledWith(
       'dev_aaaaaaaaaaaaaaaa/camera',
       expect.stringMatching(/^station-thumb-/),
-      { width: 96, height: 48 },
+      { width: 96, height: 64 },
     );
   });
 
@@ -121,7 +121,7 @@ describe('StationThumbComponent', () => {
 
     expect(provider.setDesiredSize).toHaveBeenCalledWith('dev_aaaaaaaaaaaaaaaa/camera', consumer, {
       width: 96,
-      height: 48,
+      height: 64,
     });
   });
 
@@ -142,7 +142,7 @@ describe('StationThumbComponent', () => {
     expect(provider.setDesiredSize).toHaveBeenLastCalledWith(
       'dev_aaaaaaaaaaaaaaaa/camera',
       expect.any(String),
-      { width: 96, height: 48 },
+      { width: 96, height: 64 },
     );
   });
 

@@ -22,6 +22,7 @@ import {
   inset,
   inspector,
   inspectorSub,
+  inspectorTab,
   inspectorTitle,
   item,
   monitorOf,
@@ -33,6 +34,7 @@ import {
   recordRequests,
   renderedItems,
   replaceItems,
+  rowToggle,
   selectViaRow,
   sourceRow,
   sourcesDock,
@@ -267,16 +269,18 @@ test.describe('REGIE editing: templates', () => {
         // The inspector shows the numbers of the first and the last placed item.
         for (const slotIndex of [0, placed.length - 1]) {
           const code = placed[slotIndex]!.code;
-          const row = sourceRow(page, new RegExp(`^${code} `));
+          const row = sourcesDock(page).getByRole('button', {
+            name: new RegExp(`^Select: ${code} `),
+          });
           await row.click();
-          await expect(inspectorTitle(page)).toHaveText('Item');
+          await expect(inspectorTitle(page)).toHaveAttribute('data-view', 'item');
           const slot = slots[slotIndex]!;
           await expect(field(page, 'x')).toHaveValue(String(slot[0]));
           await expect(field(page, 'y')).toHaveValue(String(slot[1]));
           await expect(field(page, 'w')).toHaveValue(String(slot[2]));
           await expect(field(page, 'h')).toHaveValue(String(slot[3]));
           await row.click(); // a second click clears the selection again
-          await expect(inspectorTitle(page)).toHaveText('Scene');
+          await expect(inspectorTitle(page)).toHaveAttribute('data-view', 'scene');
         }
 
         // “Undo” of the toast restores the previous rectangles and order.
@@ -309,8 +313,8 @@ test.describe('REGIE editing: templates', () => {
       await addItems(api, production, production.sceneIds[0]!, [phone!.sourceId()]);
       await regie.setStudioMode(true);
       await regie.clickScene('Scene A'); // preview = program: the live scene is locked
-      await expect(monitorOf(page, 'preview')).toContainText(
-        'This scene is live right now. Editing is possible once another scene is on Program.',
+      await expect(monitorOf(page, 'preview').locator('.c-monitor__live-note')).toHaveText(
+        'Live, read only',
       );
       for (const name of Object.values(NAMES))
         await expect(inspector(page).getByRole('button', { name, exact: true })).toBeDisabled();
@@ -367,14 +371,16 @@ test.describe('REGIE editing: monitor gestures', () => {
       // Free move by (+320, +130): no line near the new position, so x/y = start + delta (rounding of one pixel).
       await dragTo(320, 130, {
         holdCheck: async () => {
-          await expect(overlay, 'the dot raster shows while dragging').toHaveClass(/is-dragging/);
+          await expect(overlay, 'the drag state shows while dragging').toHaveClass(/is-dragging/);
           await expect(
             overlay.locator('.c-edit-overlay__guide'),
             'no guide for a free move',
           ).toHaveCount(0);
         },
       });
-      await expect(overlay, 'the raster is gone after the release').not.toHaveClass(/is-dragging/);
+      await expect(overlay, 'the drag state is gone after the release').not.toHaveClass(
+        /is-dragging/,
+      );
       let moved = await expectScene(
         api,
         production,
@@ -490,7 +496,9 @@ test.describe('REGIE editing: monitor gestures', () => {
       const handle = overlay.locator('.c-edit-box.is-sel [data-handle="se"]');
       await expect(handle).toBeVisible();
       const label = overlay.locator('.c-edit-box.is-sel .c-edit-box__label');
-      await expect(label).toHaveText('K1 · 600 × 338');
+      // The label tab names the source: code, name and size.
+      await expect(label.locator('.c-edit-box__code')).toHaveText('K1');
+      await expect(label.locator('.c-edit-box__detail')).toHaveText('600 × 338');
 
       const resize = async (
         to: (
@@ -512,9 +520,10 @@ test.describe('REGIE editing: monitor gestures', () => {
       // Default: the ratio is kept. +200 canvas px wide -> 800 x 451.
       await resize((start, space) => ({ x: start.x + 200 * space.scale, y: start.y }), {
         check: async () => {
-          await expect(label, 'the label shows the size while dragging').toHaveText(
-            /^K1 · 8\d\d × 4[45]\d$/,
-          );
+          await expect(
+            label.locator('.c-edit-box__detail'),
+            'the label shows the size while dragging',
+          ).toHaveText(/^8\d\d × 4[45]\d$/);
         },
       });
       let current = await expectScene(
@@ -723,7 +732,7 @@ test.describe('REGIE editing: monitor gestures', () => {
       await page.mouse.click(
         ...(Object.values(centerOf(space, { x: 600, y: 300, w: 600, h: 338 })) as [number, number]),
       );
-      await expect(inspectorTitle(page)).toHaveText('Item');
+      await expect(inspectorTitle(page)).toHaveAttribute('data-view', 'item');
       const read = async () => (await getScene(api, production, sceneA)).items[0]!;
 
       for (let index = 0; index < 3; index++) await page.keyboard.press('ArrowRight');
@@ -776,14 +785,14 @@ test.describe('REGIE editing: monitor gestures', () => {
 
       // Escape deselects (inspector back to “Scene”); a click on the empty monitor area deselects as well.
       await page.keyboard.press('Escape');
-      await expect(inspectorTitle(page)).toHaveText('Scene');
+      await expect(inspectorTitle(page)).toHaveAttribute('data-view', 'scene');
       await page.mouse.click(
         ...(Object.values(centerOf(space, { x: 600, y: 300, w: 600, h: 338 })) as [number, number]),
       );
-      await expect(inspectorTitle(page)).toHaveText('Item');
+      await expect(inspectorTitle(page)).toHaveAttribute('data-view', 'item');
       const empty = space.client(80, 1000);
       await page.mouse.click(empty.x, empty.y);
-      await expect(inspectorTitle(page)).toHaveText('Scene');
+      await expect(inspectorTitle(page)).toHaveAttribute('data-view', 'scene');
       expect(regie.problems.pageErrors).toEqual([]);
     },
   );
@@ -874,6 +883,7 @@ test.describe('REGIE editing: monitor gestures', () => {
         (scene) => scene.items[0]!.h === 2160,
         'h clamps to 2160',
       );
+      await inspectorTab(page, 'Style');
       await enter(radiusField(page), '300');
       await expectScene(
         api,
@@ -882,6 +892,7 @@ test.describe('REGIE editing: monitor gestures', () => {
         (scene) => scene.items[0]!.radius === 200,
         'the corner radius clamps to 200 (not 80)',
       );
+      await inspectorTab(page, 'Layout');
       await enter(field(page, 'x'), '99999999999');
       await expectScene(
         api,
@@ -938,6 +949,7 @@ test.describe('REGIE editing: monitor gestures', () => {
       await expect(field(page, 'y')).toHaveValue(String(saved.y));
       await expect(field(page, 'w')).toHaveValue(String(saved.w));
       await expect(field(page, 'h')).toHaveValue(String(saved.h));
+      await inspectorTab(page, 'Style');
       await expect(radiusField(page)).toHaveValue(String(saved.radius));
       expect(regie.problems.pageErrors).toEqual([]);
     },
@@ -1034,7 +1046,7 @@ test.describe('REGIE editing: undo, layers, hide, lock, remove, look', () => {
       // Redo once more, then a new edit clears the redo stack.
       await page.keyboard.press('Control+Shift+z');
       await expect.poll(items).toBe(states[3]);
-      await sourceRow(page, /^K1 /).click();
+      await sourceRow(page, /^Select: K1 /).click();
       await field(page, 'x').fill('123');
       await field(page, 'x').blur();
       await expect.poll(items).not.toBe(states[3]);
@@ -1060,7 +1072,7 @@ test.describe('REGIE editing: undo, layers, hide, lock, remove, look', () => {
       await page.mouse.click(
         ...(Object.values(centerOf(space, { x: 400, y: 300, w: 600, h: 338 })) as [number, number]),
       );
-      await expect(inspectorTitle(page)).toHaveText('Item');
+      await expect(inspectorTitle(page)).toHaveAttribute('data-view', 'item');
       const x = async () => (await getScene(api, production, sceneA)).items[0]!.x;
 
       for (let index = 0; index < 65; index++) await page.keyboard.press('ArrowRight');
@@ -1135,7 +1147,7 @@ test.describe('REGIE editing: undo, layers, hide, lock, remove, look', () => {
       await expect
         .poll(async () => (await colorAtOverlap()).blue, { message: 'blue is in front first' })
         .toBeGreaterThan(0.9);
-      await selectViaRow(page, /^M\d Green/);
+      await selectViaRow(page, /^Select: M\d Green/);
       const front = inspector(page).getByRole('button', { name: 'Bring forward', exact: true });
       const back = inspector(page).getByRole('button', { name: 'Send backward', exact: true });
       await front.click();
@@ -1147,7 +1159,7 @@ test.describe('REGIE editing: undo, layers, hide, lock, remove, look', () => {
           sourcesDock(page)
             .locator('.c-src__select')
             .evaluateAll((rows) =>
-              rows.map((row) => row.querySelector('.c-src__name')?.textContent?.trim().split(' ').pop()),
+              rows.map((row) => row.getAttribute('aria-label')?.split(' ').pop()),
             ),
         )
         .toEqual(['Green', 'Blue', 'Red']);
@@ -1197,7 +1209,7 @@ test.describe('REGIE editing: undo, layers, hide, lock, remove, look', () => {
           .poll(overall, { message: 'K1 is in the program scene of a live broadcast' })
           .toBe('program');
 
-        const eye = page.getByRole('button', { name: 'Hide: Phone One' });
+        const eye = await rowToggle(page, 'Hide: Phone One');
         await eye.click();
         await expect(page.getByRole('button', { name: 'Show: Phone One' })).toHaveAttribute(
           'aria-pressed',
@@ -1226,15 +1238,17 @@ test.describe('REGIE editing: undo, layers, hide, lock, remove, look', () => {
           'no selection box for a hidden element',
         ).toHaveCount(0);
         // The row is greyed and not selectable.
-        const hiddenRow = sourceRow(page, 'K1 Phone One');
+        const hiddenRow = sourcesDock(page).getByRole('button', {
+          name: 'Select: K1 Phone One',
+        });
         await expect(hiddenRow).toHaveAttribute('aria-disabled', 'true');
         await hiddenRow.click({ force: true });
-        await expect(inspectorTitle(page)).toHaveText('Scene');
+        await expect(inspectorTitle(page)).toHaveAttribute('data-view', 'scene');
         await expect(
           operatorB.page.getByRole('button', { name: 'Show: Phone One' }),
           'the other operator sees it hidden',
         ).toBeVisible({ timeout: 2000 });
-        await page.getByRole('button', { name: 'Show: Phone One' }).click();
+        await (await rowToggle(page, 'Show: Phone One')).click();
         await expect.poll(overall).toBe('program');
         await expect
           .poll(
@@ -1246,7 +1260,7 @@ test.describe('REGIE editing: undo, layers, hide, lock, remove, look', () => {
           .toBe(true);
 
         // Lock K2: selectable, but no drag, no nudge; the inspector still works.
-        await page.getByRole('button', { name: 'Lock: Phone Two' }).click();
+        await (await rowToggle(page, 'Lock: Phone Two')).click();
         await expect(page.getByRole('button', { name: 'Unlock: Phone Two' })).toHaveAttribute(
           'aria-pressed',
           'true',
@@ -1306,7 +1320,7 @@ test.describe('REGIE editing: undo, layers, hide, lock, remove, look', () => {
         item('itm_removec', blue.id, { x: 500, y: 300, w: 600, h: 338 }),
       ]);
       await regie.waitForConvergence(production.id);
-      await selectViaRow(page, /^M\d Green/);
+      await selectViaRow(page, /^Select: M\d Green/);
       await inspector(page).getByRole('button', { name: 'Remove from scene' }).click();
       await expectToast(page, /M\d removed from “Scene A”/);
       await expectScene(
@@ -1316,7 +1330,7 @@ test.describe('REGIE editing: undo, layers, hide, lock, remove, look', () => {
         (scene) => scene.items.length === 2,
         'the element is gone',
       );
-      await expect(inspectorTitle(page)).toHaveText('Scene');
+      await expect(inspectorTitle(page)).toHaveAttribute('data-view', 'scene');
       await toastOf(page).getByRole('button', { name: 'Undo' }).click();
       const after = await expectScene(
         api,
@@ -1330,7 +1344,7 @@ test.describe('REGIE editing: undo, layers, hide, lock, remove, look', () => {
   );
 
   test(
-    'E2E-SCENE-16 [regie] fit, mirror, corner radius and “On failure” reach the API, the Program monitor and the output',
+    'E2E-SCENE-16 [regie] fit, mirror, corner radius and “When it fails” reach the API, the Program monitor and the output',
     t.p1,
     async ({ regie, openOutput, api, production }) => {
       await production.seed([...SCENES]);
@@ -1343,7 +1357,7 @@ test.describe('REGIE editing: undo, layers, hide, lock, remove, look', () => {
       await regie.waitForConvergence(production.id);
       const output = await openOutput(production);
       await output.stage();
-      await selectViaRow(page, /^M1 Red/);
+      await selectViaRow(page, /^Select: M1 Red/);
       const itemApi = async () => (await getScene(api, production, sceneA)).items[0]!;
       const outputItem = async () =>
         (await renderedItems(output.page, '#output')).find((entry) => entry.id === 'itm_look1');
@@ -1368,6 +1382,7 @@ test.describe('REGIE editing: undo, layers, hide, lock, remove, look', () => {
       );
       await expect.poll(async () => (await outputItem())?.fit).toBe('cover');
 
+      await inspectorTab(page, 'Style');
       await inspector(page).getByLabel('Mirror').check();
       await expectScene(api, production, sceneA, (scene) => scene.items[0]!.mirror, 'mirror');
       await expect.poll(async () => (await renderedItems(page, 'program'))[0]!.mirrored).toBe(true);
@@ -1393,13 +1408,14 @@ test.describe('REGIE editing: undo, layers, hide, lock, remove, look', () => {
           .toBe(radius === 0 ? '' : `${radius}px`);
       }
 
-      const hold = inspector(page).getByLabel('On failure');
+      await inspectorTab(page, 'When it fails');
+      const hold = inspector(page).getByLabel('First');
       await expect(hold.locator('option')).toHaveText([
-        'Freeze frame 3 s, then dim',
-        'Freeze frame 10 s, then dim',
-        'Hold freeze frame',
+        'Last picture for 3 s',
+        'Last picture for 10 s',
+        'Last picture until the source is back',
       ]);
-      await hold.selectOption({ label: 'Freeze frame 10 s, then dim' });
+      await hold.selectOption({ label: 'Last picture for 10 s' });
       expect(
         (
           await expectScene(
@@ -1411,7 +1427,7 @@ test.describe('REGIE editing: undo, layers, hide, lock, remove, look', () => {
           )
         ).items[0]!.onLost.holdMs,
       ).toBe(10000);
-      await hold.selectOption({ label: 'Hold freeze frame' });
+      await hold.selectOption({ label: 'Last picture until the source is back' });
       await expectScene(
         api,
         production,
@@ -1419,7 +1435,7 @@ test.describe('REGIE editing: undo, layers, hide, lock, remove, look', () => {
         (scene) => scene.items[0]!.onLost.holdMs === null,
         'holdMs null (hold the frame)',
       );
-      await hold.selectOption({ label: 'Freeze frame 3 s, then dim' });
+      await hold.selectOption({ label: 'Last picture for 3 s' });
       await expectScene(
         api,
         production,
@@ -1638,14 +1654,17 @@ test.describe('REGIE editing: two operators, requests, live scene', () => {
       await regie.setStudioMode(true);
       await regie.clickScene('Scene A');
       const preview = monitorOf(page, 'preview');
-      await expect(preview.locator('.c-monitor__live-note')).toHaveText(
+      // The lock is named in the header (nothing covers the lower third); the tooltip gives the way out.
+      await expect(preview.locator('.c-monitor__live-note')).toHaveText('Live, read only');
+      await expect(preview.locator('.c-monitor__live-note')).toHaveAttribute(
+        'title',
         'This scene is live right now. Editing is possible once another scene is on Program.',
       );
       await expect(overlayOf(page, 'preview')).toHaveClass(/is-locked/);
       await expect(
         inspector(page).getByRole('button', { name: 'Full screen', exact: true }),
       ).toBeDisabled();
-      await expect(sourcesDock(page).getByRole('button', { name: /^Source$/ })).toBeVisible();
+      await expect(sourcesDock(page).getByRole('button', { name: /^Add source$/ })).toBeVisible();
       const space = await canvasSpace(page, 'preview');
       await page.mouse.click(
         ...(Object.values(centerOf(space, { x: 200, y: 150, w: 600, h: 338 })) as [number, number]),

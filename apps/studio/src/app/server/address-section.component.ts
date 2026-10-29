@@ -12,13 +12,15 @@ import {
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { formatDate, msg, t, tm, type Msg } from '@studioflow/i18n';
+import { formatDate, msg, t, tm, type Msg, type PlainMessageKey } from '@studioflow/i18n';
 import type { DnsProviderDto } from '@studioflow/scene-model';
 import { SETTINGS_FIELD_ERROR_CODES as CODES } from '@studioflow/scene-model';
 import { ApiError, toUserMsg } from '../core/api/api-error';
 import { ServerSettingsService } from '../core/state/server-settings.service';
 import { RefusedFields, focusFirstInvalid } from '../core/ui/form-feedback';
-import { applyFailureMsg } from './apply-messages';
+import { IconComponent } from '../core/ui/icon.component';
+import { applyProblem, plainProblem, type ServerProblem } from './apply-messages';
+import { ServerProblemComponent } from './server-problem.component';
 import {
   certificateErrorMsg,
   isChallengeDomain,
@@ -30,6 +32,38 @@ import {
 
 /** The fields that can carry a message of their own. */
 type Field = string;
+
+/** The three ways to a certificate: the local CA, an uploaded one, or Let's Encrypt through a DNS provider. */
+export type CertificateKind = 'internal' | 'custom' | 'dns';
+
+/** One radio card of the certificate choice. */
+interface KindCard {
+  readonly id: CertificateKind;
+  readonly title: PlainMessageKey;
+  readonly text: PlainMessageKey;
+  readonly recommended: boolean;
+}
+
+const KIND_CARDS: readonly KindCard[] = [
+  {
+    id: 'internal',
+    title: 'regie.server.address.modeInternal',
+    text: 'regie.server.address.modeInternalText',
+    recommended: true,
+  },
+  {
+    id: 'custom',
+    title: 'regie.server.address.modeCustom',
+    text: 'regie.server.address.modeCustomText',
+    recommended: false,
+  },
+  {
+    id: 'dns',
+    title: 'regie.server.address.modeDns',
+    text: 'regie.server.address.modeDnsText',
+    recommended: false,
+  },
+];
 
 /** The largest certificate or key file the form reads (the server accepts 64 KiB of text). */
 const MAX_FILE_BYTES = 65_536;
@@ -51,19 +85,24 @@ function isCredentialName(name: string): name is CredentialName {
   return name in CREDENTIAL_KEYS;
 }
 
+function kindOf(mode: string): CertificateKind {
+  return mode === 'internal' || mode === 'custom' ? mode : 'dns';
+}
+
 /**
  * Address and certificate (issue #27): how the server gets a certificate that browsers trust, and under which name it is
- * reached. Three kinds: the local certificate authority of the stack (`internal`, with an optional domain and the CA
- * certificate to download), the operator's own certificate (`custom`, uploaded as PEM text) and Let's Encrypt over a DNS
- * provider (`dns-*`, with the provider's API credentials, which are stored encrypted and never returned). The same
- * section is a step of the first-run wizard and a part of the "Server settings" page, where a change of the domain or
- * the certificate warns that paired devices must open the new address.
+ * reached. Three radio cards: the local certificate authority of the stack (`internal`, recommended on a LAN, with the
+ * CA certificate to download), the operator's own certificate (`custom`, two PEM files) and Let's Encrypt via DNS
+ * (`dns-*`: a provider, its API credentials, which are stored encrypted and never returned, and the rare fields behind
+ * "More options"). The same section is the third step of the first-run wizard and the page "Address and certificate" of
+ * the settings window, where a change of the domain or the certificate says that paired devices must open the new
+ * address.
  */
 @Component({
   selector: 'sf-address-section',
-  imports: [ReactiveFormsModule],
+  imports: [IconComponent, ReactiveFormsModule, ServerProblemComponent],
   templateUrl: './address-section.component.html',
-  styleUrl: './server-section.scss',
+  styleUrls: ['./server-section.scss', './address-section.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AddressSectionComponent {
@@ -80,6 +119,8 @@ export class AddressSectionComponent {
   readonly saved = output<string>();
 
   protected readonly t = t;
+  protected readonly cards = KIND_CARDS;
+  /** The certificate mode as the API knows it: `internal`, `custom` or the id of a provider (`dns-cloudflare`). */
   protected readonly modeControl = new FormControl(this.current?.address.tlsMode ?? 'internal', {
     nonNullable: true,
   });
@@ -95,10 +136,11 @@ export class AddressSectionComponent {
   private readonly credentials = new Map<string, FormControl<string>>();
   protected readonly certificateFile = signal<{ name: string; text: string } | null>(null);
   protected readonly keyFile = signal<{ name: string; text: string } | null>(null);
+  /** "More options" of Let's Encrypt is open (from the start when one of its fields has a value). */
+  protected readonly moreOpen = signal(this.email.value !== '' || this.challenge.value !== '');
 
   protected readonly saving = signal(false);
-  protected readonly error = signal<Msg | null>(null);
-  protected readonly errorText = computed(() => tm(this.error()) || null);
+  protected readonly problem = signal<ServerProblem | null>(null);
   /** The address devices open after the last save, when it differs from the one this page was opened at. */
   protected readonly newAddress = signal<string | null>(null);
 
@@ -108,9 +150,13 @@ export class AddressSectionComponent {
   private readonly typedDomain = toSignal(this.domain.valueChanges, {
     initialValue: this.domain.value,
   });
+  /** The provider chosen last, so switching to "Let's Encrypt" and back keeps it. */
+  private lastProvider: string | null =
+    kindOf(this.modeControl.value) === 'dns' ? this.modeControl.value : null;
   protected readonly providers = computed(() => this.settings.settings()?.dnsProviders ?? []);
-  protected readonly isInternal = computed(() => this.selected() === 'internal');
-  protected readonly isCustom = computed(() => this.selected() === 'custom');
+  protected readonly kind = computed(() => kindOf(this.selected()));
+  protected readonly isInternal = computed(() => this.kind() === 'internal');
+  protected readonly isCustom = computed(() => this.kind() === 'custom');
   protected readonly provider = computed<DnsProviderDto | null>(
     () => this.providers().find((candidate) => candidate.id === this.selected()) ?? null,
   );
@@ -157,9 +203,12 @@ export class AddressSectionComponent {
 
   constructor() {
     this.syncCredentialControls();
-    this.modeControl.valueChanges.subscribe(() => {
+    this.modeControl.valueChanges.subscribe((mode) => {
+      if (kindOf(mode) === 'dns') {
+        this.lastProvider = mode;
+      }
       this.syncCredentialControls();
-      this.error.set(null);
+      this.problem.set(null);
       this.refused.clear('mode');
     });
     this.domain.valueChanges.subscribe(() => this.refused.clear('domain'));
@@ -167,18 +216,33 @@ export class AddressSectionComponent {
     this.challenge.valueChanges.subscribe(() => this.refused.clear('challenge'));
   }
 
-  protected modeLabel(provider: DnsProviderDto): string {
-    return t('regie.server.address.modeDns', { provider: providerName(provider.id) });
+  /** Picks a card; "Let's Encrypt" takes the provider chosen before, else the first one the server offers. */
+  protected chooseKind(kind: CertificateKind): void {
+    if (kind === this.kind()) {
+      return;
+    }
+    const mode = kind === 'dns' ? (this.lastProvider ?? this.providers()[0]?.id ?? null) : kind;
+    if (mode !== null) {
+      this.modeControl.setValue(mode);
+    }
+  }
+
+  protected providerOption(provider: DnsProviderDto): string {
+    return providerName(provider.id);
   }
 
   protected credentialControl(name: string): FormControl<string> {
     return this.credentials.get(name) as FormControl<string>;
   }
 
-  /** The text under a field: the server's verdict first, then the browser's own check once a save was tried. */
+  /** The text under a field: the server's verdict, or the browser's own check once a save was tried. */
   protected fieldError(field: Field): string | null {
     const fromServer = this.refused.get(field);
     return fromServer ? tm(fromServer) : null;
+  }
+
+  protected toggleMore(): void {
+    this.moreOpen.update((open) => !open);
   }
 
   protected async pick(which: 'certificate' | 'key', event: Event): Promise<void> {
@@ -213,10 +277,11 @@ export class AddressSectionComponent {
     const problems = this.check();
     this.refused.set(problems);
     if (Object.keys(problems).length > 0) {
+      this.revealProblems(problems);
       focusFirstInvalid(this.host, this.injector);
       return;
     }
-    this.error.set(null);
+    this.problem.set(null);
     this.saving.set(true);
     try {
       const domain = normalizeDomain(this.domain.value) || null;
@@ -238,7 +303,7 @@ export class AddressSectionComponent {
       });
       const outcome = await this.settings.waitUntilApplied(['caddy']);
       if (!outcome.applied) {
-        this.error.set(applyFailureMsg(outcome));
+        this.problem.set(applyProblem(outcome));
         return;
       }
       this.resetSecrets();
@@ -293,6 +358,13 @@ export class AddressSectionComponent {
       }
     }
     return problems;
+  }
+
+  /** A problem behind "More options" opens it, so the field and its message can be seen and focused. */
+  private revealProblems(problems: Partial<Record<Field, Msg>>): void {
+    if (problems['email'] || problems['challenge']) {
+      this.moreOpen.set(true);
+    }
   }
 
   /** The credentials the operator typed, or null when no field has text (stored credentials then stay). */
@@ -380,10 +452,11 @@ export class AddressSectionComponent {
       }
     }
     if (Object.keys(refused).length === 0) {
-      this.error.set(toUserMsg(error));
+      this.problem.set(plainProblem(toUserMsg(error)));
       return;
     }
     this.refused.set(refused);
+    this.revealProblems(refused);
     focusFirstInvalid(this.host, this.injector);
   }
 }

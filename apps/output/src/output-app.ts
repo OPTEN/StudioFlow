@@ -1,3 +1,4 @@
+import { t } from '@studioflow/i18n';
 import {
   HUB,
   applyOutputChanges,
@@ -46,7 +47,7 @@ import {
 import { PlaybackLoad } from './playback-load';
 import { OutputAudio, type OutputMix } from './output-audio';
 import { ProgramView } from './program-view';
-import { noAccessSlate } from './slates';
+import { noAccessNotice, noAccessSlate, pageTitle } from './slates';
 import { mountSoundButton } from './sound-button';
 import { StatusReporter } from './status-reporter';
 import { VersionWatch, type MarkerStorage } from './version-watch';
@@ -218,10 +219,14 @@ export function startOutputApp(
     assetKindOf: (assetId) => sync?.state?.assets.get(assetId)?.kind,
     textOf: (sourceId) => sync?.state?.sources.get(sourceId)?.text ?? undefined,
     textTheme: () => sync?.state?.production.textTheme,
-    label: 'Program',
+    label: t('output.page.program'),
     onError: (error) => log.warn(`renderer: ${describe(error)}`),
   });
   const view = new ProgramView(renderer, assetUrl);
+  const showTitle = (): void => {
+    doc.title = pageTitle(view.latest?.production.name ?? null, view.denied);
+  };
+  showTitle();
 
   const hub = (deps.createHub ?? ((options) => new ResilientHub(options)))({
     url: HUB.outputPath,
@@ -324,6 +329,7 @@ export function startOutputApp(
     if (!guard.denied) {
       view.setDenied(false);
       audio.setAllowed(true);
+      showTitle();
     }
   };
   const allowWhenSynced = (): void => {
@@ -340,6 +346,7 @@ export function startOutputApp(
       pendingAllow = false;
       view.setDenied(true);
       audio.setAllowed(false);
+      showTitle();
       // A page that may no longer see the production must not keep receiving its pictures either.
       if (media && !isTerminalMediaState(media.session.state)) {
         media.session.stop();
@@ -446,6 +453,7 @@ export function startOutputApp(
       return;
     }
     view.apply(state, transition);
+    showTitle();
     if (pendingAllow) {
       finishAllow();
     }
@@ -628,8 +636,8 @@ export function startOutputApp(
 }
 
 /**
- * A link that cannot work (malformed slug, missing or malformed key): “No access”, no network access at all.
- * Nothing can change without a new link, so there is nothing to retry.
+ * A link that cannot work (malformed slug, missing or malformed key): “No access” saying that the link is incomplete,
+ * no network access at all. Nothing can change without a new link, so there is nothing to retry.
  */
 export function startInvalidLinkPage(
   root: HTMLElement,
@@ -638,16 +646,17 @@ export function startInvalidLinkPage(
 ): () => void {
   const doc = root.ownerDocument;
   applyDocumentMode(doc, flags);
+  doc.title = pageTitle(null, true);
   const renderer = (deps.createRenderer ?? createSceneRenderer)(root, {
     mode: 'output',
     provider: new DeferredSourceProvider(() => null),
     background: flags.background,
-    label: 'Program',
+    label: t('output.page.program'),
   });
   let disposed = false;
   void (deps.waitForFonts ?? (() => whenFontsReady(doc, [UI_FONT_PROBE])))().then(() => {
     if (!disposed) {
-      renderer.showSlate(noAccessSlate(), null);
+      renderer.showSlate(noAccessSlate('incomplete'), null, noAccessNotice('incomplete'));
     }
   });
   const stopCursor = hideIdleCursor(doc);

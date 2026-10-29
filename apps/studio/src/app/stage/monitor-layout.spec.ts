@@ -19,15 +19,15 @@ describe('monitorWidths', () => {
   it('without Studio-Modus: one Program monitor limited by width or height', () => {
     // 1440 × 900: the height limits ((431 − 56) × 16/9 = 666).
     expect(monitorWidths(DESKTOP)).toEqual({ preview: 0, program: 666 });
-    // A tall stage: the width limits (1408 − 192).
-    expect(monitorWidths({ ...DESKTOP, height: 2000 })).toEqual({ preview: 0, program: 1216 });
+    // A tall stage: the width limits (1408 − 196).
+    expect(monitorWidths({ ...DESKTOP, height: 2000 })).toEqual({ preview: 0, program: 1212 });
   });
 
   it('with Studio-Modus: the split shares the width, the height still limits', () => {
-    // (1408 − 212) / 2 = 598 each, below the height limit.
-    expect(monitorWidths({ ...DESKTOP, studio: true })).toEqual({ preview: 598, program: 598 });
+    // (1408 − 216) / 2 = 596 each, below the height limit.
+    expect(monitorWidths({ ...DESKTOP, studio: true })).toEqual({ preview: 596, program: 596 });
     expect(monitorWidths({ ...DESKTOP, studio: true, split: 0.3 })).toEqual({
-      preview: 358,
+      preview: 357,
       program: 666,
     });
     // Out-of-range splits are clamped to 0.3–0.7.
@@ -41,8 +41,8 @@ describe('monitorWidths', () => {
       for (const height of [160, 400, 700, 1000]) {
         for (const studio of [false, true]) {
           const result = monitorWidths({ ...DESKTOP, width, height, studio, split: 0.6 });
-          const total = result.preview + result.program + 192 + (studio ? 20 : 0);
-          expect(total).toBeLessThanOrEqual(Math.max(width, 192 + (studio ? 20 : 0)));
+          const total = result.preview + result.program + 196 + (studio ? 20 : 0);
+          expect(total).toBeLessThanOrEqual(Math.max(width, 196 + (studio ? 20 : 0)));
           expect((Math.max(result.preview, result.program) * 9) / 16 + 56).toBeLessThanOrEqual(
             Math.max(height, 56),
           );
@@ -54,7 +54,7 @@ describe('monitorWidths', () => {
   it('ignores the height when stacked (≤ 1180 px)', () => {
     expect(monitorWidths({ ...DESKTOP, width: 1068, height: 0, heightBound: false })).toEqual({
       preview: 0,
-      program: 876,
+      program: 872,
     });
   });
 
@@ -86,7 +86,7 @@ describe('monitorWidths', () => {
       });
       expect(monitorWidths({ ...DESKTOP, canvas: PORTRAIT, width: 300, height: 2000 })).toEqual({
         preview: 0,
-        program: 108,
+        program: 104,
       });
     });
 
@@ -120,7 +120,7 @@ describe('monitorWidths', () => {
       expect(monitorWidths({ ...stacked, canvas: PORTRAIT })).toEqual({ preview: 0, program: 405 });
       expect(monitorWidths({ ...stacked, canvas: DEFAULT_CANVAS })).toEqual({
         preview: 0,
-        program: 876,
+        program: 872,
       });
     });
 
@@ -143,8 +143,8 @@ describe('monitorWidths', () => {
     expect(monitorWidths({ ...DESKTOP, width: 0, height: 0 })).toEqual({ preview: 0, program: 0 });
     expect(monitorWidths({ ...DESKTOP, width: Number.NaN })).toEqual({ preview: 0, program: 0 });
     expect(monitorWidths({ ...DESKTOP, studio: true, split: Number.NaN })).toEqual({
-      preview: 598,
-      program: 598,
+      preview: 596,
+      program: 596,
     });
   });
 });

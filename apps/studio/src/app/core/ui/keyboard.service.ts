@@ -5,14 +5,18 @@ import { DestroyRef, Injectable, inject } from '@angular/core';
 export type ShortcutId =
   /** Keys 1–9: the handler receives the 0-based scene index. */
   | 'scene'
-  /** Space (not on a button, link or switch): Take in Studio Mode. */
+  /** Space (not on a button or link): Take in Studio Mode. */
   | 'take'
   /** Ctrl/Cmd+Z. */
   | 'undo'
   /** Ctrl/Cmd+Shift+Z and Ctrl+Y. */
   | 'redo'
   /** M: mutes (or unmutes) the selected channel of the audio mixer. */
-  | 'mute';
+  | 'mute'
+  /** ? (Shift+/ on most layouts): shows the keyboard shortcuts. */
+  | 'help'
+  /** Ctrl/Cmd+, (the usual "Preferences" key): opens the settings window. */
+  | 'settings';
 
 /**
  * A shortcut handler. Returns true when it acted; only then the browser default (scrolling on Space, the browser's
@@ -21,48 +25,36 @@ export type ShortcutId =
 export type ShortcutHandler = (index: number) => boolean;
 
 /**
- * Escape is handled by the first layer that is open, in this order (prototype): a running list drag (reordering
- * rows), a running dock drag, open popovers, the pairing dock, the element selection.
+ * Escape is handled by the first layer that is open, in this order (prototype): a modal sheet (the keyboard shortcuts),
+ * a running list drag (reordering rows), a running dock drag, open popovers, the pairing dock, the element selection.
  */
-export type EscapeLayer = 'listDrag' | 'dockDrag' | 'popover' | 'pairing' | 'selection';
+export type EscapeLayer = 'sheet' | 'listDrag' | 'dockDrag' | 'popover' | 'pairing' | 'selection';
 
 /** Returns true when the layer consumed Escape. */
 export type EscapeHandler = () => boolean;
 
 const ESCAPE_ORDER: readonly EscapeLayer[] = [
+  'sheet',
   'listDrag',
   'dockDrag',
   'popover',
   'pairing',
   'selection',
 ];
-const TYPING_TAGS: ReadonlySet<string> = new Set(['SELECT', 'TEXTAREA']);
+const TYPING_TAGS: ReadonlySet<string> = new Set(['INPUT', 'SELECT', 'TEXTAREA']);
 const CONTROL_TAGS: ReadonlySet<string> = new Set(['BUTTON', 'A']);
-/** Input types that take no typed text: switches, checkboxes, radios, sliders and buttons (and file/colour pickers). */
-const NON_TEXT_INPUT_TYPES: ReadonlySet<string> = new Set([
-  'checkbox',
-  'radio',
-  'range',
-  'button',
-  'submit',
-  'reset',
-  'image',
-  'file',
-  'color',
-]);
-
-/** True for an input element that takes no typed text (a switch, checkbox, radio, slider or button). */
-function isNonTextInput(element: Element): boolean {
-  return element instanceof HTMLInputElement && NON_TEXT_INPUT_TYPES.has(element.type);
-}
 
 /** True while the focus is in a text field, select or editable element (shortcuts must not fire then). */
 export function isTypingTarget(element: Element | null): boolean {
   if (!element) {
     return false;
   }
-  if (element.tagName === 'INPUT') {
-    return !isNonTextInput(element);
+  // A switch or a checkbox takes no text: the shortcuts keep working after a click on Studio Mode (A11Y-04).
+  if (
+    element instanceof HTMLInputElement &&
+    (element.type === 'checkbox' || element.type === 'radio')
+  ) {
+    return false;
   }
   if (TYPING_TAGS.has(element.tagName)) {
     return true;
@@ -75,10 +67,11 @@ export function isTypingTarget(element: Element | null): boolean {
  * {@link EscapeLayer}s; the service applies the prototype rules:
  * - Escape first, through the layers in priority order (also while typing);
  * - nothing else while typing in an input, select, textarea or editable element;
- * - Ctrl/Cmd+Z undo, Ctrl/Cmd+Shift+Z and Ctrl+Y redo;
+ * - Ctrl/Cmd+Z undo, Ctrl/Cmd+Shift+Z and Ctrl+Y redo, Ctrl/Cmd+, settings;
  * - other combinations with Ctrl, Cmd or Alt are left to the browser;
- * - Space triggers `take` unless the focus is on a button, link, switch or checkbox (Space activates those);
+ * - Space triggers `take` unless the focus is on a button or link (Space activates those);
  * - M triggers `mute` (the selected audio channel);
+ * - ? triggers `help` (the keyboard shortcuts);
  * - 1–9 trigger `scene`. Auto-repeat of Space and digits is ignored, so holding a key never fires twice.
  *
  * Several handlers per id are allowed; the most recently registered one runs first and the first that returns true
@@ -121,6 +114,14 @@ export class KeyboardService {
     if (isTypingTarget(active)) {
       return;
     }
+    // Space on a focused switch or checkbox toggles it, as the platform does; the digits still switch scenes.
+    if (
+      event.key === ' ' &&
+      active instanceof HTMLInputElement &&
+      (active.type === 'checkbox' || active.type === 'radio')
+    ) {
+      return;
+    }
     const mod = event.ctrlKey || event.metaKey;
     const key = event.key.toLowerCase();
     if (mod && !event.altKey) {
@@ -132,6 +133,10 @@ export class KeyboardService {
       if (key === 'y' && event.ctrlKey && !event.shiftKey) {
         event.preventDefault();
         this.run('redo', -1);
+        return;
+      }
+      if (event.key === ',' && !event.shiftKey && !event.repeat && this.run('settings', -1)) {
+        event.preventDefault();
       }
       return;
     }
@@ -139,13 +144,16 @@ export class KeyboardService {
       return;
     }
     if (event.code === 'Space' || event.key === ' ') {
-      if (
-        event.repeat ||
-        (active && (CONTROL_TAGS.has(active.tagName) || isNonTextInput(active)))
-      ) {
+      if (event.repeat || (active && CONTROL_TAGS.has(active.tagName))) {
         return;
       }
       if (this.run('take', -1)) {
+        event.preventDefault();
+      }
+      return;
+    }
+    if (event.key === '?') {
+      if (!event.repeat && this.run('help', -1)) {
         event.preventDefault();
       }
       return;

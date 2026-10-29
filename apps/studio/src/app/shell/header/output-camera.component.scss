@@ -1,22 +1,69 @@
-// "Use as camera …": numbered steps and the download of the OBS scene collection.
+// "Use as camera in OBS": numbered steps with the download in the step that needs the file, then two notes.
+@use 'mixins' as *;
+
+:host {
+  display: block;
+}
+
 .c-output-camera {
-  border-top: 1px solid var(--seam-strong);
+  background: var(--fill);
+  border-radius: 10px;
+  color: var(--text-2);
+  display: grid;
+  gap: 10px;
   margin-top: 6px;
-  padding-top: 4px;
+  padding: 12px 14px;
+}
+
+.c-output-camera__intro {
+  color: var(--text);
 }
 
 .c-output-camera__steps {
-  color: var(--text-2);
+  counter-reset: step;
   display: grid;
-  font-size: 12.5px;
-  gap: 4px;
+  gap: 8px;
+  list-style: none;
   margin: 0;
-  padding: 0 12px 6px 30px;
+  padding: 0;
+
+  > li {
+    counter-increment: step;
+    line-height: 1.45;
+    padding-left: 30px;
+    position: relative;
+
+    // The step number in a small disc, like a numbered list in a setup assistant.
+    &::before {
+      @include mono;
+      background: var(--float);
+      border-radius: 50%;
+      box-shadow: var(--shadow-raise);
+      color: var(--text);
+      content: counter(step);
+      display: grid;
+      font-size: 11px;
+      font-weight: 600;
+      height: 20px;
+      left: 0;
+      place-items: center;
+      position: absolute;
+      top: -1px;
+      width: 20px;
+    }
+  }
 }
 
-.c-output-camera__row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 2px 8px 8px;
+.c-output-camera__action {
+  margin-top: 6px;
+}
+
+.c-output-camera__notes {
+  border-top: 1px solid var(--seam);
+  color: var(--muted);
+  display: grid;
+  font-size: 12px;
+  gap: 4px;
+  margin: 2px 0 0;
+  padding: 10px 0 0 16px;
 }

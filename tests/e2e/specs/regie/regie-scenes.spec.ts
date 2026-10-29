@@ -43,7 +43,7 @@ test.describe('REGIE scenes', () => {
       const [sceneA] = production.sceneIds;
       const page = regie.page;
       await expect(regie.scene('Scene A')).toBeVisible();
-      await expect(inspectorTitle(page)).toHaveText('Scene');
+      await expect(inspectorTitle(page)).toHaveAttribute('data-view', 'scene');
 
       const name = page.locator('#sf-insp-name');
       await expect(name).toHaveValue('Scene A');
@@ -236,7 +236,7 @@ test.describe('REGIE scenes', () => {
 
       // The inspector edits the preview scene in Studio Mode: “Scene B” (the scene after the program).
       await regie.setStudioMode(true);
-      await expect(toastOf(page)).toContainText('Studio Mode on: Preview and Take');
+      await expect(toastOf(page)).toContainText('Studio Mode is on. Take puts the Preview live.');
       await expect(inspectorSub(page)).toHaveText('Scene B');
       await inspector(page).getByRole('button', { name: 'Delete scene' }).click();
       const confirm = inspector(page).getByRole('group', { name: 'Delete scene' });
@@ -272,7 +272,7 @@ test.describe('REGIE scenes', () => {
       await expect(regie.scene('Scene A')).toHaveAttribute('aria-pressed', 'true');
       await page.keyboard.press('2');
       await expect(regie.scene('Scene C')).toHaveAttribute('aria-pressed', 'true');
-      await expect(regie.scene('Scene C')).toHaveAccessibleName(/^Scene C PVW( |$)/);
+      await expect(regie.scene('Scene C')).toHaveAccessibleName(/^Scene C, in Preview$/);
       expect(sceneB).toBeTruthy();
 
       // The live scene: Studio Mode on with preview = program (locked): hint, disabled button; REST says 409.
@@ -280,11 +280,11 @@ test.describe('REGIE scenes', () => {
       await expect(inspector(page).getByRole('button', { name: 'Delete scene' })).toBeDisabled();
       await expect(inspector(page)).toContainText('The live scene cannot be deleted.');
       await expect(inspector(page)).not.toContainText('Edit other scenes in Studio Mode');
-      // Studio Mode off: the inspector shows the program scene, the hint says how to edit another one.
+      // Studio Mode off: the inspector shows the program scene, the hint says where the other scenes are deleted.
       await regie.setStudioMode(false);
       await expect(inspector(page).getByRole('button', { name: 'Delete scene' })).toBeDisabled();
       await expect(inspector(page)).toContainText(
-        'The live scene cannot be deleted. Edit other scenes in Studio Mode.',
+        'The live scene cannot be deleted. Other scenes can be deleted from their menu in Scenes.',
       );
       const refused = await api.deleteScene(production.id, sceneA);
       expect(refused.status).toBe(409);
@@ -312,25 +312,24 @@ test.describe('REGIE scenes', () => {
       expect(laptop.codes['screen-1']).toBe('S1');
 
       await expect(sourcesDock(page)).toContainText('This scene is empty.');
-      await expect(sourcesDock(page)).toContainText(
-        'Add a source or apply a template.',
-      );
+      await expect(sourcesDock(page)).toContainText('Add a camera, a screen, media or a text.');
 
       const add = async (code: string) => {
         await sourcesDock(page)
-          .getByRole('button', { name: /^Source$/ })
+          .getByRole('button', { name: /^Add source$/ })
           .click();
         const menu = page.getByRole('menu', { name: 'Add source' });
         await expect(menu).toContainText('Add to “Scene A”');
         return menu;
       };
       const menu = await add('K1');
-      const entries = await menu.getByRole('menuitem').allTextContents();
+      const entries = await menu.locator('[role=menuitem]:not([disabled])').allTextContents();
       const codes = entries.map((text) => /^\s*([KSM]\d)/.exec(text)?.[1]).filter(Boolean);
       expect(
         codes,
-        'only sources that are not in the scene and not blocked (K2 is blocked), cameras, screens, media',
+        'only sources that are not in the scene and not blocked (K2 is blocked) can be added: cameras, screens, media',
       ).toEqual(['K1', 'S1', 'M1']);
+      await expect(menu.getByRole('menuitem', { name: /K2/ }), 'the blocked K2 is listed, not addable').toBeDisabled();
       expect(menu.getByRole('group', { name: 'Cameras' })).toBeVisible();
       await menu.getByRole('menuitem', { name: /K1/ }).click();
       await expect(toastOf(page)).toContainText('K1 added to “Scene A”');
@@ -357,14 +356,14 @@ test.describe('REGIE scenes', () => {
       expect(scene.items[0]!.onLost).toEqual({ holdMs: 3000, fallbackSource: null });
       // The new element is selected: Sources row pressed, inspector “Item” with “K1 · Phone One”.
       await expect(sourceRow(page, 'K1 Phone One')).toHaveAttribute('aria-pressed', 'true');
-      await expect(inspectorTitle(page)).toHaveText('Item');
-      await expect(inspectorSub(page)).toHaveText('K1 · Phone One');
+      await expect(inspectorTitle(page)).toHaveAttribute('data-view', 'item');
+      await expect(inspectorSub(page)).toHaveText('Phone One');
 
-      // The menu no longer lists K1; the screen gets “contain”.
+      // K1 can no longer be added: it stays listed with the “In scene” check, disabled; the screen gets “contain”.
       const menu2 = await add('S1');
-      expect(
-        (await menu2.getByRole('menuitem').allTextContents()).some((text) => /K1/.test(text)),
-      ).toBe(false);
+      const inScene = menu2.getByRole('menuitem', { name: /K1/ });
+      await expect(inScene, 'K1 is in the scene and cannot be added again').toBeDisabled();
+      await expect(inScene).toContainText('In scene');
       await menu2.getByRole('menuitem', { name: /S1/ }).click();
       await expect(toastOf(page)).toContainText('S1 added to “Scene A”');
       scene = await expectScene(
@@ -406,11 +405,13 @@ test.describe('REGIE scenes', () => {
 
       // Everything is in: the empty-menu text (K2 stays out because it is blocked).
       await sourcesDock(page)
-        .getByRole('button', { name: /^Source$/ })
+        .getByRole('button', { name: /^Add source$/ })
         .click();
       const full = page.getByRole('menu', { name: 'Add source' });
       await expect(full).toContainText('All sources are already in this scene.');
-      await expect(full.getByRole('menuitem', { name: /K2/ })).toHaveCount(0);
+      await expect(full.getByRole('menuitem', { name: /K2/ })).toBeDisabled();
+      await expect(full.getByRole('menuitem', { name: /K1/ })).toContainText('In scene');
+      await expect(full.getByRole('menuitem', { name: /K1/ })).toBeDisabled();
       await page.keyboard.press('Escape');
       await expect(full).toBeHidden();
       expect(regie.problems.pageErrors).toEqual([]);
@@ -440,7 +441,7 @@ test.describe('REGIE scenes', () => {
       await expect(sourcesDock(page).locator('.c-dock-frame__count')).toHaveText('32');
 
       await sourcesDock(page)
-        .getByRole('button', { name: /^Source$/ })
+        .getByRole('button', { name: /^Add source$/ })
         .click();
       await page.getByRole('menuitem', { name: /M2/ }).click();
       await expect(toastOf(page)).toContainText(/at most 32 items/);
@@ -593,7 +594,7 @@ test.describe('REGIE scenes', () => {
       ).toBe('rgb(18, 24, 33)');
 
       // The Sources row is selectable and removable.
-      const row = sourceRow(page, '– Source missing');
+      const row = sourcesDock(page).getByRole('button', { name: 'Select: – Source missing' });
       await row.click();
       await expect(row).toHaveAttribute('aria-pressed', 'true');
       await expect(inspectorSub(page)).toHaveText('Source missing');
@@ -705,11 +706,11 @@ test.describe('REGIE scenes', () => {
         )
         .toBe(100);
 
-      await expect(inspectorTitle(page)).toHaveText('Scene');
+      await expect(inspectorTitle(page)).toHaveAttribute('data-view', 'scene');
       await expect(inspectorSub(page)).toHaveText('Scene A');
       await sourceRow(page, 'K1 Phone One').click();
-      await expect(inspectorTitle(page)).toHaveText('Item');
-      await expect(inspectorSub(page)).toHaveText('K1 · Phone One');
+      await expect(inspectorTitle(page)).toHaveAttribute('data-view', 'item');
+      await expect(inspectorSub(page)).toHaveText('Phone One');
 
       const moved = Date.now();
       expect(
@@ -734,7 +735,7 @@ test.describe('REGIE scenes', () => {
           description: `thumbnail followed an edit after ${Date.now() - moved} ms (incl. the REST call)`,
         });
       await page.keyboard.press('Escape');
-      await expect(inspectorTitle(page)).toHaveText('Scene');
+      await expect(inspectorTitle(page)).toHaveAttribute('data-view', 'scene');
       expect(regie.problems.pageErrors).toEqual([]);
     },
   );

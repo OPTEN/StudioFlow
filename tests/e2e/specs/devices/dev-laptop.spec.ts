@@ -85,7 +85,7 @@ test.describe('DEV sender, PWA', () => {
       expect(new URL(manifest.scope, manifestUrl).pathname, 'scope').toBe('/join/');
       expect(new URL(manifest.start_url, manifestUrl).pathname, 'start_url').toBe('/join/');
       expect(manifest.display).toBe('standalone');
-      expect(manifest.theme_color.toLowerCase()).toBe('#0d1117');
+      expect(manifest.theme_color.toLowerCase(), 'the graphite of the redesign (the dark --grouped)').toBe('#151517');
       const sizes = manifest.icons.map((icon) => icon.sizes);
       expect(sizes, '192 and 512 px icons').toEqual(expect.arrayContaining(['192x192', '512x512']));
       expect(manifest.icons.some((icon) => (icon.purpose ?? '').includes('maskable')), 'a maskable icon').toBe(true);

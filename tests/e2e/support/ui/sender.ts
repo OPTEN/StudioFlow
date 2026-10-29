@@ -82,10 +82,10 @@ export abstract class SenderPage {
       .getByRole('radio', {
         name:
           kind === 'phone'
-            ? 'Phone (camera)'
+            ? 'Phone camera'
             : kind === 'audioStation'
-              ? 'Audio station (mixing desk)'
-              : 'Laptop (screen)',
+              ? 'Audio station'
+              : 'Laptop screen',
       })
       .check();
     await this.page.getByRole('button', { name: 'Continue' }).click();
@@ -100,7 +100,7 @@ export abstract class SenderPage {
 
   /** Checks the kind the form selected on its own (`phone` for mobile profiles, `laptop` for desktop). */
   async defaultKind(): Promise<'phone' | 'laptop'> {
-    const phone = this.page.getByRole('radio', { name: 'Phone (camera)' });
+    const phone = this.page.getByRole('radio', { name: 'Phone camera' });
     await expect(phone).toBeVisible();
     return (await phone.isChecked()) ? 'phone' : 'laptop';
   }
@@ -164,6 +164,37 @@ export abstract class SenderPage {
   /** The message banner of a Regie message (`message-banner`), or null. */
   messageBanner(): Locator {
     return this.page.getByTestId('message-banner');
+  }
+
+  /** Dismisses the message of the control room (“Dismiss”, formerly “OK”). */
+  async dismissMessage(): Promise<void> {
+    await this.messageBanner().getByRole('button', { name: 'Dismiss' }).click();
+  }
+
+  /** The confirm sheet of a consequential action (stop or switch while live, remove), named by its question. */
+  confirmSheet(): Locator {
+    return this.page.getByTestId('confirm-sheet');
+  }
+
+  /** Confirms the open confirm sheet with its action button (the button names the action, never “OK”). */
+  async confirm(): Promise<void> {
+    await this.confirmSheet().getByTestId('confirm-sheet-ok').click();
+    await expect(this.confirmSheet()).toBeHidden();
+  }
+
+  /**
+   * Clicks a control that asks first while the source is live: the confirm sheet, if it comes up within a moment, is
+   * confirmed; otherwise the action happened at once.
+   */
+  protected async clickAndConfirm(control: Locator): Promise<void> {
+    await control.click();
+    const sheet = this.confirmSheet();
+    // isVisible() answers at once (its timeout is ignored), so wait for the sheet itself.
+    const asked = await sheet
+      .waitFor({ state: 'visible', timeout: 1_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (asked) await this.confirm();
   }
 
   /** `window.__sfSender` (needs the test hooks), or null. */
@@ -314,30 +345,63 @@ export class PhoneSender extends SenderPage {
     return this.page.getByRole('button', { name: 'Start camera' });
   }
 
+  /** “Stop camera” on the control rail (a round labelled button). */
   stopButton(): Locator {
-    return this.page.getByRole('button', { name: 'Stop camera' });
+    return this.page.getByRole('button', { name: 'Stop camera', exact: true });
   }
 
   async startCamera(): Promise<void> {
     await this.startButton().click();
   }
 
+  /** “Stop camera”; while the camera is live the confirm sheet asks first and is confirmed. */
   async stopCamera(): Promise<void> {
-    await this.stopButton().click();
+    await this.clickAndConfirm(this.stopButton());
   }
 
+  /** “Screen off” on the control rail (formerly “Dark”): a toggle button with aria-pressed. */
   darkToggle(): Locator {
-    return this.page.getByRole('button', { name: 'Dark' });
+    return this.page.getByRole('button', { name: 'Screen off', exact: true });
   }
 
+  /** The black “screen off” cover (formerly `.c-phone__dark`); a tap on it shows the controls for a while. */
+  screenOffCover(): Locator {
+    return this.page.locator('.c-phone__screen-off');
+  }
+
+  /** “Switch camera” on the control rail. */
+  switchButton(): Locator {
+    return this.page.getByRole('button', { name: 'Switch camera', exact: true });
+  }
+
+  /** “Switch camera”; while the camera is live the confirm sheet asks first and is confirmed. */
+  async switchCamera(): Promise<void> {
+    await this.clickAndConfirm(this.switchButton());
+  }
+
+  /** The camera in use, from the switch button's `data-facing` (front `user`, back `environment`). */
   async facing(): Promise<'user' | 'environment'> {
-    return (await this.page.getByRole('radio', { name: 'Back' }).isChecked())
-      ? 'environment'
-      : 'user';
+    return (await this.switchButton().getAttribute('data-facing')) === 'user'
+      ? 'user'
+      : 'environment';
   }
 
+  /** Picture quality through its sheet: Standard (720p) or High (1080p), then “Done”. */
   async setResolution(height: 720 | 1080): Promise<void> {
-    await this.page.getByRole('radio', { name: `${height}p` }).check();
+    await this.page.getByRole('button', { name: /^Picture quality/ }).click();
+    const sheet = this.page.getByTestId('quality-sheet');
+    await expect(sheet).toBeVisible();
+    await sheet.getByRole('radio', { name: height === 1080 ? 'High' : 'Standard' }).check();
+    await sheet.getByRole('button', { name: 'Done' }).click();
+    await expect(sheet).toBeHidden();
+  }
+
+  /** The resolution the phone uses, from the quality button's `data-resolution`. */
+  async resolution(): Promise<720 | 1080> {
+    const value = await this.page
+      .getByRole('button', { name: /^Picture quality/ })
+      .getAttribute('data-resolution');
+    return value === '1080' ? 1080 : 720;
   }
 }
 
@@ -358,20 +422,35 @@ export class LaptopSender extends SenderPage {
     return new LaptopSender(context, await context.newPage(), profile, stackConfig(), false);
   }
 
-  /** “Share screen” of the first slot, or “+ Another screen” for a further one: a user gesture, then the (fake) capture. */
+  /** “Share screen” of the first slot, or “Share another screen” for a further one: a user gesture, then the (fake) capture. */
   async shareScreen(): Promise<void> {
     const first = this.page.getByRole('button', { name: 'Share screen', exact: true });
     if (await first.count()) await first.first().click();
-    else await this.page.getByRole('button', { name: '+ Another screen' }).click();
+    else await this.page.getByRole('button', { name: 'Share another screen' }).click();
+  }
+
+  /** “Share another screen” (formerly “+ Another screen”). */
+  addScreenButton(): Locator {
+    return this.page.getByRole('button', { name: 'Share another screen' });
   }
 
   async addScreen(): Promise<void> {
-    await this.page.getByRole('button', { name: '+ Another screen' }).click();
+    await this.addScreenButton().click();
   }
 
-  /** “Stop sharing” of a screen slot (`screen-1`, ...). */
+  /** “Stop sharing” of a screen slot (`screen-1`, ...); a screen in the program asks first and is confirmed. */
   async endShare(slot = 'screen-1'): Promise<void> {
-    await this.slot(slot).getByRole('button', { name: 'Stop sharing' }).click();
+    await this.clickAndConfirm(
+      this.slot(slot).locator('.c-source__actions').getByRole('button', { name: 'Stop sharing' }),
+    );
+  }
+
+  /** Opens the ⋯ menu of a card (“More for Screen 1”). */
+  async openMenu(slot: string): Promise<Locator> {
+    await this.slot(slot).getByRole('button', { name: /^More for / }).click();
+    const menu = this.slot(slot).getByRole('menu');
+    await expect(menu).toBeVisible();
+    return menu;
   }
 
   /** “Share again” of an ended slot (also the large banner button when the Regie asks). */
@@ -379,17 +458,20 @@ export class LaptopSender extends SenderPage {
     await this.slot(slot).getByRole('button', { name: 'Share again' }).click();
   }
 
+  /** “Remove from the control room…” in the ⋯ menu of the card, confirmed in the sheet. */
   async removeSlot(slot: string): Promise<void> {
-    await this.slot(slot).getByRole('button', { name: 'Remove' }).click();
+    const menu = await this.openMenu(slot);
+    await menu.getByRole('menuitem', { name: /^Remove from the control room/ }).click();
+    await this.confirm();
   }
 
   async addCamera(): Promise<void> {
     await this.page.getByRole('button', { name: 'Add camera' }).click();
   }
 
-  /** The banner shown when the Regie asked to share again. */
+  /** The request in the card when the Regie asked to share again (the card is highlighted as well). */
   reshareBanner(): Locator {
-    return this.page.getByText('The control room asks you to share the screen again');
+    return this.page.getByText('The control room asks you to share this screen again');
   }
 }
 

@@ -1,26 +1,33 @@
 import type { Namespace } from '../../types';
 
 /**
- * Duplicating, exporting and importing a production (production menu, issue #14): the menu entries, the duplicate form and
- * the import with its preview. The messages of a refused file are the API codes of `errors.code.*`.
+ * Duplicating, exporting and importing a production (settings page "All productions", issue #14): the actions, the
+ * duplicate form and the import with its preview. The messages of a refused file are the API codes of `errors.code.*`.
  */
 export const regieTransfer = {
   'regie.transfer.duplicate.busy': 'Duplicating…',
   'regie.transfer.duplicate.defaultName': '{name} (copy)',
   'regie.transfer.duplicate.done':
     'Production “{name}” created. It is not active; switch to it when you are ready.',
+  'regie.transfer.duplicate.details':
+    'Copied: scenes, texts, media and settings. Not copied: pairings, invites, output links and the log. The copy does not become the active production.',
   'regie.transfer.duplicate.hint':
-    'The copy takes over the scenes, texts, media and settings. Cameras and screens become placeholders for the devices you pair next. Pairings, invites, output links and the log are not copied, and the copy does not become the active production.',
+    'Cameras and screens become placeholders for the devices you pair next.',
   'regie.transfer.duplicate.media': {
     '=0': 'There are no media files to copy.',
     one: '{count} media file ({size}) is copied.',
     other: '{count} media files ({size}) are copied.',
   },
   'regie.transfer.duplicate.name': 'Name of the copy',
+  'regie.transfer.duplicate.open': 'Duplicate…',
+  'regie.transfer.duplicate.sub':
+    'A new production with the scenes, texts, media and settings of this one. Works during the broadcast too.',
   'regie.transfer.duplicate.submit': 'Duplicate',
   'regie.transfer.duplicate.title': 'Duplicate production',
 
   'regie.transfer.export.started': 'Export of “{name}” started. Your browser saves the file.',
+  'regie.transfer.export.sub': 'A file to keep, or to import on another server.',
+  'regie.transfer.export.title': 'Export production',
 
   'regie.transfer.import.another': 'Choose another file',
   'regie.transfer.import.busy': 'Importing…',
@@ -40,6 +47,7 @@ export const regieTransfer = {
   'regie.transfer.import.previewTitle': 'This file contains',
   'regie.transfer.import.progress': 'Uploaded {percent}',
   'regie.transfer.import.scenes': { one: '{count} scene', other: '{count} scenes' },
+  'regie.transfer.import.sub': 'From a file exported from StudioFlow (.studioflow.zip).',
   'regie.transfer.import.submit': 'Import',
   'regie.transfer.import.texts': {
     '=0': 'No texts',
