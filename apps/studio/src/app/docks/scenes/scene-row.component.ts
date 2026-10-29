@@ -70,7 +70,7 @@ const EDGE = 8;
     '[class.is-program]': 'view().isProgram',
     '[class.is-preview]': 'view().isPreview',
     '[class.is-current]': 'view().pressed',
-    '[class.is-menu-open]': 'confirmOpen()',
+    '[class.is-menu-open]': 'confirmOpen() || menuOpen()',
   },
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -95,6 +95,12 @@ export class SceneRowComponent {
   protected readonly switcher = inject(SwitcherService);
   private readonly popovers = inject(PopoverService);
   private readonly menus = inject(ContextMenuService);
+  private readonly moreButton = viewChild<ElementRef<HTMLButtonElement>>('more');
+  /** The ⋯ menu of this row is open (its trigger says so with aria-expanded). */
+  protected readonly menuOpen = computed(
+    () =>
+      !!this.moreButton() && this.menus.current()?.returnFocus === this.moreButton()?.nativeElement,
+  );
   private readonly element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   private readonly document = inject(DOCUMENT);
   private readonly injector = inject(Injector);

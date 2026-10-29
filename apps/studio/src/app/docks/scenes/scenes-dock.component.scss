@@ -7,7 +7,9 @@
   gap: 2px;
   padding: 6px 6px 8px;
 
+  // The cards share their top edge: a card whose state wraps onto a second line grows downwards only.
   @include narrow {
+    align-items: flex-start;
     display: flex;
     gap: 4px;
     overflow-x: auto;
