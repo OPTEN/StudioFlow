@@ -29,6 +29,7 @@ import { regieMonitoring } from './regie-monitoring';
 import { regieOutput } from './regie-output';
 import { regiePairing } from './regie-pairing';
 import { regiePlaceholders } from './regie-placeholders';
+import { regieProduction } from './regie-production';
 import { regieProperties } from './regie-properties';
 import { regieScenes } from './regie-scenes';
 import { regieServer } from './regie-server';
@@ -81,6 +82,7 @@ export const en = {
   ...regieOutput,
   ...regiePairing,
   ...regiePlaceholders,
+  ...regieProduction,
   ...regieProperties,
   ...regieScenes,
   ...regieServer,

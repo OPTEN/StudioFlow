@@ -173,7 +173,8 @@ test('product video: pairing, sender tally, take, layout, output and OBS', async
   }
   await done(layout);
 
-  // 7. The output as a camera: the output popover, a link "OBS" and the steps with the scene collection download.
+  // 7. The output as a camera: the output popover, "Manage output links…", a link "OBS" on the settings page and the
+  // steps with the scene collection download; then back to the control room.
   const obs = await Screencast.start(page, OUTPUT, 'output-obs');
   obs.markStart();
   await page.waitForTimeout(600);
@@ -181,19 +182,24 @@ test('product video: pairing, sender tally, take, layout, output and OBS', async
   const pop = page.getByRole('dialog', { name: 'Output' });
   await expect(pop).toBeVisible();
   await page.waitForTimeout(1000);
-  const name = pop.getByLabel('Name of the new link');
+  await obs.click(pop.getByRole('link', { name: 'Manage output links…' }));
+  await expect(page.getByRole('heading', { level: 1, name: 'Output links' })).toBeVisible();
+  await page.waitForTimeout(800);
+  const name = page.getByLabel('Name of the new link');
   await obs.click(name);
   await name.pressSequentially('OBS', { delay: 140 });
   await page.waitForTimeout(400);
-  await obs.click(pop.getByRole('button', { name: 'Create link' }));
-  await expect(pop.locator('.c-output-pop__link').filter({ hasText: 'OBS' })).toBeVisible();
+  await obs.click(page.getByRole('button', { name: 'Add link' }));
+  const detail = page.getByRole('region', { name: 'Link “OBS”' });
+  await expect(detail).toBeVisible();
   await page.waitForTimeout(1000);
-  await obs.click(pop.getByRole('button', { name: 'Use as camera …' }));
-  await expect(pop.getByRole('button', { name: 'Download OBS scene collection' })).toBeVisible();
+  await obs.click(detail.getByRole('button', { name: 'Show steps' }));
+  await expect(detail.getByRole('button', { name: 'Download OBS scene collection' })).toBeVisible();
   await page.waitForTimeout(3500);
   await done(obs);
   await still(page, 'still-regie-output-obs.png');
-  await page.keyboard.press('Escape');
+  await page.getByRole('link', { name: 'Control room' }).click();
+  await regie.waitReady();
   await page.mouse.move(1500, 700);
 
   // 4. The same switching in the light theme.

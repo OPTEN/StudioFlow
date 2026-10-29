@@ -1,6 +1,4 @@
 <form class="c-xfer" novalidate (submit)="submit($event)">
-  <div class="c-pop-h">{{ t('regie.transfer.duplicate.title') }}</div>
-
   <div class="c-xfer__field">
     <label class="c-xfer__label" for="duplicate-name">{{
       t('regie.transfer.duplicate.name')
@@ -18,23 +16,26 @@
     />
     @if (control.invalid && control.touched) {
       <p class="c-field-error" id="duplicate-name-error" role="alert">
-        {{ t('regie.header.production.nameInvalid') }}
+        {{ t('regie.production.name.invalid', { max: nameMax }) }}
       </p>
     }
   </div>
 
-  <p class="c-hint">{{ t('regie.transfer.duplicate.hint') }}</p>
-  <p class="c-hint">{{ mediaHint() }}</p>
+  <p class="c-xfer__key">
+    <svg sfIcon="info" aria-hidden="true"></svg>
+    <span>{{ t('regie.transfer.duplicate.hint') }}</span>
+  </p>
+  <p class="c-hint">{{ t('regie.transfer.duplicate.details') }} {{ mediaHint() }}</p>
   @if (message(); as text) {
     <p class="c-field-error" role="alert">{{ text }}</p>
   }
 
   <div class="c-xfer__row">
-    <button class="c-btn c-btn--sm c-btn--fill" type="submit" [disabled]="busy()">
-      {{ busy() ? t('regie.transfer.duplicate.busy') : t('regie.transfer.duplicate.submit') }}
-    </button>
-    <button class="c-btn c-btn--sm" type="button" [disabled]="busy()" (click)="cancelled.emit()">
+    <button class="c-btn" type="button" [disabled]="busy()" (click)="cancelled.emit()">
       {{ t('common.cancel') }}
+    </button>
+    <button class="c-btn c-btn--fill" type="submit" [disabled]="busy()">
+      {{ busy() ? t('regie.transfer.duplicate.busy') : t('regie.transfer.duplicate.submit') }}
     </button>
   </div>
 </form>

@@ -1,0 +1,60 @@
+// Settings › Production › Text style: the live picture of the three text styles above the three colour rows.
+@use 'mixins' as *;
+@use './production-page';
+
+.c-text-style__stage {
+  justify-items: center;
+  padding: 16px 14px;
+}
+
+.c-text-style__colour {
+  align-items: center;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 34px 104px;
+}
+
+// The native colour well, drawn like a field.
+.c-text-style__swatch {
+  @include state-transition(border-color);
+  background: var(--ground);
+  border: 1px solid var(--control-edge);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  height: var(--control-h);
+  padding: 3px;
+  width: 34px;
+
+  &::-webkit-color-swatch-wrapper {
+    padding: 0;
+  }
+
+  // One rule per engine: a selector list with an unknown pseudo-element would drop both.
+  &::-webkit-color-swatch {
+    border: 0;
+    border-radius: 4px;
+  }
+
+  &::-moz-color-swatch {
+    border: 0;
+    border-radius: 4px;
+  }
+}
+
+.c-text-style__hex {
+  @include code;
+  font-size: 12.5px;
+}
+
+.c-text-style__error {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.c-text-style__footer {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  justify-content: space-between;
+}

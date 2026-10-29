@@ -1,45 +1,68 @@
-// Duplicate and import forms inside the production menu (same rhythm as the other forms of that menu).
+// Duplicate and import forms, opened in place on the settings page "All productions".
 @use 'mixins' as *;
 
 .c-xfer {
   display: grid;
-  gap: 8px;
-  padding: 0 8px 8px;
-
-  .c-pop-h {
-    padding-inline: 0;
-  }
+  gap: 10px;
 }
 
 .c-xfer__field {
   display: grid;
-  gap: 4px;
+  gap: 5px;
 }
 
 .c-xfer__label {
-  color: var(--muted);
-  font-size: 12.5px;
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+// The consequence that matters most, before the details.
+.c-xfer__key {
+  align-items: start;
+  color: var(--text);
+  display: grid;
+  gap: 8px;
+  grid-template-columns: auto minmax(0, 1fr);
+
+  .c-icon {
+    color: var(--muted);
+    margin-top: 1px;
+  }
 }
 
 .c-xfer__row {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  padding-top: 2px;
+  justify-content: flex-end;
 }
 
 // What an import file contains (preview before anything is created).
-.c-xfer__kv {
-  margin: 0;
+.c-xfer__preview {
+  background: var(--fill);
+  border-radius: 10px;
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
 }
 
-.c-xfer__kv dd {
+.c-xfer__heading {
+  @include label-text(12px);
+}
+
+.c-xfer__kv {
   margin: 0;
-  min-width: 0;
-  overflow-wrap: anywhere;
+  padding: 0;
+
+  dd {
+    font-weight: 600;
+    overflow-wrap: anywhere;
+  }
 }
 
 .c-xfer__list {
+  color: var(--text-2);
   display: grid;
   gap: 2px;
   list-style: none;
@@ -47,27 +70,39 @@
   padding: 0;
 }
 
+.c-xfer__list--codes > li {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+}
+
 .c-xfer__more {
   color: var(--muted);
 }
 
+// A warning of the preview: worth reading before the import, not a failure (orange icon, plain text).
 .c-xfer__warn {
-  border-left: 3px solid var(--amber);
-  color: var(--text-2);
-  font-size: 12.5px;
+  align-items: start;
+  color: var(--text);
+  display: grid;
+  gap: 8px;
+  grid-template-columns: auto minmax(0, 1fr);
   margin: 0;
-  padding: 2px 0 2px 8px;
+
+  .c-icon {
+    color: var(--amber);
+    margin-top: 1px;
+  }
 }
 
 .c-xfer__file {
   @include ellipsis;
   color: var(--text-2);
-  font-size: 12.5px;
 }
 
 .c-xfer__progress {
-  background: var(--raised-2);
-  border-radius: var(--radius-xs);
+  background: var(--fill);
+  border-radius: var(--radius-pill);
   height: 6px;
   overflow: hidden;
 
@@ -75,15 +110,6 @@
     background: var(--blue-fill);
     display: block;
     height: 100%;
-    transition: width var(--dur-fast, 120ms) linear;
+    transition: width var(--dur-state) linear;
   }
-}
-
-.c-xfer__input {
-  // The native file input is opened by "Choose file…"; it stays out of the layout and the tab order.
-  height: 0;
-  opacity: 0;
-  overflow: hidden;
-  position: absolute;
-  width: 0;
 }

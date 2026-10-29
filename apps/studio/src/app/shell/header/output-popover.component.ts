@@ -1,19 +1,16 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  ElementRef,
+  Injector,
+  afterNextRender,
   computed,
   effect,
   inject,
   signal,
   untracked,
 } from '@angular/core';
-import {
-  FormControl,
-  ReactiveFormsModule,
-  Validators,
-  type AbstractControl,
-  type ValidationErrors,
-} from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { formatDateTime, t, tm, type Msg } from '@studioflow/i18n';
 import {
   DEFAULT_CANVAS_FORMAT,
@@ -27,22 +24,24 @@ import {
 import { toUserMsg } from '../../core/api/api-error';
 import { StudioApiService } from '../../core/api/studio-api.service';
 import { ProductionStoreService } from '../../core/state/production-store.service';
-import { PopoverDirective } from '../../core/ui/popover.directive';
-import { ToastService } from '../../core/ui/toast.service';
-import { outputLoad } from './output-load';
-import { LINK_NAME_MAX, OutputLinkComponent, requiredName } from './output-link.component';
+import { ClipboardService } from '../../core/ui/clipboard.service';
+import { IconComponent } from '../../core/ui/icon.component';
+import { PopoverDirective, PopoverService } from '../../core/ui/popover.directive';
 import { OBS_FPS } from './obs-scene-collection';
+import { outputLoad } from './output-load';
+import { maskOutputUrl } from './output-url';
 
 /** Id of the output popover. */
 export const OUTPUT_POPOVER = 'output';
 
-/** One line of the link list: the link, its state and the text under its name. */
+/** One line of the link list: the link, its state in a word and a colour, and its masked URL. */
 interface LinkRow {
   readonly link: OutputLinkDto;
-  readonly state: OutputState;
-  readonly stateText: string;
-  readonly detail: string | null;
+  readonly state: string;
+  readonly stateClass: string;
   readonly lamp: string;
+  readonly url: string;
+  readonly title: string | null;
 }
 
 /** The state of a link in a word. */
@@ -58,14 +57,14 @@ export function linkStateText(state: OutputState): string {
 }
 
 /**
- * Output popover (prototype `renderOutPop`, spec 4.8, 9.1): the summary of the output (state, consumers, format,
- * latency), the named output links with their own state ("Proxy · connected"), "Create link", and the selected link with
- * its URL, IP restriction, "Use as camera …", regenerate and revoke (`sf-output-link`). Loads the output settings when
- * it opens and again whenever a link changes its state, so "last seen" stays current.
+ * Output popover (spec 4.8, 9.1): the live status of the output (state, latency, where it is connected from, format,
+ * decoding, dropped frames, blocked sound with its remedy in words) and the named output links, each with its own
+ * lamp, state, masked URL and a copy button. Everything that changes a link lives on the settings page "Output links"
+ * ("Manage output links…"). Loads the links when it opens and again whenever a link changes its state.
  */
 @Component({
   selector: 'sf-output-popover',
-  imports: [OutputLinkComponent, PopoverDirective, ReactiveFormsModule],
+  imports: [IconComponent, PopoverDirective, RouterLink],
   templateUrl: './output-popover.component.html',
   styleUrl: './output-popover.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -73,13 +72,15 @@ export function linkStateText(state: OutputState): string {
 export class OutputPopoverComponent {
   private readonly api = inject(StudioApiService);
   private readonly store = inject(ProductionStoreService);
-  private readonly toasts = inject(ToastService);
+  private readonly popovers = inject(PopoverService);
+  private readonly clipboard = inject(ClipboardService);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly injector = inject(Injector);
   private lastStateKey: string | null = null;
 
   protected readonly popoverId = OUTPUT_POPOVER;
   protected readonly t = t;
   protected readonly tm = tm;
-  protected readonly nameMax = LINK_NAME_MAX;
   /** "1080 × 1920 · 9:16 · 30 fps": the canvas of the production and the nominal frame rate. */
   protected readonly format = computed(() => {
     const ratio = formatRatioLabel(this.store.production()?.canvas.format ?? DEFAULT_CANVAS_FORMAT);
@@ -87,40 +88,25 @@ export class OutputPopoverComponent {
   });
   protected readonly settings = signal<OutputSettingsDto | null>(null);
   protected readonly loadError = signal<Msg | null>(null);
-  protected readonly selectedId = signal<string | null>(null);
-  protected readonly adding = signal(false);
-  protected readonly newName = new FormControl('', {
-    nonNullable: true,
-    validators: [
-      requiredName,
-      Validators.maxLength(LINK_NAME_MAX),
-      (control: AbstractControl<string>): ValidationErrors | null => this.takenName(control.value),
-    ],
-  });
+  /** The link whose real URL is shown because copying failed (it is selected for Ctrl+C). */
+  protected readonly revealedId = signal<string | null>(null);
 
   protected readonly status = this.store.outputStatus;
-  protected readonly links = computed(() => this.settings()?.links ?? []);
-  protected readonly selected = computed<OutputLinkDto | null>(
-    () => this.links().find((link) => link.id === this.selectedId()) ?? this.links()[0] ?? null,
-  );
-  /** The selected link as a list: one `sf-output-link` per selected link, so its drafts never carry over to another link. */
-  protected readonly selectedList = computed(() => {
-    const selected = this.selected();
-    return selected ? [selected] : [];
-  });
-  protected readonly atLimit = computed(() => {
-    const settings = this.settings();
-    return settings !== null && settings.links.length >= settings.maxLinks;
-  });
   protected readonly rows = computed<LinkRow[]>(() =>
-    this.links().map((link) => {
-      const state = this.status()?.links.find((entry) => entry.linkId === link.id)?.state ?? 'none';
+    (this.settings()?.links ?? []).map((link) => {
+      const entry = this.status()?.links.find((candidate) => candidate.linkId === link.id);
+      const state = entry?.state ?? 'none';
+      const blocked = state === 'connected' && entry?.audio?.state === 'blocked';
       return {
         link,
-        state,
-        stateText: linkStateText(state),
-        detail: state === 'none' ? this.lastSeenText(link) : this.audioDetail(link.id, state),
+        state: blocked
+          ? `${linkStateText(state)} · ${t('regie.audio.output.blocked')}`
+          : linkStateText(state),
+        stateClass:
+          state === 'connected' && !blocked ? 'c-state--ok' : state === 'none' ? '' : 'c-state--warn',
         lamp: state === 'connected' ? '' : state === 'stale' ? 'is-warn' : 'is-idle',
+        url: this.revealedId() === link.id ? link.url : maskOutputUrl(link.url),
+        title: state === 'none' ? this.lastSeenText(link) : null,
       };
     }),
   );
@@ -165,7 +151,7 @@ export class OutputPopoverComponent {
       ? `${streams} · ${t('regie.load.output.inSoftware', { count: softwareStreams })}`
       : streams;
   });
-  /** Software decoding is worth a look (amber); hardware decoding or none is calm. */
+  /** Software decoding is worth a look (orange); hardware decoding or none is calm. */
   protected readonly decodingClass = computed(() =>
     (this.playback().softwareStreams ?? 0) > 0 ? 'c-state--warn' : '',
   );
@@ -176,6 +162,19 @@ export class OutputPopoverComponent {
   });
   protected readonly droppedClass = computed(() =>
     this.playback().dropping ? 'c-state--warn' : '',
+  );
+  /** What to do about dropped frames, in words (instead of a tooltip only); null while the page keeps up. */
+  protected readonly droppingHint = computed(() => {
+    const { dropping, droppedPct } = this.playback();
+    return dropping && droppedPct !== null
+      ? t('regie.load.output.droppingHint', { percent: formatPercent(droppedPct) })
+      : null;
+  });
+  /** A connected output page cannot play sound yet (the browser waits for a click). */
+  protected readonly audioBlocked = computed(() =>
+    (this.status()?.links ?? []).some(
+      (link) => link.state === 'connected' && link.audio?.state === 'blocked',
+    ),
   );
   /** Changes whenever a link appears, goes, is renamed or changes its state. */
   private readonly stateKey = computed(() =>
@@ -197,7 +196,7 @@ export class OutputPopoverComponent {
     });
   }
 
-  /** (Re)loads the links, the limit and the frame ancestors. */
+  /** (Re)loads the links. */
   protected async load(): Promise<void> {
     const productionId = this.store.productionId();
     if (!productionId) {
@@ -211,66 +210,24 @@ export class OutputPopoverComponent {
     }
   }
 
-  protected async addLink(event: Event): Promise<void> {
-    event.preventDefault();
-    const productionId = this.store.productionId();
-    const name = this.newName.value.trim();
-    if (!productionId || this.adding() || this.atLimit()) {
-      return;
-    }
-    if (!name || this.newName.invalid) {
-      this.newName.markAsTouched();
-      return;
-    }
-    this.adding.set(true);
-    try {
-      const created = await this.api.createOutputLink(productionId, { name });
-      this.settings.update((settings) =>
-        settings ? { ...settings, links: [...settings.links, created] } : settings,
+  /** Copies the full URL of a link; where the clipboard is refused, its real URL is shown and selected. */
+  protected async copy(link: OutputLinkDto): Promise<void> {
+    const copied = await this.clipboard.copy(link.url, { label: maskOutputUrl(link.url) });
+    if (!copied) {
+      this.revealedId.set(link.id);
+      afterNextRender(
+        () =>
+          this.clipboard.selectContents(
+            this.host.nativeElement.querySelector<HTMLElement>(`[data-url="${link.id}"]`),
+          ),
+        { injector: this.injector },
       );
-      this.selectedId.set(created.id);
-      this.newName.reset('');
-      this.toasts.show(t('regie.output.link.created', { name: created.name }));
-    } catch (error) {
-      this.toasts.error(error);
-    } finally {
-      this.adding.set(false);
     }
   }
 
-  protected onUpdated(updated: OutputLinkDto): void {
-    this.settings.update((settings) =>
-      settings
-        ? {
-            ...settings,
-            links: settings.links.map((link) => (link.id === updated.id ? updated : link)),
-          }
-        : settings,
-    );
-  }
-
-  protected onRevoked(linkId: string): void {
-    this.settings.update((settings) =>
-      settings
-        ? { ...settings, links: settings.links.filter((link) => link.id !== linkId) }
-        : settings,
-    );
-    this.selectedId.set(null);
-  }
-
-  private takenName(value: string): ValidationErrors | null {
-    const name = value.trim().toLowerCase();
-    return name && this.links().some((link) => link.name.toLowerCase() === name)
-      ? { taken: true }
-      : null;
-  }
-
-  /** A connected link whose page cannot play sound says so under its name (the browser waits for a click). */
-  private audioDetail(linkId: string, state: OutputState): string | null {
-    const audio = this.status()?.links.find((entry) => entry.linkId === linkId)?.audio;
-    return state === 'connected' && audio?.state === 'blocked'
-      ? t('regie.audio.output.blocked')
-      : null;
+  /** "Manage output links…" leads to the settings window; the popover closes on the way. */
+  protected close(): void {
+    this.popovers.close(this.popoverId);
   }
 
   private lastSeenText(link: OutputLinkDto): string {

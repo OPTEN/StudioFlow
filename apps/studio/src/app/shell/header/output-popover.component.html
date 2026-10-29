@@ -6,13 +6,9 @@
   [popoverFocus]="false"
 >
   <div class="c-pop-h">{{ t('regie.header.output.label') }}</div>
-  <dl class="c-kv">
+  <dl class="c-kv c-output-pop__kv">
     <dt>{{ t('regie.header.output.stateLabel') }}</dt>
     <dd [class]="stateClass()">{{ stateText() }}</dd>
-    <dt>{{ t('regie.header.output.addressesLabel') }}</dt>
-    <dd class="u-mono">{{ addresses() }}</dd>
-    <dt>{{ t('regie.header.output.formatLabel') }}</dt>
-    <dd class="u-mono">{{ format() }}</dd>
     <dt>{{ t('regie.header.output.latencyLabel') }}</dt>
     <dd>
       @if (latency(); as latency) {
@@ -21,6 +17,10 @@
         <span class="c-output-pop__muted">{{ t('regie.header.output.latencyNone') }}</span>
       }
     </dd>
+    <dt>{{ t('regie.output.pop.addresses') }}</dt>
+    <dd class="c-output-pop__addresses">{{ addresses() }}</dd>
+    <dt>{{ t('regie.header.output.formatLabel') }}</dt>
+    <dd class="u-mono">{{ format() }}</dd>
     @if (decoding(); as decoding) {
       <dt>{{ t('regie.load.output.decodingLabel') }}</dt>
       <dd [class]="decodingClass()">{{ decoding }}</dd>
@@ -30,92 +30,56 @@
       <dd class="u-mono" [class]="droppedClass()">{{ dropped }}</dd>
     }
   </dl>
-
-  @if (loadError(); as error) {
-    <div class="c-output-pop__error">
-      <span class="c-field-error">{{ tm(error) }}</span>
-      <button class="c-btn c-btn--sm" type="button" (click)="load()">
-        {{ t('regie.header.output.retry') }}
-      </button>
-    </div>
-  } @else {
-    <section class="c-output-pop__section" aria-labelledby="sf-output-links">
-      <div class="c-pop-h" id="sf-output-links">{{ t('regie.output.links.title') }}</div>
-      <p class="c-pop-note">{{ t('regie.output.links.hint') }}</p>
-      @if (settings() === null) {
-        <p class="c-pop-note">{{ t('regie.header.output.linkLoading') }}</p>
-      } @else if (rows().length === 0) {
-        <p class="c-pop-note">{{ t('regie.output.links.empty') }}</p>
-      } @else {
-        <ul class="c-output-pop__links">
-          @for (row of rows(); track row.link.id) {
-            <li>
-              <button
-                class="c-output-pop__link"
-                type="button"
-                [class.is-selected]="row.link.id === selected()?.id"
-                [attr.aria-current]="row.link.id === selected()?.id ? 'true' : null"
-                (click)="selectedId.set(row.link.id)"
-              >
-                <span class="c-lamp" aria-hidden="true" [class]="row.lamp"></span>
-                <span class="c-output-pop__link-text">
-                  <span class="c-output-pop__link-line">{{
-                    t('regie.output.link.line', { name: row.link.name, state: row.stateText })
-                  }}</span>
-                  @if (row.detail) {
-                    <span class="c-output-pop__muted c-output-pop__link-detail">{{
-                      row.detail
-                    }}</span>
-                  }
-                </span>
-              </button>
-            </li>
-          }
-        </ul>
-      }
-      <form class="c-output-pop__add" (submit)="addLink($event)">
-        <input
-          class="c-input"
-          type="text"
-          autocomplete="off"
-          [placeholder]="t('regie.output.link.namePlaceholder')"
-          [attr.aria-label]="t('regie.output.link.nameLabel')"
-          [class.is-invalid]="newName.invalid && newName.touched"
-          [formControl]="newName"
-        />
-        <button
-          class="c-btn c-btn--sm"
-          type="submit"
-          [disabled]="settings() === null || atLimit() || adding()"
-        >
-          {{ t('regie.output.link.add') }}
-        </button>
-      </form>
-      @if (newName.invalid && newName.touched) {
-        <p class="c-field-error c-output-pop__note">
-          @if (newName.hasError('taken')) {
-            {{ t('regie.output.link.nameTaken') }}
-          } @else {
-            {{ t('regie.output.link.nameInvalid', { max: nameMax }) }}
-          }
-        </p>
-      }
-      @if (atLimit()) {
-        <p class="c-pop-note">
-          {{ t('regie.output.link.limit', { max: settings()?.maxLinks ?? 0 }) }}
-        </p>
-      }
-    </section>
-
-    @for (link of selectedList(); track link.id) {
-      <sf-output-link [link]="link" (updated)="onUpdated($event)" (revoked)="onRevoked($event)" />
-    }
-
-    @if (settings()?.frameAncestors?.length) {
-      <p class="c-pop-note">
-        {{ t('regie.header.output.embedAllowed') }}
-        <span class="u-mono">{{ settings()?.frameAncestors?.join(' ') }}</span>
-      </p>
-    }
+  @if (droppingHint(); as hint) {
+    <p class="c-output-pop__hint"><svg sfIcon="alert" aria-hidden="true"></svg>{{ hint }}</p>
   }
+  @if (audioBlocked()) {
+    <p class="c-output-pop__hint">
+      <svg sfIcon="speaker-off" aria-hidden="true"></svg>{{ t('regie.audio.output.blockedHint') }}
+    </p>
+  }
+
+  <div class="c-menu-sep"></div>
+  <section aria-labelledby="sf-output-links">
+    <div class="c-pop-h" id="sf-output-links">{{ t('regie.output.links.title') }}</div>
+    @if (loadError(); as error) {
+      <div class="c-output-pop__error">
+        <span class="c-field-error">{{ tm(error) }}</span>
+        <button class="c-btn c-btn--sm" type="button" (click)="load()">
+          {{ t('regie.header.output.retry') }}
+        </button>
+      </div>
+    } @else if (settings() === null) {
+      <p class="c-pop-note">{{ t('regie.output.links.loading') }}</p>
+    } @else if (rows().length === 0) {
+      <p class="c-pop-note">{{ t('regie.output.pop.empty') }}</p>
+    } @else {
+      <ul class="c-output-pop__links">
+        @for (row of rows(); track row.link.id) {
+          <li class="c-output-pop__link" [attr.title]="row.title">
+            <span class="c-lamp" aria-hidden="true" [class]="row.lamp"></span>
+            <span class="c-output-pop__text">
+              <span class="c-output-pop__line"
+                ><span class="c-output-pop__name">{{ row.link.name }}</span> ·
+                <span [class]="row.stateClass">{{ row.state }}</span></span
+              >
+              <span class="c-output-pop__url" [attr.data-url]="row.link.id">{{ row.url }}</span>
+            </span>
+            <button
+              class="c-btn c-btn--sm"
+              type="button"
+              [attr.aria-label]="t('regie.output.pop.copy', { name: row.link.name })"
+              (click)="copy(row.link)"
+            >
+              <svg sfIcon="copy"></svg>{{ t('common.copy') }}
+            </button>
+          </li>
+        }
+      </ul>
+    }
+  </section>
+  <div class="c-menu-sep"></div>
+  <a class="c-menu-item" routerLink="/settings/output" (click)="close()"
+    ><svg sfIcon="sliders"></svg>{{ t('regie.output.pop.manage') }}</a
+  >
 </div>

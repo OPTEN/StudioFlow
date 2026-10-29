@@ -18,7 +18,7 @@ import {
   type AbstractControl,
   type ValidationErrors,
 } from '@angular/forms';
-import { t } from '@studioflow/i18n';
+import { LOCALES, SUPPORTED_LOCALES, t } from '@studioflow/i18n';
 import type { OutputLinkDto } from '@studioflow/scene-model';
 import { StudioApiService } from '../../core/api/studio-api.service';
 import { ProductionStoreService } from '../../core/state/production-store.service';
@@ -26,16 +26,21 @@ import { ClipboardService } from '../../core/ui/clipboard.service';
 import { ConfirmBoxComponent } from '../../core/ui/confirm-box.component';
 import { IconComponent } from '../../core/ui/icon.component';
 import { ToastService } from '../../core/ui/toast.service';
+import { FormActionsComponent } from '../../settings/production/form-actions.component';
 import { isIpOrCidr, normalizeIp } from './ip-address';
 import { OutputCameraComponent } from './output-camera.component';
+import {
+  DEFAULT_LINK_OPTIONS,
+  maskOutputUrl,
+  outputLinkUrl,
+  type OutputLinkOptions,
+} from './output-url';
+
+// The URL helpers have their own module (the output popover uses them without this component).
+export { maskOutputUrl, outputLinkUrl } from './output-url';
 
 /** Longest link name the API accepts. */
 export const LINK_NAME_MAX = 40;
-
-/** "studioflow.example.com/o/webinar?k=••••••": without scheme and with the key masked. */
-export function maskOutputUrl(url: string): string {
-  return url.replace(/^https?:\/\//, '').replace(/([?&]k=)[^&#]*/, '$1••••••');
-}
 
 /** A name is required without its surrounding blanks (the API trims it). */
 export function requiredName(control: AbstractControl<string>): ValidationErrors | null {
@@ -47,14 +52,23 @@ function ipValidator(control: AbstractControl<string>): ValidationErrors | null 
   return !value || isIpOrCidr(value) ? null : { ip: true };
 }
 
+let nextId = 0;
+
 /**
- * The selected output link in the output popover (spec 9.1): its name (rename), the secret URL (masked; copy with
- * selection fallback), the IP restriction editor, "Use as camera …", "Regenerate link" and "Revoke link" behind dashed
- * red confirmations. Every change goes to the API; the popover gets the changed link back.
+ * One output link on the settings page "Output links" (spec 9.1), shown below its row: the name (renamed in place),
+ * the secret URL (masked, "Show link" reveals it; copy with selection fallback) with its display options, the IP
+ * restriction (edited as a draft, saved with "Save access"), "Use as camera in OBS", "New link" and "Revoke link"
+ * behind confirmations that name the consequence. Every change goes to the API; the page gets the changed link back.
  */
 @Component({
   selector: 'sf-output-link',
-  imports: [ConfirmBoxComponent, IconComponent, OutputCameraComponent, ReactiveFormsModule],
+  imports: [
+    ConfirmBoxComponent,
+    FormActionsComponent,
+    IconComponent,
+    OutputCameraComponent,
+    ReactiveFormsModule,
+  ],
   templateUrl: './output-link.component.html',
   styleUrl: './output-link.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -65,9 +79,10 @@ export class OutputLinkComponent {
   private readonly clipboard = inject(ClipboardService);
   private readonly toasts = inject(ToastService);
   private readonly injector = inject(Injector);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly urlElement = viewChild<ElementRef<HTMLElement>>('url');
 
-  /** The link; the popover creates this component anew when another link is selected. */
+  /** The link; the page keeps this component while the link stays in the list. */
   readonly link = input.required<OutputLinkDto>();
   /** The link changed on the server (renamed, new key, new IP restriction). */
   readonly updated = output<OutputLinkDto>();
@@ -76,10 +91,17 @@ export class OutputLinkComponent {
 
   protected readonly t = t;
   protected readonly nameMax = LINK_NAME_MAX;
+  protected readonly languages = SUPPORTED_LOCALES.map((tag) => ({
+    tag,
+    name: LOCALES[tag].nativeName,
+  }));
+  protected readonly id = `sf-output-link-${++nextId}`;
   protected readonly revealed = signal(false);
-  protected readonly confirming = signal<'regenerate' | 'revoke' | null>(null);
+  protected readonly confirming = signal<'renew' | 'revoke' | null>(null);
   protected readonly busy = signal(false);
   protected readonly cameraOpen = signal(false);
+  protected readonly optionsOpen = signal(false);
+  protected readonly options = signal<OutputLinkOptions>(DEFAULT_LINK_OPTIONS);
   protected readonly renaming = signal(false);
   protected readonly savingIps = signal(false);
   /** Edited IP list; null while unchanged (the server list is shown). */
@@ -94,13 +116,23 @@ export class OutputLinkComponent {
   });
 
   protected readonly ips = computed(() => this.draftIps() ?? this.link().allowedIps);
-  protected readonly ipsDirty = computed(() => this.draftIps() !== null);
+  protected readonly ipsDirty = computed(() => {
+    const draft = this.draftIps();
+    const saved = this.link().allowedIps;
+    return draft !== null && (draft.length !== saved.length || draft.some((ip, i) => ip !== saved[i]));
+  });
+  /** The URL with the chosen display options (what "Copy" copies). */
+  protected readonly url = computed(() => outputLinkUrl(this.link().url, this.options()));
   protected readonly displayUrl = computed(() =>
-    this.revealed() ? this.link().url : maskOutputUrl(this.link().url),
+    this.revealed() ? this.url() : maskOutputUrl(this.url()),
   );
 
+  protected setOption<K extends keyof OutputLinkOptions>(key: K, value: OutputLinkOptions[K]): void {
+    this.options.update((options) => ({ ...options, [key]: value }));
+  }
+
   protected async copy(): Promise<void> {
-    const url = this.link().url;
+    const url = this.url();
     const copied = await this.clipboard.copy(url, { label: maskOutputUrl(url) });
     if (!copied) {
       // Fallback: show the real link and select it, so Ctrl+C copies the working URL.
@@ -113,8 +145,14 @@ export class OutputLinkComponent {
   }
 
   protected startRename(): void {
-    this.nameControl.setValue(this.link().name);
+    this.nameControl.reset(this.link().name);
     this.renaming.set(true);
+    this.focus('[data-name-input]');
+  }
+
+  protected cancelRename(): void {
+    this.renaming.set(false);
+    this.focus('[data-rename]');
   }
 
   protected async rename(event: Event): Promise<void> {
@@ -125,13 +163,13 @@ export class OutputLinkComponent {
       return;
     }
     if (name === this.link().name) {
-      this.renaming.set(false);
+      this.cancelRename();
       return;
     }
     await this.run(async (productionId) => {
       const renamed = await this.api.renameOutputLink(productionId, this.link().id, { name });
-      this.renaming.set(false);
       this.updated.emit(renamed);
+      this.cancelRename();
       this.toasts.show(t('regie.output.link.renamed', { name: renamed.name }));
     });
   }
@@ -183,7 +221,7 @@ export class OutputLinkComponent {
     this.ipControl.reset('');
   }
 
-  protected async regenerate(): Promise<void> {
+  protected async renew(): Promise<void> {
     await this.run(async (productionId) => {
       const renewed = await this.api.regenerateOutputLinkKey(productionId, this.link().id);
       this.revealed.set(false);
@@ -200,6 +238,18 @@ export class OutputLinkComponent {
       this.revoked.emit(id);
       this.toasts.show(t('regie.output.link.revoked', { name }));
     });
+  }
+
+  protected cancelConfirm(selector: string): void {
+    this.confirming.set(null);
+    this.focus(selector);
+  }
+
+  private focus(selector: string): void {
+    afterNextRender(
+      () => this.host.nativeElement.querySelector<HTMLElement>(selector)?.focus(),
+      { injector: this.injector },
+    );
   }
 
   /** Runs one request for the production; errors become a toast, `busy` blocks a second click. */

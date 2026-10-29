@@ -1,0 +1,65 @@
+// Settings › Production › All productions: the list with the active production marked, then adding and the actions of
+// the active production. Forms open in place below the row that opened them.
+@use 'mixins' as *;
+@use './production-page';
+
+.c-prods__offline {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  margin: 0;
+}
+
+.c-prods__row {
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+}
+
+.c-prods__mark {
+  color: var(--blue);
+  display: grid;
+  place-items: center;
+}
+
+.c-prods__name {
+  @include ellipsis;
+  display: block;
+
+  .is-active & {
+    font-weight: 600;
+  }
+}
+
+.c-prods__badges {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+}
+
+// An open form: its rows follow the row that opened it, with the hairline the primitive draws between siblings.
+.c-prods__form,
+.c-prods__panel {
+  box-shadow: inset 0 1px 0 var(--seam);
+}
+
+.c-prods__form {
+  display: grid;
+}
+
+.c-prods__actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.c-prods__this {
+  align-items: baseline;
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+}
+
+.c-prods__this-name {
+  @include ellipsis;
+  color: var(--muted);
+  font-weight: 400;
+}

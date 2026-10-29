@@ -1,26 +1,51 @@
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
+import { Router } from '@angular/router';
 import { FakeStudioHub, flushMicrotasks } from '../../../testing/fake-studio-hub';
-import { snapshotFixture } from '../../../testing/fixtures';
+import { PRODUCTION_ID, productionFixture, snapshotFixture } from '../../../testing/fixtures';
 import { startStore, studioTestProviders, type StoreHarness } from '../../../testing/store-harness';
-import { AuthService } from '../../core/auth/auth.service';
 import { PopoverService } from '../../core/ui/popover.directive';
+import { ToastService } from '../../core/ui/toast.service';
 import { PRODUCTION_POPOVER, ProductionMenuComponent } from './production-menu.component';
 
-describe('ProductionMenuComponent: change password', () => {
+const OTHER_ID = 'prd_bbbbbbbbbbbbbbbb';
+const LIST = [
+  {
+    id: PRODUCTION_ID,
+    name: 'Webinar',
+    slug: 'webinar',
+    isActive: true,
+    createdAt: '2026-10-20T08:00:00Z',
+  },
+  {
+    id: OTHER_ID,
+    name: 'Town hall',
+    slug: 'town-hall',
+    isActive: false,
+    createdAt: '2026-10-21T08:00:00Z',
+  },
+];
+
+describe('ProductionMenuComponent: the production switcher', () => {
   let harness: StoreHarness;
   let fixture: ComponentFixture<ProductionMenuComponent>;
   let element: HTMLElement;
 
-  async function setup(): Promise<void> {
+  async function setup(broadcast: 'standby' | 'live' = 'standby'): Promise<void> {
     const hub = new FakeStudioHub();
     TestBed.configureTestingModule({ providers: studioTestProviders(hub) });
-    harness = await startStore(hub, snapshotFixture());
-    TestBed.inject(AuthService).session.set({ username: 'regie' });
+    harness = await startStore(
+      hub,
+      snapshotFixture({ production: productionFixture({ name: 'Webinar', broadcast }) }),
+    );
     fixture = TestBed.createComponent(ProductionMenuComponent);
     element = fixture.nativeElement as HTMLElement;
+    await render();
+  }
+
+  async function open(): Promise<void> {
     TestBed.inject(PopoverService).open(PRODUCTION_POPOVER);
     await render();
-    harness.http.match('/api/productions').forEach((request) => request.flush([]));
+    harness.http.match('/api/productions').forEach((request) => request.flush(LIST));
     await render();
   }
 
@@ -30,93 +55,146 @@ describe('ProductionMenuComponent: change password', () => {
     await fixture.whenStable();
   }
 
-  function item(label: string): HTMLButtonElement {
-    const found = Array.from(element.querySelectorAll<HTMLButtonElement>('button')).find(
-      (button) => button.textContent?.trim() === label,
-    );
+  function text(node: Element | null | undefined): string {
+    return (node?.textContent ?? '').replace(/\s+/g, ' ').trim();
+  }
+
+  function items(): HTMLElement[] {
+    return Array.from(element.querySelectorAll<HTMLElement>('.c-menu-item'));
+  }
+
+  function item(label: string): HTMLElement {
+    const found = items().find((entry) => text(entry).startsWith(label));
     if (!found) {
-      throw new Error(`no button "${label}"`);
+      throw new Error(`no menu item "${label}"`);
     }
     return found;
   }
 
   afterEach(() => harness?.http.verify());
 
-  it('offers "Change password" between the production entries and "Sign out"', async () => {
+  it('is a title button named after the production that opens a dialog', async () => {
     await setup();
-    const labels = Array.from(element.querySelectorAll('.c-menu-item')).map((button) =>
-      button.textContent?.trim(),
-    );
-    expect(labels.slice(-2)).toEqual(['Change password', 'Sign out']);
+    const trigger = element.querySelector<HTMLButtonElement>('.c-prod__trigger')!;
+    expect(trigger.getAttribute('aria-label')).toBe('Production Webinar, menu');
+    expect(trigger.getAttribute('aria-haspopup')).toBe('dialog');
+    expect(text(element.querySelector('.c-prod__name'))).toBe('Webinar');
   });
 
-  it('links to the audit log page', async () => {
+  it('lists the productions with the active one checked, then new, import and the settings', async () => {
     await setup();
+    await open();
 
-    const link = element.querySelector<HTMLAnchorElement>('a.c-menu-item[href="/audit"]');
-
-    expect(link?.textContent?.trim()).toBe('Audit log');
-    expect(link?.getAttribute('href')).toBe('/audit');
-  });
-
-  it('links to the server settings page next to the audit log', async () => {
-    await setup();
-
-    const links = Array.from(element.querySelectorAll<HTMLAnchorElement>('a.c-menu-item'));
-    const names = links.map((link) => link.textContent?.trim());
-    const audit = names.indexOf('Audit log');
-
-    expect(audit).toBeGreaterThanOrEqual(0);
-    expect(names[audit + 1]).toBe('Server settings');
-    expect(links[audit + 1].getAttribute('href')).toBe('/settings');
-  });
-
-  it('opens the form in the menu and goes back to the menu on cancel', async () => {
-    await setup();
-    item('Change password').click();
-    await render();
-    expect(element.querySelector('sf-change-password-form')).not.toBeNull();
-    expect(element.querySelector('#change-current')).not.toBeNull();
-    item('Cancel').click();
-    await render();
-    expect(element.querySelector('sf-change-password-form')).toBeNull();
-    expect(element.querySelector('.c-menu-item')).not.toBeNull();
-  });
-
-  it('changes the password and returns to the menu', async () => {
-    await setup();
-    item('Change password').click();
-    await render();
-    for (const [id, value] of [
-      ['change-current', 'old-passphrase-1'],
-      ['change-password', 'new-passphrase-2'],
-      ['change-repeat', 'new-passphrase-2'],
-    ]) {
-      const field = element.querySelector<HTMLInputElement>(`#${id}`)!;
-      field.value = value;
-      field.dispatchEvent(new Event('input'));
+    const dialog = element.querySelector('[role="dialog"]');
+    expect(dialog?.getAttribute('aria-label')).toBe('Production');
+    expect(items().map((entry) => entry.querySelector('.c-prod__item-name')?.textContent ?? text(entry))).toEqual([
+      'Webinar',
+      'Town hall',
+      'New production…',
+      'Import…',
+      'Production settings…',
+    ]);
+    expect(item('Webinar').getAttribute('aria-current')).toBe('true');
+    expect(item('Webinar').querySelector('svg')).not.toBeNull();
+    expect(item('Town hall').getAttribute('aria-current')).toBeNull();
+    // Account and installation entries live in the settings window now.
+    for (const gone of ['Change password', 'Sign out', 'Server settings', 'Audit log', 'Rename']) {
+      expect(text(dialog)).not.toContain(gone);
     }
-    element.querySelector('form')?.dispatchEvent(new Event('submit', { cancelable: true }));
-    await flushMicrotasks();
-    harness.http
-      .expectOne('/api/auth/password')
-      .flush(null, { status: 204, statusText: 'No Content' });
-    await render();
-    expect(element.querySelector('sf-change-password-form')).toBeNull();
-    expect(element.querySelector('.c-menu-item')).not.toBeNull();
   });
 
-  it('starts at the menu again when the popover is opened anew', async () => {
+  it('leads to the settings window: the forms of "All productions" and the production settings', async () => {
     await setup();
-    item('Change password').click();
+    await open();
+
+    expect(item('New production…').getAttribute('href')).toBe('/settings/productions?form=new');
+    expect(item('Import…').getAttribute('href')).toBe('/settings/productions?form=import');
+    expect(item('Production settings…').getAttribute('href')).toBe('/settings/production');
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+    item('Production settings…').click();
+    expect(String(navigate.mock.calls[0]?.[0])).toBe('/settings/production');
     await render();
+    expect(TestBed.inject(PopoverService).isOpen(PRODUCTION_POPOVER)).toBe(false);
+  });
+
+  it('switches to another production in one click while the broadcast is not live', async () => {
+    await setup();
+    await open();
+
+    item('Town hall').click();
+    await render();
+    harness.http.expectOne(`/api/productions/${OTHER_ID}/activate`).flush(productionFixture());
+    await render();
+    harness.http.match(() => true).forEach((request) => request.flush(null));
+
+    expect(TestBed.inject(ToastService).current()?.message).toBe('Switched to “Town hall”');
+    expect(TestBed.inject(PopoverService).isOpen(PRODUCTION_POPOVER)).toBe(false);
+  });
+
+  it('asks first while the broadcast is live and names what keeps running', async () => {
+    await setup('live');
+    await open();
+
+    expect(text(item('Webinar'))).toContain('On air');
+    item('Town hall').click();
+    await render();
+
+    const box = element.querySelector('[role="group"][aria-label="Switch production"]');
+    expect(text(box)).toContain('“Webinar” is on air. Its output keeps running');
+    harness.http.expectNone(`/api/productions/${OTHER_ID}/activate`);
+
+    const cancel = Array.from(box!.querySelectorAll('button')).find((b) => text(b) === 'Cancel')!;
+    cancel.click();
+    await render();
+    expect(element.querySelector('sf-confirm-box')).toBeNull();
+    expect(items().length).toBe(5);
+
+    item('Town hall').click();
+    await render();
+    Array.from(element.querySelectorAll<HTMLButtonElement>('sf-confirm-box button'))
+      .find((b) => text(b) === 'Switch production')!
+      .click();
+    await render();
+    harness.http.expectOne(`/api/productions/${OTHER_ID}/activate`).flush(productionFixture());
+    await render();
+    harness.http.match(() => true).forEach((request) => request.flush(null));
+  });
+
+  it('only closes when the active production is chosen', async () => {
+    await setup();
+    await open();
+
+    item('Webinar').click();
+    await render();
+
+    harness.http.expectNone(`/api/productions/${PRODUCTION_ID}/activate`);
+    expect(TestBed.inject(PopoverService).isOpen(PRODUCTION_POPOVER)).toBe(false);
+  });
+
+  it('says why switching is off while the control room is offline', async () => {
+    await setup();
+    await open();
+    harness.hub.drop();
+    await render();
+
+    expect(text(element)).toContain('No connection to the server.');
+    expect((item('Town hall') as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('reads the list again at every opening and says when it cannot', async () => {
+    await setup();
     const popovers = TestBed.inject(PopoverService);
-    popovers.close(PRODUCTION_POPOVER);
-    await render();
     popovers.open(PRODUCTION_POPOVER);
     await render();
-    harness.http.match('/api/productions').forEach((request) => request.flush([]));
+    harness.http
+      .expectOne('/api/productions')
+      .flush({ code: 'internal_error' }, { status: 500, statusText: 'x' });
     await render();
-    expect(element.querySelector('sf-change-password-form')).toBeNull();
+    expect(text(element)).toContain('The productions could not be loaded.');
+
+    popovers.close(PRODUCTION_POPOVER);
+    await render();
+    await open();
+    expect(item('Town hall')).toBeTruthy();
   });
 });

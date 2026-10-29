@@ -2,16 +2,18 @@ import type { Translation } from '../../types';
 import type { regieOutput as en } from '../en/regie-output';
 
 export const regieOutput: Translation<typeof en> = {
+  'regie.output.access.save': 'Zugriff speichern',
+
   'regie.output.camera.audio':
     'Die Kamera überträgt nur Bild. Der Ton bleibt am Mischpult und geht von dort in Teams.',
-  'regie.output.camera.close': 'Anleitung schliessen',
   'regie.output.camera.download': 'OBS-Szenensammlung herunterladen',
   'regie.output.camera.downloaded': 'OBS-Szenensammlung «{file}» heruntergeladen',
+  'regie.output.camera.hide': 'Schritte ausblenden',
   'regie.output.camera.intro': 'OBS macht aus der Output-Seite die Kamera «OBS Virtual Camera».',
-  'regie.output.camera.open': 'Als Kamera nutzen …',
-  'regie.output.camera.runbook': 'Mehr im Runbook: «Output as a camera in Teams/Zoom».',
+  'regie.output.camera.open': 'Als Kamera in OBS nutzen',
   'regie.output.camera.separateMachine':
     'OBS und Teams auf einem eigenen Rechner betreiben, nicht auf dem Regie-Laptop: Der Output darf nicht von ihm abhängen.',
+  'regie.output.camera.show': 'Schritte zeigen',
   'regie.output.camera.step1':
     'OBS Studio 31 oder neuer auf dem Rechner installieren, auf dem Teams oder Zoom läuft.',
   'regie.output.camera.step2':
@@ -21,8 +23,22 @@ export const regieOutput: Translation<typeof en> = {
   'regie.output.camera.step4': 'In OBS «Virtuelle Kamera starten» klicken.',
   'regie.output.camera.step5':
     'In Teams, Zoom oder Webex die Kamera «OBS Virtual Camera» wählen und Hintergrundeffekte ausschalten.',
+  'regie.output.camera.sub': 'Den Output in Teams, Zoom oder Webex als Kamera zeigen.',
   'regie.output.camera.title': '«{name}» als Kamera nutzen',
-  'regie.output.link.add': 'Link anlegen',
+
+  'regie.output.detail.hide': 'Link verbergen',
+  'regie.output.detail.link': 'Link',
+  'regie.output.detail.secret':
+    'Wer diesen Link hat, kann den Output öffnen. Gib ihn nur der Seite oder dem Gerät, für das er gedacht ist.',
+  'regie.output.detail.show': 'Link zeigen',
+
+  'regie.output.embed.change': 'Einbetten ändern …',
+  'regie.output.embed.hint':
+    'Websites, die den Output in einem Rahmen zeigen dürfen. Sie gelten für alle Produktionen.',
+  'regie.output.embed.self': 'Dieser Server',
+  'regie.output.embed.title': 'Einbetten',
+
+  'regie.output.link.add': 'Link hinzufügen',
   'regie.output.link.connected': 'verbunden',
   'regie.output.link.created': 'Link «{name}» erstellt',
   'regie.output.link.keyLabel': 'Link «{name}»',
@@ -35,18 +51,48 @@ export const regieOutput: Translation<typeof en> = {
   'regie.output.link.nameTaken': 'Einen Link mit diesem Namen gibt es schon.',
   'regie.output.link.neverSeen': 'noch nie verbunden',
   'regie.output.link.none': 'nicht verbunden',
+  'regie.output.link.pages': { one: '{count} Seite', other: '{count} Seiten' },
   'regie.output.link.rename': 'Umbenennen',
   'regie.output.link.renameLabel': 'Neuer Name von «{name}»',
   'regie.output.link.renamed': 'Link umbenannt in «{name}»',
   'regie.output.link.revoke': 'Link widerrufen',
   'regie.output.link.revokeConfirm': 'Widerrufen',
   'regie.output.link.revokeMessage':
-    'Seiten, die «{name}» nutzen, werden sofort getrennt. Die anderen Links funktionieren weiter.',
+    '«{name}» funktioniert sofort nicht mehr und wird entfernt: Seiten, die ihn nutzen, zeigen «Kein Zugang». Die anderen Links funktionieren weiter.',
   'regie.output.link.revoked': 'Link «{name}» widerrufen',
   'regie.output.link.stale': 'kein aktuelles Bild',
+
   'regie.output.links.empty':
-    'Noch kein Link. Einen anlegen, damit ein Proxy oder eine Kamera den Output zeigen kann.',
+    'Unten einen Link hinzufügen, damit ein Proxy, OBS oder eine Meeting-Kamera den Output zeigen kann.',
+  'regie.output.links.emptyTitle': 'Noch kein Output-Link',
   'regie.output.links.hint':
-    'Ein Link pro Abnehmer: der Proxy, die Teams-Kamera, … Jeder lässt sich einzeln widerrufen.',
+    'Ein Link pro Seite oder Gerät, das den Output zeigt, etwa der Proxy oder eine Meeting-Kamera. Jeder lässt sich einzeln stoppen.',
+  'regie.output.links.loading': 'Links werden geladen …',
   'regie.output.links.title': 'Links',
+
+  'regie.output.options.language': 'Sprache der Meldungen',
+  'regie.output.options.languageSub':
+    'Für die Meldungen, die die Output-Seite selbst zeigt, etwa «Kein Zugang».',
+  'regie.output.options.sound': 'Ton',
+  'regie.output.options.soundSub': 'Ausschalten für eine Seite, die nur das Bild zeigt.',
+  'regie.output.options.sub': 'Sie werden Teil des kopierten Links.',
+  'regie.output.options.title': 'Link-Optionen',
+  'regie.output.options.transparent': 'Transparenter Hintergrund',
+  'regie.output.options.transparentSub':
+    'Für ein Overlay in OBS: Die leere Leinwand ist durchsichtig.',
+
+  'regie.output.pop.addresses': 'Verbunden von',
+  'regie.output.pop.copy': 'Link «{name}» kopieren',
+  'regie.output.pop.empty': 'Noch kein Output-Link.',
+  'regie.output.pop.manage': 'Output-Links verwalten …',
+
+  'regie.output.renew.button': 'Neuer Link …',
+  'regie.output.renew.confirm':
+    'Der alte Link von «{name}» funktioniert sofort nicht mehr: Seiten, die ihn nutzen, zeigen «Kein Zugang» und brauchen den neuen Link.',
+  'regie.output.renew.confirmButton': 'Neuen Link erzeugen',
+  'regie.output.renew.sub': 'Einen neuen Link erzeugen und den alten stoppen.',
+  'regie.output.renew.title': 'Neuer Link',
+
+  'regie.output.revoke.button': 'Widerrufen …',
+  'regie.output.revoke.sub': 'Diesen Link endgültig stoppen. Die anderen Links funktionieren weiter.',
 };

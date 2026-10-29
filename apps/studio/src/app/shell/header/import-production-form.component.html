@@ -1,6 +1,4 @@
 <div class="c-xfer" role="group" [attr.aria-label]="t('regie.transfer.import.title')">
-  <div class="c-pop-h">{{ t('regie.transfer.import.title') }}</div>
-
   <input
     #picker
     hidden
@@ -15,33 +13,37 @@
   }
 
   @if (preview(); as info) {
-    <div class="c-label">{{ t('regie.transfer.import.previewTitle') }}</div>
-    <dl class="c-kv c-xfer__kv" data-testid="import-preview">
-      <dt>{{ t('regie.transfer.import.name') }}</dt>
-      <dd data-testid="import-name">{{ info.name }}</dd>
-    </dl>
-    <ul class="c-xfer__list">
-      <li>{{ scenesText() }}</li>
-      <li>{{ textsText() }}</li>
-      <li>{{ mediaText() }}</li>
-    </ul>
-    @if (placeholders().length > 0) {
-      <div class="c-label">{{ t('regie.transfer.import.placeholders') }}</div>
-      <ul class="c-xfer__list" data-testid="import-placeholders">
-        @for (placeholder of placeholders(); track placeholder.code) {
-          <li>
-            <span class="c-code">{{ placeholder.code }}</span> {{ placeholder.label }}
-          </li>
-        }
-        @if (morePlaceholders() > 0) {
-          <li class="c-xfer__more">+{{ morePlaceholders() }}</li>
-        }
+    <div class="c-xfer__preview">
+      <div class="c-xfer__heading">{{ t('regie.transfer.import.previewTitle') }}</div>
+      <dl class="c-kv c-xfer__kv" data-testid="import-preview">
+        <dt>{{ t('regie.transfer.import.name') }}</dt>
+        <dd data-testid="import-name">{{ info.name }}</dd>
+      </dl>
+      <ul class="c-xfer__list">
+        <li>{{ scenesText() }}</li>
+        <li>{{ textsText() }}</li>
+        <li>{{ mediaText() }}</li>
       </ul>
-    }
-    @for (text of warnings(); track text) {
-      <p class="c-xfer__warn" role="status">{{ text }}</p>
-    }
-    <p class="c-hint">{{ versionText() }}</p>
+      @if (placeholders().length > 0) {
+        <div class="c-xfer__heading">{{ t('regie.transfer.import.placeholders') }}</div>
+        <ul class="c-xfer__list c-xfer__list--codes" data-testid="import-placeholders">
+          @for (placeholder of placeholders(); track placeholder.code) {
+            <li>
+              <span class="c-code">{{ placeholder.code }}</span> {{ placeholder.label }}
+            </li>
+          }
+          @if (morePlaceholders() > 0) {
+            <li class="c-xfer__more">+{{ morePlaceholders() }}</li>
+          }
+        </ul>
+      }
+      @for (text of warnings(); track text) {
+        <p class="c-xfer__warn" role="status">
+          <svg sfIcon="alert" aria-hidden="true"></svg><span>{{ text }}</span>
+        </p>
+      }
+      <p class="c-hint">{{ versionText() }}</p>
+    </div>
   }
 
   @if (working()) {
@@ -72,13 +74,19 @@
   }
 
   <div class="c-xfer__row">
+    <button class="c-btn" type="button" (click)="cancel()">
+      {{ t('common.cancel') }}
+    </button>
     @if (phase() === 'choose') {
-      <button class="c-btn c-btn--sm c-btn--fill" type="button" (click)="picker.click()">
+      <button class="c-btn c-btn--fill" type="button" (click)="picker.click()">
         {{ t('regie.transfer.import.choose') }}
       </button>
     } @else if (phase() === 'preview' || phase() === 'importing') {
+      <button class="c-btn" type="button" [disabled]="working()" (click)="picker.click()">
+        {{ t('regie.transfer.import.another') }}
+      </button>
       <button
-        class="c-btn c-btn--sm c-btn--fill"
+        class="c-btn c-btn--fill"
         type="button"
         data-testid="import-submit"
         [disabled]="working()"
@@ -86,12 +94,6 @@
       >
         {{ t('regie.transfer.import.submit') }}
       </button>
-      <button class="c-btn c-btn--sm" type="button" [disabled]="working()" (click)="picker.click()">
-        {{ t('regie.transfer.import.another') }}
-      </button>
     }
-    <button class="c-btn c-btn--sm" type="button" (click)="cancel()">
-      {{ t('common.cancel') }}
-    </button>
   </div>
 </div>

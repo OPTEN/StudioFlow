@@ -11,7 +11,8 @@ import { newUiContext } from '../../support/ui/init';
 
 /**
  * Output links and the output as a camera (issue #9, docs/testing.md E2E-LINK-01 .. E2E-LINK-03): a production has several
- * named output links, each with its own state, IP restriction and revocation; the popover downloads an OBS scene
+ * named output links, each with its own state (in the output popover of the control room), IP restriction and
+ * revocation (on the settings page "Output links", opened in a second tab); the settings page downloads an OBS scene
  * collection whose browser source shows the chosen link. The Regie and the output run in English (`en-US`), whatever
  * the language of the other specs.
  */
@@ -22,8 +23,12 @@ const ENGLISH_UI = { context: { locale: 'en-US' } } as const;
 
 const chip = (page: Page): Locator => page.getByRole('button', { name: /^Output/ });
 const popover = (page: Page): Locator => page.getByRole('dialog', { name: 'Output' });
+/** The line "Proxy · connected" of a link in the output popover. */
 const linkRow = (pop: Locator, name: string): Locator =>
-  pop.locator('.c-output-pop__link').filter({ hasText: name });
+  pop
+    .locator('.c-output-pop__link')
+    .filter({ has: pop.page().locator('.c-output-pop__name', { hasText: name }) })
+    .locator('.c-output-pop__line');
 
 async function openPopover(page: Page): Promise<Locator> {
   const pop = popover(page);
@@ -32,10 +37,21 @@ async function openPopover(page: Page): Promise<Locator> {
   return pop;
 }
 
-async function addLink(pop: Locator, name: string): Promise<void> {
-  await pop.getByLabel('Name of the new link').fill(name);
-  await pop.getByRole('button', { name: 'Create link' }).click();
-  await expect(linkRow(pop, name)).toBeVisible();
+/** The settings page "Output links" in a second tab of the same browser. */
+async function openLinkSettings(page: Page): Promise<Page> {
+  const settings = await page.context().newPage();
+  await settings.goto('/settings/output');
+  await expect(settings.getByRole('heading', { level: 1, name: 'Output links' })).toBeVisible();
+  return settings;
+}
+
+/** Adds a link on the settings page; the new link opens below its row. */
+async function addLink(settings: Page, name: string): Promise<Locator> {
+  await settings.getByLabel('Name of the new link').fill(name);
+  await settings.getByRole('button', { name: 'Add link' }).click();
+  const detail = settings.getByRole('region', { name: `Link “${name}”` });
+  await expect(detail).toBeVisible();
+  return detail;
 }
 
 test.describe('LINK output links and the camera', () => {
@@ -46,8 +62,13 @@ test.describe('LINK output links and the camera', () => {
       test.setTimeout(120_000);
       const page = regie.page;
       const pop = await openPopover(page);
-      await expect(linkRow(pop, 'Proxy')).toContainText('Proxy · not connected');
-      await addLink(pop, 'Teams camera');
+      await expect(linkRow(pop, 'Proxy')).toHaveText('Proxy · not connected');
+      const settingsPage = await openLinkSettings(page);
+      const teamsDetail = await addLink(settingsPage, 'Teams camera');
+      // The popover reads the links when it opens.
+      await page.keyboard.press('Escape');
+      await openPopover(page);
+      await expect(linkRow(pop, 'Teams camera'), 'the popover lists the new link').toBeVisible();
       const teamsKey = await production
         .snapshot()
         .then(() => api.getOutputSettings(production.id))
@@ -63,19 +84,18 @@ test.describe('LINK output links and the camera', () => {
       const teamsPage = await openOutput({ slug: production.slug, outputKey: teamsKey }, {}, { context: ENGLISH_UI });
       await proxyPage.stage();
       await teamsPage.stage();
-      await expect(linkRow(pop, 'Proxy')).toHaveText(/^Proxy · connected$/, { timeout: 15_000 });
-      await expect(linkRow(pop, 'Teams camera')).toHaveText(/^Teams camera · connected$/, {
+      await expect(linkRow(pop, 'Proxy')).toHaveText('Proxy · connected', { timeout: 15_000 });
+      await expect(linkRow(pop, 'Teams camera')).toHaveText('Teams camera · connected', {
         timeout: 15_000,
       });
       await expect(chip(page)).toContainText('Proxy + Teams camera');
 
-      // Revoke "Teams camera" in the popover: only its page is denied, within the key hard limit.
-      await linkRow(pop, 'Teams camera').click();
-      await pop.getByRole('button', { name: 'Revoke link' }).click();
+      // Revoke "Teams camera" on the settings page: only its page is denied, within the key hard limit.
+      await teamsDetail.getByRole('button', { name: 'Revoke…' }).click();
       const clicked = Date.now();
-      await pop
+      await teamsDetail
         .getByRole('group', { name: 'Revoke link' })
-        .getByRole('button', { name: 'Revoke' })
+        .getByRole('button', { name: 'Revoke', exact: true })
         .click();
       await expect
         .poll(() => teamsPage.slateText(), {
@@ -91,10 +111,11 @@ test.describe('LINK output links and the camera', () => {
       });
       expect(deniedAfter, 'T-KEY hard limit').toBeLessThanOrEqual(THRESHOLD.keyHardMs);
       await expect(linkRow(pop, 'Teams camera')).toHaveCount(0);
+      await expect(settingsPage.getByRole('button', { name: /^Teams camera/ })).toHaveCount(0);
 
       // The other link keeps playing: its page is not denied, still connected, and survives a few report ticks.
       expect(await proxyPage.slateText()).not.toContain('No access');
-      await expect(linkRow(pop, 'Proxy')).toHaveText(/^Proxy · connected$/, { timeout: 10_000 });
+      await expect(linkRow(pop, 'Proxy')).toHaveText('Proxy · connected', { timeout: 10_000 });
       await expect(chip(page)).toContainText('Proxy');
       await expect(chip(page)).not.toContainText('Teams camera');
       await proxyPage.page.waitForTimeout(3000);
@@ -167,22 +188,23 @@ test.describe('LINK output links and the camera', () => {
   );
 
   test(
-    'E2E-LINK-03 [regie, download] “Use as camera …” downloads a valid OBS scene collection whose browser source is the chosen link at 1920 × 1080, 30 fps; that link works as an output page',
+    'E2E-LINK-03 [settings, download] “Use as camera in OBS” downloads a valid OBS scene collection whose browser source is the chosen link at 1920 × 1080, 30 fps; that link works as an output page',
     t.p0,
     async ({ regie, browser, api, production, onCleanup }) => {
       test.setTimeout(120_000);
       const page = regie.page;
       const pop = await openPopover(page);
-      await addLink(pop, 'Teams camera');
-      await pop.getByRole('button', { name: 'Use as camera …' }).click();
-      const steps = pop.locator('.c-output-camera__steps li');
+      const settingsPage = await openLinkSettings(page);
+      const detail = await addLink(settingsPage, 'Teams camera');
+      await detail.getByRole('button', { name: 'Show steps' }).click();
+      const steps = detail.locator('.c-output-camera__steps > li');
       await expect(steps).toHaveCount(5);
       await expect(steps.nth(2)).toContainText('1920 × 1080');
-      await expect(pop).toContainText('separate computer, not on the Regie laptop');
+      await expect(detail).toContainText('separate computer, not on the Regie laptop');
 
       const [download] = await Promise.all([
-        page.waitForEvent('download'),
-        pop.getByRole('button', { name: 'Download OBS scene collection' }).click(),
+        settingsPage.waitForEvent('download'),
+        detail.getByRole('button', { name: 'Download OBS scene collection' }).click(),
       ]);
       expect(download.suggestedFilename()).toBe('StudioFlow-Teams-camera.json');
       const text = await readFile(await download.path(), 'utf8');
@@ -216,7 +238,7 @@ test.describe('LINK output links and the camera', () => {
         outputKey: parseOutputUrl(settings['url'] as string).key,
       });
       await output.stage();
-      await expect(linkRow(pop, 'Teams camera')).toHaveText(/^Teams camera · connected$/, {
+      await expect(linkRow(pop, 'Teams camera')).toHaveText('Teams camera · connected', {
         timeout: 15_000,
       });
       await expect(linkRow(pop, 'Proxy')).toContainText('not connected');

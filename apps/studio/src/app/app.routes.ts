@@ -20,13 +20,38 @@ function serverPage(
   };
 }
 
-/** A production page of the settings window. */
-function productionPage(path: string, titleKey: PlainMessageKey): Route {
+/** A production page of the settings window (settings/production). */
+function productionPage(
+  path: 'production' | 'slates' | 'text-style' | 'output' | 'productions',
+  titleKey: PlainMessageKey,
+): Route {
   return {
     path: `settings/${path}`,
-    data: { titleKey, navKey: titleKey, scope: 'production' },
-    loadComponent: () =>
-      import('./settings/pages/placeholder-page.component').then((m) => m.PlaceholderPageComponent),
+    data: { titleKey },
+    loadComponent: () => {
+      switch (path) {
+        case 'production':
+          return import('./settings/production/general-page.component').then(
+            (m) => m.GeneralPageComponent,
+          );
+        case 'slates':
+          return import('./settings/production/slates-page.component').then(
+            (m) => m.SlatesPageComponent,
+          );
+        case 'text-style':
+          return import('./settings/production/text-style-page.component').then(
+            (m) => m.TextStylePageComponent,
+          );
+        case 'output':
+          return import('./settings/production/output-links-page.component').then(
+            (m) => m.OutputLinksPageComponent,
+          );
+        case 'productions':
+          return import('./settings/production/productions-page.component').then(
+            (m) => m.ProductionsPageComponent,
+          );
+      }
+    },
   };
 }
 

@@ -1,11 +1,11 @@
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
+import { Router } from '@angular/router';
 import type { OutputLinkDto, OutputSettingsDto, OutputStatusDto } from '@studioflow/scene-model';
 import { FakeStudioHub, flushMicrotasks } from '../../../testing/fake-studio-hub';
 import { PRODUCTION_ID, snapshotFixture } from '../../../testing/fixtures';
 import { startStore, studioTestProviders, type StoreHarness } from '../../../testing/store-harness';
-import { DownloadService } from '../../core/ui/download.service';
+import { ClipboardService } from '../../core/ui/clipboard.service';
 import { PopoverService } from '../../core/ui/popover.directive';
-import { ToastService } from '../../core/ui/toast.service';
 import { OUTPUT_POPOVER, OutputPopoverComponent } from './output-popover.component';
 
 const BASE = `/api/productions/${PRODUCTION_ID}/output`;
@@ -79,7 +79,6 @@ describe('OutputPopoverComponent', () => {
       { olk_proxy: 'connected', olk_teams: 'none' },
       { olk_proxy: 'Proxy', olk_teams: 'Teams camera' },
     ),
-    maxLinks = 10,
   ): Promise<void> {
     const hub = new FakeStudioHub();
     TestBed.configureTestingModule({ providers: studioTestProviders(hub) });
@@ -88,40 +87,43 @@ describe('OutputPopoverComponent', () => {
     element = fixture.nativeElement as HTMLElement;
     TestBed.inject(PopoverService).open(OUTPUT_POPOVER);
     await render();
-    harness.http.expectOne(BASE).flush(settings(links, maxLinks));
+    harness.http.expectOne(BASE).flush(settings(links));
     await render();
   }
 
-  function text(): string {
-    return (element.textContent ?? '').replace(/\s+/g, ' ');
+  function text(node: Element | null = element): string {
+    return (node?.textContent ?? '').replace(/\s+/g, ' ').trim();
   }
 
-  function button(label: string | RegExp): HTMLButtonElement {
-    const found = Array.from(element.querySelectorAll<HTMLButtonElement>('button')).find((entry) =>
-      typeof label === 'string'
-        ? entry.textContent?.trim() === label
-        : label.test(entry.textContent ?? ''),
+  function value(label: string): HTMLElement | null {
+    const term = Array.from(element.querySelectorAll('dt')).find(
+      (entry) => entry.textContent?.trim() === label,
     );
-    if (!found) {
-      throw new Error(`no button ${String(label)}`);
-    }
-    return found;
+    return (term?.nextElementSibling as HTMLElement | null | undefined) ?? null;
   }
 
-  function type(input: HTMLInputElement, value: string): void {
-    input.value = value;
-    input.dispatchEvent(new Event('input'));
-  }
-
-  function linkRows(): string[] {
-    return Array.from(element.querySelectorAll('.c-output-pop__link')).map((row) =>
-      (row.textContent ?? '').replace(/\s+/g, ' ').trim(),
-    );
+  function lines(): string[] {
+    return Array.from(element.querySelectorAll('.c-output-pop__line')).map((line) => text(line));
   }
 
   afterEach(() => harness?.http.verify());
 
-  describe('load of the output page (issue #12)', () => {
+  describe('status', () => {
+    it('says the state, where the output is connected from, the format and the latency', async () => {
+      await open();
+      expect(text(value('State'))).toBe('connected, 1 consumer');
+      expect(value('State')?.classList.contains('c-state--ok')).toBe(true);
+      expect(text(value('Connected from'))).toBe('10.0.0.42');
+      expect(text(value('Format'))).toBe('1920 × 1080 · 16:9 · 30 fps');
+      expect(text(value('Latency'))).toBe('not measured yet');
+    });
+
+    it('says not connected with a dash for the addresses', async () => {
+      await open([PROXY], status({ olk_proxy: 'none' }, { olk_proxy: 'Proxy' }));
+      expect(text(value('State'))).toBe('not connected');
+      expect(text(value('Connected from'))).toBe('–');
+    });
+
     function loaded(
       droppedFramesPct: number | null,
       decodedStreams: number | null,
@@ -136,32 +138,22 @@ describe('OutputPopoverComponent', () => {
       };
     }
 
-    function value(label: string): HTMLElement | null {
-      const term = Array.from(element.querySelectorAll('dt')).find(
-        (entry) => entry.textContent?.trim() === label,
-      );
-      return (term?.nextElementSibling as HTMLElement | null | undefined) ?? null;
-    }
-
     it('says how many streams the page decodes and warns about software decoding', async () => {
       await open([PROXY], loaded(3, 3, 1));
-      expect(value('Decoding')?.textContent?.trim()).toBe('3 streams · 1 in software');
+      expect(text(value('Decoding'))).toBe('3 streams · 1 in software');
       expect(value('Decoding')?.classList.contains('c-state--warn')).toBe(true);
-      expect(value('Dropped frames')?.textContent?.trim()).toBe('3%');
+      expect(text(value('Dropped frames'))).toBe('3%');
       expect(value('Dropped frames')?.classList.contains('c-state--warn')).toBe(false);
+      expect(element.querySelector('.c-output-pop__hint')).toBeNull();
     });
 
-    it('stays calm with hardware decoding, and warns about dropped frames from 5 %', async () => {
+    it('warns about dropped frames from 5 % and says what to do in words', async () => {
       await open([PROXY], loaded(8, 2, 0));
-      expect(value('Decoding')?.textContent?.trim()).toBe('2 streams');
-      expect(value('Decoding')?.classList.contains('c-state--warn')).toBe(false);
+      expect(text(value('Decoding'))).toBe('2 streams');
       expect(value('Dropped frames')?.classList.contains('c-state--warn')).toBe(true);
-    });
-
-    it('says "no stream" for a page that decodes nothing', async () => {
-      await open([PROXY], loaded(0, 0, 0));
-      expect(value('Decoding')?.textContent?.trim()).toBe('no stream');
-      expect(value('Dropped frames')?.textContent?.trim()).toBe('0%');
+      expect(text(element.querySelector('.c-output-pop__hint'))).toContain(
+        '8% of the frames are dropped',
+      );
     });
 
     it('shows nothing about the load before the page reports it', async () => {
@@ -169,57 +161,75 @@ describe('OutputPopoverComponent', () => {
       expect(value('Decoding')).toBeNull();
       expect(value('Dropped frames')).toBeNull();
     });
+
+    it('explains blocked sound in words and marks the link', async () => {
+      const base = status({ olk_proxy: 'connected' }, { olk_proxy: 'Proxy' });
+      await open([PROXY], {
+        ...base,
+        links: base.links.map((entry) => ({
+          ...entry,
+          audio: { state: 'blocked', levelDb: null },
+        })) as OutputStatusDto['links'],
+      });
+      expect(text(element.querySelector('.c-output-pop__hint'))).toContain(
+        'Click the output page once',
+      );
+      expect(lines()).toEqual(['Proxy · connected · Audio blocked']);
+    });
   });
 
   describe('links', () => {
-    it('lists every link with its own state and when it was last seen', async () => {
+    it('lists every link with its own state, its masked URL and a copy button', async () => {
       await open();
-      const rows = linkRows();
-      expect(rows[0]).toBe('Proxy · connected');
-      expect(rows[1]).toContain('Teams camera · not connected');
-      expect(rows[1]).toContain('last seen');
-      expect(text()).toContain('connected, 1 consumer');
+      expect(lines()).toEqual(['Proxy · connected', 'Teams camera · not connected']);
+      expect(
+        Array.from(element.querySelectorAll('.c-output-pop__url')).map((url) => text(url)),
+      ).toEqual(['studioflow.example/o/webinar?k=••••••', 'studioflow.example/o/webinar?k=••••••']);
+      expect(text()).not.toContain(PROXY_KEY);
+      expect(text()).not.toContain(TEAMS_KEY);
+      const copies = Array.from(element.querySelectorAll('.c-output-pop__link button')).map(
+        (button) => button.getAttribute('aria-label'),
+      );
+      expect(copies).toEqual(['Copy link “Proxy”', 'Copy link “Teams camera”']);
+      expect(element.querySelectorAll('.c-output-pop__link')[1]?.getAttribute('title')).toContain(
+        'last seen',
+      );
     });
 
-    it('says "never connected" for a link nobody used yet', async () => {
-      await open(
-        [PROXY, link('olk_new', 'New', 'k'.repeat(43))],
-        status({ olk_proxy: 'none', olk_new: 'none' }, {}),
-      );
-      expect(linkRows()[1]).toContain('never connected');
+    it('copies the full URL of a link and shows it masked in the toast', async () => {
+      await open();
+      const copy = vi.spyOn(TestBed.inject(ClipboardService), 'copy').mockResolvedValue(true);
+      element.querySelectorAll<HTMLButtonElement>('.c-output-pop__link button')[1]?.click();
+      expect(copy).toHaveBeenCalledWith(TEAMS.url, {
+        label: 'studioflow.example/o/webinar?k=••••••',
+      });
+    });
+
+    it('shows and selects the real URL when the clipboard refuses', async () => {
+      await open();
+      vi.spyOn(TestBed.inject(ClipboardService), 'copy').mockResolvedValue(false);
+      const select = vi.spyOn(TestBed.inject(ClipboardService), 'selectContents');
+      element.querySelectorAll<HTMLButtonElement>('.c-output-pop__link button')[0]?.click();
+      await render();
+      expect(text(element.querySelector('[data-url="olk_proxy"]'))).toBe(PROXY.url);
+      expect(select).toHaveBeenCalledWith(element.querySelector('[data-url="olk_proxy"]'));
     });
 
     it('shows a link without a fresh picture as such', async () => {
       await open([PROXY], status({ olk_proxy: 'stale' }, { olk_proxy: 'Proxy' }));
-      expect(linkRows()).toEqual(['Proxy · no current picture']);
+      expect(lines()).toEqual(['Proxy · no current picture']);
       expect(
         element.querySelector('.c-output-pop__link .c-lamp')?.classList.contains('is-warn'),
       ).toBe(true);
     });
 
-    it('selects the first link, masks its URL and switches to another link on click', async () => {
-      await open();
-      expect(element.querySelector('.c-linkbox__text')?.textContent).toBe(
-        'studioflow.example/o/webinar?k=••••••',
-      );
-      expect(element.querySelector('.c-output-link__name')?.textContent).toBe('Proxy');
-      element.querySelectorAll<HTMLButtonElement>('.c-output-pop__link')[1]?.click();
-      await render();
-      expect(element.querySelector('.c-output-link__name')?.textContent).toBe('Teams camera');
-      expect(element.querySelectorAll('.c-output-pop__link')[1]?.getAttribute('aria-current')).toBe(
-        'true',
-      );
-      expect(text()).not.toContain(PROXY_KEY);
-      expect(text()).not.toContain(TEAMS_KEY);
-    });
-
     it('says so when there is no link', async () => {
       await open([], status({}, {}));
-      expect(text()).toContain('No link yet');
-      expect(element.querySelector('sf-output-link')).toBeNull();
+      expect(text()).toContain('No output link yet.');
+      expect(element.querySelector('.c-output-pop__link')).toBeNull();
     });
 
-    it('offers a retry when the settings cannot be loaded', async () => {
+    it('offers a retry when the links cannot be loaded', async () => {
       const hub = new FakeStudioHub();
       TestBed.configureTestingModule({ providers: studioTestProviders(hub) });
       harness = await startStore(hub, snapshotFixture());
@@ -231,13 +241,15 @@ describe('OutputPopoverComponent', () => {
         .expectOne(BASE)
         .flush({ code: 'internal_error' }, { status: 500, statusText: 'x' });
       await render();
-      button('Try again').click();
+      Array.from(element.querySelectorAll<HTMLButtonElement>('button'))
+        .find((button) => text(button) === 'Try again')!
+        .click();
       harness.http.expectOne(BASE).flush(settings([PROXY]));
       await render();
-      expect(linkRows()).toHaveLength(1);
+      expect(lines()).toHaveLength(1);
     });
 
-    it('loads the settings again when a link changes its state, so "last seen" stays current', async () => {
+    it('loads the links again when a link changes its state', async () => {
       await open();
       harness.emitEvent({
         type: 'outputStatusChanged',
@@ -256,227 +268,22 @@ describe('OutputPopoverComponent', () => {
           ]),
         );
       await render();
-      expect(linkRows()[0]).toContain('Proxy · not connected');
-      expect(linkRows()[0]).toContain('last seen');
+      expect(lines()[0]).toBe('Proxy · not connected');
     });
-  });
 
-  describe('add link', () => {
-    it('creates a named link and selects it', async () => {
+    it('manages the links on the settings page and closes on the way', async () => {
       await open();
-      type(element.querySelector<HTMLInputElement>('.c-output-pop__add input')!, '  Zoom room ');
-      button('Create link').click();
-      const request = harness.http.expectOne(BASE + '/links');
-      expect(request.request.method).toBe('POST');
-      expect(request.request.body).toEqual({ name: 'Zoom room' });
-      request.flush(link('olk_zoom', 'Zoom room', 'z'.repeat(43)), {
-        status: 201,
-        statusText: 'Created',
-      });
-      await render();
-      expect(linkRows()).toHaveLength(3);
-      expect(element.querySelector('.c-output-link__name')?.textContent).toBe('Zoom room');
-      expect(TestBed.inject(ToastService).current()?.message).toBe('Link “Zoom room” created');
-      expect(element.querySelector<HTMLInputElement>('.c-output-pop__add input')?.value).toBe('');
-    });
-
-    it.each([
-      ['', 'Please enter a name of 1 to 40 characters.'],
-      ['   ', 'Please enter a name of 1 to 40 characters.'],
-      ['x'.repeat(41), 'Please enter a name of 1 to 40 characters.'],
-      ['PROXY', 'A link with this name exists already.'],
-      ['teams CAMERA', 'A link with this name exists already.'],
-    ])('refuses the name "%s" without asking the server', async (name, message) => {
-      await open();
-      type(element.querySelector<HTMLInputElement>('.c-output-pop__add input')!, name);
-      button('Create link').click();
-      await render();
-      expect(text()).toContain(message);
-      harness.http.expectNone(BASE + '/links');
-    });
-
-    it('blocks adding at the limit and says why', async () => {
-      await open([PROXY, TEAMS], undefined, 2);
-      expect(button('Create link').disabled).toBe(true);
-      expect(text()).toContain('At most 2 links. Revoke one to add another.');
-    });
-
-    it('shows the failure when the server refuses (limit reached in the meantime)', async () => {
-      await open();
-      type(element.querySelector<HTMLInputElement>('.c-output-pop__add input')!, 'Extra');
-      button('Create link').click();
-      harness.http
-        .expectOne(BASE + '/links')
-        .flush({ code: 'limit_reached', status: 409 }, { status: 409, statusText: 'Conflict' });
-      await render();
-      expect(TestBed.inject(ToastService).current()?.message).toBe('The limit has been reached.');
-      expect(linkRows()).toHaveLength(2);
-    });
-  });
-
-  describe('selected link', () => {
-    it('renames the link and keeps the list in order', async () => {
-      await open();
-      button('Rename').click();
-      await render();
-      type(element.querySelector<HTMLInputElement>('.c-output-link__rename input')!, 'Main proxy');
-      button('Save').click();
-      const request = harness.http.expectOne(`${BASE}/links/olk_proxy`);
-      expect(request.request.method).toBe('PATCH');
-      expect(request.request.body).toEqual({ name: 'Main proxy' });
-      request.flush({ ...PROXY, name: 'Main proxy' });
-      await render();
-      expect(element.querySelector('.c-output-link__name')?.textContent).toBe('Main proxy');
-      expect(linkRows()[0]).toContain('Main proxy');
-    });
-
-    it('does not ask the server when the name did not change', async () => {
-      await open();
-      button('Rename').click();
-      await render();
-      button('Save').click();
-      await render();
-      harness.http.expectNone(`${BASE}/links/olk_proxy`);
-      expect(element.querySelector('.c-output-link__rename')).toBeNull();
-    });
-
-    it('saves the IP restriction of this link only', async () => {
-      await open();
-      const input = (): HTMLInputElement =>
-        element.querySelector<HTMLInputElement>('.c-output-link__add input')!;
-      type(input(), '10.0.0.0/8');
-      button('Add').click();
-      await render();
-      type(input(), 'nope');
-      button('Add').click();
-      await render();
-      expect(text()).toContain('Please enter an IP address like 10.0.0.42');
-      button('Save').click();
-      const request = harness.http.expectOne(`${BASE}/links/olk_proxy/access`);
-      expect(request.request.method).toBe('PUT');
-      expect(request.request.body).toEqual({ allowedIps: ['10.0.0.0/8'] });
-      request.flush({ ...PROXY, allowedIps: ['10.0.0.0/8'] });
-      await render();
-      expect(element.querySelector('.c-output-link__ip .u-mono')?.textContent).toBe('10.0.0.0/8');
-    });
-
-    it('drops the unsaved IP list when another link is selected', async () => {
-      await open();
-      type(element.querySelector<HTMLInputElement>('.c-output-link__add input')!, '10.0.0.1');
-      button('Add').click();
-      await render();
-      expect(element.querySelectorAll('.c-output-link__ip')).toHaveLength(1);
-      element.querySelectorAll<HTMLButtonElement>('.c-output-pop__link')[1]?.click();
-      await render();
-      expect(element.querySelectorAll('.c-output-link__ip')).toHaveLength(0);
-    });
-
-    it('regenerates only this link after the confirmation and keeps the others', async () => {
-      await open();
-      button('Regenerate link').click();
-      await render();
-      harness.http.expectNone(`${BASE}/links/olk_proxy/regenerate-key`);
-      expect(text()).toContain('The old link of “Proxy” stops working immediately.');
-      button('Regenerate').click();
-      const renewed = link('olk_proxy', 'Proxy', 'renewed-key-' + 'c'.repeat(31));
-      harness.http.expectOne(`${BASE}/links/olk_proxy/regenerate-key`).flush(renewed);
-      await render();
-      expect(TestBed.inject(ToastService).current()?.message).toContain(
-        'New link for “Proxy” created',
-      );
-      expect(linkRows()).toHaveLength(2);
-    });
-
-    it('does nothing when the confirmation is cancelled', async () => {
-      await open();
-      button('Revoke link').click();
-      await render();
-      button('Cancel').click();
-      await render();
-      expect(element.querySelector('.c-confirm')).toBeNull();
-      expect(linkRows()).toHaveLength(2);
-    });
-
-    it('revokes the link after the confirmation and selects the first one that is left', async () => {
-      await open();
-      element.querySelectorAll<HTMLButtonElement>('.c-output-pop__link')[1]?.click();
-      await render();
-      button('Revoke link').click();
-      await render();
-      expect(text()).toContain('Pages that use “Teams camera” are disconnected immediately.');
-      button('Revoke').click();
-      const request = harness.http.expectOne(`${BASE}/links/olk_teams`);
-      expect(request.request.method).toBe('DELETE');
-      request.flush(null, { status: 204, statusText: 'No Content' });
-      await render();
-      expect(linkRows()).toEqual(['Proxy · connected']);
-      expect(element.querySelector('.c-output-link__name')?.textContent).toBe('Proxy');
-    });
-
-    it('keeps the link and shows the error when revoking fails', async () => {
-      await open();
-      button('Revoke link').click();
-      await render();
-      button('Revoke').click();
-      harness.http
-        .expectOne(`${BASE}/links/olk_proxy`)
-        .flush({ code: 'not_found', status: 404 }, { status: 404, statusText: 'Not Found' });
-      await render();
-      expect(linkRows()).toHaveLength(2);
-      expect(TestBed.inject(ToastService).current()).not.toBeNull();
-    });
-  });
-
-  describe('use as camera', () => {
-    it('shows the short instructions with the canvas size and the frame rate', async () => {
-      await open();
-      button('Use as camera …').click();
-      await render();
-      const steps = Array.from(element.querySelectorAll('.c-output-camera__steps li')).map(
-        (li) => li.textContent ?? '',
-      );
-      expect(steps).toHaveLength(5);
-      expect(steps[1]).toContain('“StudioFlow – Proxy”');
-      expect(steps[2]).toContain('1920 × 1080');
-      expect(steps[2]).toContain('30');
-      expect(steps[4]).toContain('OBS Virtual Camera');
-      expect(text()).toContain('separate computer, not on the Regie laptop');
-      expect(text()).toContain('The sound stays on the mixing desk');
-    });
-
-    it('downloads the OBS scene collection of the selected link', async () => {
-      await open();
-      const saved: { file: string; text: string; container?: HTMLElement }[] = [];
-      vi.spyOn(TestBed.inject(DownloadService), 'saveText').mockImplementation(
-        (file, content, options) => {
-          saved.push({ file, text: content, container: options?.container });
-        },
-      );
-      element.querySelectorAll<HTMLButtonElement>('.c-output-pop__link')[1]?.click();
-      await render();
-      button('Use as camera …').click();
-      await render();
-      button('Download OBS scene collection').click();
-      expect(saved).toHaveLength(1);
-      expect(saved[0]?.file).toBe('StudioFlow-Teams-camera.json');
-      expect(element.contains(saved[0]?.container ?? null), 'the popover stays open').toBe(true);
-      const collection = JSON.parse(saved[0]!.text) as {
-        sources: { settings: Record<string, unknown> }[];
-      };
-      expect(collection.sources[1]?.settings['url']).toBe(TEAMS.url);
-      expect(TestBed.inject(ToastService).current()?.message).toContain(
-        'StudioFlow-Teams-camera.json',
-      );
-    });
-
-    it('closes the instructions again', async () => {
-      await open();
-      button('Use as camera …').click();
-      await render();
-      button('Close instructions').click();
-      await render();
-      expect(element.querySelector('sf-output-camera')).toBeNull();
-      expect(button('Use as camera …')).toBeTruthy();
+      const manage = element.querySelector<HTMLAnchorElement>('a.c-menu-item')!;
+      expect(text(manage)).toBe('Manage output links…');
+      expect(manage.getAttribute('href')).toBe('/settings/output');
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+      manage.click();
+      expect(String(navigate.mock.calls[0]?.[0])).toBe('/settings/output');
+      expect(TestBed.inject(PopoverService).isOpen(OUTPUT_POPOVER)).toBe(false);
+      // Nothing that changes a link is left in the popover.
+      for (const gone of ['Add link', 'Rename', 'Revoke', 'New link', 'Use as camera']) {
+        expect(text()).not.toContain(gone);
+      }
     });
   });
 });

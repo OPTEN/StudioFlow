@@ -1,0 +1,30 @@
+// Settings › Production › Slates: per slate a group with the live picture on the left and its fields on the right.
+@use 'mixins' as *;
+@use './production-page';
+
+.c-slates__title {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.c-slates__row {
+  align-items: start;
+  gap: 16px 20px;
+  grid-template-columns: 240px minmax(0, 1fr);
+  padding: 14px;
+
+  @include narrow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.c-slates__preview {
+  justify-self: center;
+}
+
+.c-slates__fields {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}

@@ -4,9 +4,9 @@ import type { regieCanvas as en } from '../en/regie-canvas';
 export const regieCanvas: Translation<typeof en> = {
   'regie.canvas.confirm': {
     '=0': 'Das Format ändert sich. Keine Szene hat Elemente, es ändert sich also nichts weiter.',
-    one: 'Das Format ändert sich. Die Elemente von {count} Szene werden in die neue Leinwand eingepasst und zentriert; die Szene danach prüfen, «Vorlage anwenden» ordnet sie neu an. Der Rückgängig-Verlauf der Szenen wird gelöscht.',
+    one: 'Der Rückgängig-Verlauf der Szenen wird gelöscht, und die Elemente von {count} Szene werden in die neue Leinwand eingepasst und zentriert. Die Szene danach prüfen; «Vorlage anwenden» ordnet sie neu an.',
     other:
-      'Das Format ändert sich. Die Elemente von {count} Szenen werden in die neue Leinwand eingepasst und zentriert; die Szenen danach prüfen, «Vorlage anwenden» ordnet sie neu an. Der Rückgängig-Verlauf der Szenen wird gelöscht.',
+      'Der Rückgängig-Verlauf der Szenen wird gelöscht, und die Elemente von {count} Szenen werden in die neue Leinwand eingepasst und zentriert. Die Szenen danach prüfen; «Vorlage anwenden» ordnet sie neu an.',
   },
   'regie.canvas.confirmButton': 'Format ändern',
   'regie.canvas.currentSize': 'Leinwand {size}',
@@ -16,13 +16,13 @@ export const regieCanvas: Translation<typeof en> = {
   'regie.canvas.formatName.standard': 'Klassisch 4:3',
   'regie.canvas.formatName.widescreen': 'Breitbild',
   'regie.canvas.liveLocked':
-    'Format und Auflösung lassen sich nicht ändern, solange die Sendung live ist. Zuerst die Sendung beenden.',
-  'regie.canvas.menu': 'Format und Auflösung…',
+    'Format und Auflösung sind gesperrt, solange die Sendung live ist. Du kannst sie nach dem Ende ändern.',
   'regie.canvas.note':
-    'Die Ausgabeseite skaliert das Bild auf das Fenster des Proxys. Format und Zielauflösung legen die Leinwand der Layouts fest, nicht die Pixel, die beim Proxy ankommen.',
-  'regie.canvas.resolution': 'Zielauflösung',
+    'Deine Szenen werden auf dieser Leinwand angeordnet. Die Output-Seite skaliert sie auf ihr Fenster, so füllt sie einen Proxy oder eine Kamera jeder Grösse.',
+  'regie.canvas.resolution': 'Auflösung',
   'regie.canvas.resolutionOnly':
     'Gleiches Format: Alle Elemente werden im gleichen Verhältnis skaliert, nichts verschiebt sich.',
+  'regie.canvas.save': 'Format speichern',
   'regie.canvas.saved': 'Ausgabe ist jetzt {size} ({ratio})',
   'regie.canvas.title': 'Format und Auflösung',
 };

@@ -125,7 +125,7 @@ describe('ImportProductionFormComponent', () => {
     expect(requests).toHaveLength(1);
   });
 
-  it('imports after the preview, reports the new production and confirms with a toast', async () => {
+  it('imports after the preview and reports the new production (the page announces it)', async () => {
     await setup();
     await choose();
     requests[0].respond(200, JSON.stringify(PREVIEW));
@@ -140,9 +140,7 @@ describe('ImportProductionFormComponent', () => {
     real.respond(201, JSON.stringify(created));
     await render();
     expect(done).toEqual([created]);
-    expect(TestBed.inject(ToastService).current()?.message).toBe(
-      'Production “Webinar (2)” imported. It is not active; switch to it when you are ready.',
-    );
+    expect(TestBed.inject(ToastService).current()).toBeNull();
   });
 
   it('explains a file that is not a StudioFlow export and offers another try', async () => {

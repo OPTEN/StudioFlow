@@ -96,7 +96,7 @@ describe('DuplicateProductionFormComponent', () => {
     expect(element.textContent).toContain('There are no media files to copy.');
   });
 
-  it('duplicates with the typed name, confirms and reports the new production', async () => {
+  it('duplicates with the typed name and reports the new production (the page announces it)', async () => {
     await setup();
     type('  Webinar, second run ');
     await submit();
@@ -110,9 +110,7 @@ describe('DuplicateProductionFormComponent', () => {
     request.flush(created, { status: 201, statusText: 'Created' });
     await render();
     expect(done).toEqual([created]);
-    expect(TestBed.inject(ToastService).current()?.message).toBe(
-      'Production “Webinar, second run” created. It is not active; switch to it when you are ready.',
-    );
+    expect(TestBed.inject(ToastService).current()).toBeNull();
   });
 
   it('does not send an empty name and marks the field', async () => {

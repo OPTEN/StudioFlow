@@ -17,7 +17,7 @@ import {
 } from '@studioflow/scene-model';
 import { ApiError, toUserMsg } from '../../core/api/api-error';
 import { StudioApiService, type UploadProgress } from '../../core/api/studio-api.service';
-import { ToastService } from '../../core/ui/toast.service';
+import { IconComponent } from '../../core/ui/icon.component';
 
 /** Steps of the form. */
 type Phase = 'choose' | 'checking' | 'preview' | 'importing';
@@ -29,22 +29,23 @@ const MAX_LISTED_PLACEHOLDERS = 8;
 export const IMPORT_ACCEPT = '.zip,application/zip,application/x-zip-compressed';
 
 /**
- * “Import…” in the production menu (issue #14): choose an exported file (`.studioflow.zip`), see what it contains
+ * “Import…” on the settings page “All productions” (issue #14): choose an exported file (`.studioflow.zip`), see what it contains
  * (name, scenes, texts, media and size, the cameras and screens that become placeholders, warnings) and import it as a
  * new production. Nothing is created before the operator presses “Import”: the first upload is a dry run
  * (`?dryRun=true`) that only reads the file. The imported production does not become the active one. A refused file
  * (not a StudioFlow file, from a newer version, too large, more scenes than a production may have) is explained under the button, in the
- * active language. Reports `done` with the new production and `cancelled` when the operator backs out.
+ * active language. Reports `done` with the new production (the page announces it) and `cancelled` when the operator
+ * backs out.
  */
 @Component({
   selector: 'sf-import-production-form',
+  imports: [IconComponent],
   templateUrl: './import-production-form.component.html',
   styleUrl: './transfer-form.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ImportProductionFormComponent {
   private readonly api = inject(StudioApiService);
-  private readonly toasts = inject(ToastService);
 
   /** The production was imported. */
   readonly done = output<ProductionDto>();
@@ -142,7 +143,6 @@ export class ImportProductionFormComponent {
       this.phase.set('preview');
       return;
     }
-    this.toasts.show(t('regie.transfer.import.done', { name: created.name }));
     this.done.emit(created);
   }
 

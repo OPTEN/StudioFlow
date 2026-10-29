@@ -7,113 +7,37 @@ import {
   signal,
   untracked,
 } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { t, type PlainMessageKey } from '@studioflow/i18n';
-import {
-  DEFAULT_CANVAS_FORMAT,
-  DEFAULT_CANVAS_RESOLUTION,
-  DEFAULT_TEXT_THEME,
-  LIMITS,
-  canvasSize,
-  canvasSizeLabel,
-  contrastRatio,
-  formatDecimal,
-  formatRatioLabel,
-  hasReadableContrast,
-  isHexColor,
-  type CanvasFormat,
-  type CanvasResolution,
-  type ProductionSummaryDto,
-  type SlateDto,
-  type TextThemeDto,
-} from '@studioflow/scene-model';
-import { toUserMessage } from '../../core/api/api-error';
+import { formatDate, t } from '@studioflow/i18n';
+import type { ProductionSummaryDto } from '@studioflow/scene-model';
 import { StudioApiService } from '../../core/api/studio-api.service';
-import { AuthService } from '../../core/auth/auth.service';
 import { ProductionStoreService } from '../../core/state/production-store.service';
+import { ConfirmBoxComponent } from '../../core/ui/confirm-box.component';
 import { IconComponent } from '../../core/ui/icon.component';
 import {
   PopoverDirective,
   PopoverService,
   PopoverTriggerDirective,
 } from '../../core/ui/popover.directive';
-import { ConfirmBoxComponent } from '../../core/ui/confirm-box.component';
 import { ToastService } from '../../core/ui/toast.service';
-import { CanvasPickerComponent } from './canvas-picker.component';
-import { ChangePasswordFormComponent } from './change-password-form.component';
-import { DuplicateProductionFormComponent } from './duplicate-production-form.component';
-import { ImportProductionFormComponent } from './import-production-form.component';
+import { PRODUCTIONS_FORM_PARAM } from '../../settings/production/productions-form';
 
-/** Id of the production menu popover. */
+/** Id of the production switcher popover. */
 export const PRODUCTION_POPOVER = 'production';
 
-/** Views of the production menu. */
-type MenuMode =
-  | 'menu'
-  | 'rename'
-  | 'slates'
-  | 'textColors'
-  | 'canvas'
-  | 'create'
-  | 'duplicate'
-  | 'import'
-  | 'password';
-
-function nameControl(): FormControl<string> {
-  return new FormControl('', {
-    nonNullable: true,
-    validators: [
-      Validators.required,
-      Validators.maxLength(LIMITS.productionNameLength),
-      Validators.pattern(/\S/),
-    ],
-  });
-}
-
-function colorControl(): FormControl<string> {
-  return new FormControl(DEFAULT_TEXT_THEME.accent, {
-    nonNullable: true,
-    validators: [Validators.required, Validators.pattern(/^#[0-9a-fA-F]{6}$/)],
-  });
-}
-
-/** The three colours of the text theme, in the order of the form. */
-const TEXT_COLOR_FIELDS = [
-  { key: 'accent', label: 'regie.header.production.textAccent' },
-  { key: 'background', label: 'regie.header.production.textBackground' },
-  { key: 'foreground', label: 'regie.header.production.textForeground' },
-] as const satisfies readonly { key: keyof TextThemeDto; label: PlainMessageKey }[];
-
-function textControl(required: boolean): FormControl<string> {
-  return new FormControl('', {
-    nonNullable: true,
-    validators: required
-      ? [Validators.required, Validators.maxLength(120), Validators.pattern(/\S/)]
-      : [Validators.maxLength(120)],
-  });
-}
-
 /**
- * The production name in the header and its menu (spec 9.1): rename, edit the standby and end slates, set the text
- * colours and the format and resolution of the output (not while the broadcast is live; another format asks first
- * when scenes have elements), switch to or create another production (with its format; not while the broadcast is
- * live), duplicate the production (also while it is live), export it as a file, import a file as a new production
- * (issue #14), change the password and sign out. Typed reactive forms for every input.
+ * The production title in the toolbar and its switcher (spec 9.1, DESIGN.md "Toolbar"): the productions with a check
+ * on the active one (switching while the broadcast is live asks first, because this control room then shows the other
+ * production), "New production…" and "Import…" (both open the form on the settings page "All productions") and
+ * "Production settings…". Everything that configures the production lives in the settings window.
  */
 @Component({
   selector: 'sf-production-menu',
   imports: [
-    CanvasPickerComponent,
-    ChangePasswordFormComponent,
     ConfirmBoxComponent,
-    DuplicateProductionFormComponent,
     IconComponent,
-    ImportProductionFormComponent,
     PopoverDirective,
     PopoverTriggerDirective,
-    ReactiveFormsModule,
     RouterLink,
   ],
   templateUrl: './production-menu.component.html',
@@ -124,297 +48,69 @@ export class ProductionMenuComponent {
   protected readonly store = inject(ProductionStoreService);
   protected readonly popovers = inject(PopoverService);
   private readonly api = inject(StudioApiService);
-  private readonly auth = inject(AuthService);
   private readonly toasts = inject(ToastService);
 
   protected readonly popoverId = PRODUCTION_POPOVER;
+  /** Queries of the links that open a form on the page "All productions". */
+  protected readonly newQuery = { [PRODUCTIONS_FORM_PARAM]: 'new' };
+  protected readonly importQuery = { [PRODUCTIONS_FORM_PARAM]: 'import' };
   protected readonly t = t;
-  protected readonly mode = signal<MenuMode>('menu');
   protected readonly busy = signal(false);
   protected readonly productions = signal<readonly ProductionSummaryDto[] | null>(null);
   protected readonly listError = signal(false);
+  /** The production the operator wants to switch to while the broadcast is live (asks first). */
+  protected readonly confirming = signal<ProductionSummaryDto | null>(null);
   protected readonly name = computed(() => this.store.production()?.name ?? 'StudioFlow');
   protected readonly live = computed(() => this.store.broadcast() === 'live');
-  /** Download link of the export of the current production (a ZIP file; the browser saves it). */
-  protected readonly exportHref = computed(() => {
-    const id = this.store.productionId();
-    return id ? this.api.exportUrl(id) : null;
-  });
-
-  protected readonly renameControl = nameControl();
-  protected readonly createControl = nameControl();
-  /** Format and resolution of the production being created. */
-  protected readonly newFormat = signal<CanvasFormat>(DEFAULT_CANVAS_FORMAT);
-  protected readonly newResolution = signal<CanvasResolution>(DEFAULT_CANVAS_RESOLUTION);
-  /** Format and resolution being chosen for this production. */
-  protected readonly canvasFormat = signal<CanvasFormat>(DEFAULT_CANVAS_FORMAT);
-  protected readonly canvasResolution = signal<CanvasResolution>(DEFAULT_CANVAS_RESOLUTION);
-  /** The operator pressed Save and has to confirm what another format does to the scenes. */
-  protected readonly confirmingCanvas = signal(false);
-  private readonly canvasChange = computed(() => {
-    const current = this.store.production()?.canvas;
-    return {
-      formatChanged: this.canvasFormat() !== (current?.format ?? DEFAULT_CANVAS_FORMAT),
-      resolutionChanged:
-        this.canvasResolution() !== (current?.resolution ?? DEFAULT_CANVAS_RESOLUTION),
-    };
-  });
-  /** The chosen canvas differs from the one of the production. */
-  protected readonly canvasChanged = computed(
-    () => this.canvasChange().formatChanged || this.canvasChange().resolutionChanged,
-  );
-  /** Only the resolution changes: every element is scaled in proportion. */
-  protected readonly resolutionOnly = computed(
-    () => this.canvasChange().resolutionChanged && !this.canvasChange().formatChanged,
-  );
-  /** Scenes with elements, which another format fits into the new canvas. */
-  protected readonly scenesWithElements = computed(
-    () => this.store.scenes().filter((scene) => scene.items.length > 0).length,
-  );
-  protected readonly slatesForm = new FormGroup({
-    standbyTitle: textControl(true),
-    standbySubtitle: textControl(false),
-    standbyBackground: new FormControl('', { nonNullable: true }),
-    endTitle: textControl(true),
-    endSubtitle: textControl(false),
-    endBackground: new FormControl('', { nonNullable: true }),
-  });
-  protected readonly textColorFields = TEXT_COLOR_FIELDS;
-  protected readonly textForm = new FormGroup({
-    accent: colorControl(),
-    background: colorControl(),
-    foreground: colorControl(),
-  });
-  private readonly textColors = toSignal(this.textForm.valueChanges, {
-    initialValue: this.textForm.getRawValue(),
-  });
-  /** The colours being edited, or null while one of them is not a valid `#rrggbb`. */
-  protected readonly editedTheme = computed<TextThemeDto | null>(() => {
-    const { accent, background, foreground } = this.textColors();
-    const theme = {
-      accent: (accent ?? '').toLowerCase(),
-      background: (background ?? '').toLowerCase(),
-      foreground: (foreground ?? '').toLowerCase(),
-    };
-    return Object.values(theme).every((color) => isHexColor(color)) ? theme : null;
-  });
-  /** Contrast of the text on its background as text ("4,6"), when it is below the readable minimum; else null. */
-  protected readonly lowContrast = computed(() => {
-    const theme = this.editedTheme();
-    if (!theme || hasReadableContrast(theme)) {
-      return null;
-    }
-    // Rounded down, so a ratio just below the minimum never reads "4.5".
-    return formatDecimal(Math.floor(contrastRatio(theme.foreground, theme.background) * 10) / 10);
-  });
-  /** Image assets that can sit behind a slate. */
-  protected readonly imageAssets = computed(() =>
-    [...this.store.assets().values()].filter((asset) => asset.kind === 'image'),
-  );
 
   constructor() {
-    // Every opening starts at the menu and refreshes the production list.
+    // Every opening starts at the list and refreshes it.
     effect(() => {
       if (this.popovers.isOpen(this.popoverId)) {
         untracked(() => {
-          this.mode.set('menu');
+          this.confirming.set(null);
           void this.loadProductions();
         });
       }
     });
   }
 
-  protected show(mode: MenuMode): void {
-    const production = this.store.production();
-    if (mode === 'rename') {
-      this.renameControl.reset(production?.name ?? '');
-    } else if (mode === 'create') {
-      this.createControl.reset('');
-      this.newFormat.set(DEFAULT_CANVAS_FORMAT);
-      this.newResolution.set(DEFAULT_CANVAS_RESOLUTION);
-    } else if (mode === 'slates' && production) {
-      this.slatesForm.reset({
-        standbyTitle: production.standbySlate.title,
-        standbySubtitle: production.standbySlate.subtitle ?? '',
-        standbyBackground: production.standbySlate.backgroundAssetId ?? '',
-        endTitle: production.endSlate.title,
-        endSubtitle: production.endSlate.subtitle ?? '',
-        endBackground: production.endSlate.backgroundAssetId ?? '',
-      });
-    }
-    if (mode === 'textColors') {
-      this.textForm.reset(this.store.textTheme());
-    }
-    if (mode === 'canvas') {
-      this.canvasFormat.set(production?.canvas.format ?? DEFAULT_CANVAS_FORMAT);
-      this.canvasResolution.set(production?.canvas.resolution ?? DEFAULT_CANVAS_RESOLUTION);
-      this.confirmingCanvas.set(false);
-    }
-    this.mode.set(mode);
+  protected created(production: ProductionSummaryDto): string {
+    return formatDate(new Date(production.createdAt));
   }
 
-  /** Sets one colour from the colour picker or the hex field. */
-  protected setColor(key: keyof TextThemeDto, value: string): void {
-    this.textForm.controls[key].setValue(value.trim().toLowerCase());
-    this.textForm.controls[key].markAsTouched();
-  }
-
-  protected resetTextColors(): void {
-    this.textForm.reset(DEFAULT_TEXT_THEME);
-  }
-
-  protected async saveTextColors(event: Event): Promise<void> {
-    event.preventDefault();
-    const textTheme = this.editedTheme();
-    if (!textTheme) {
-      this.textForm.markAllAsTouched();
+  /** A production of the list: the active one only closes the menu; another one switches (asking first while live). */
+  protected choose(production: ProductionSummaryDto): void {
+    if (production.isActive) {
+      this.close();
       return;
     }
-    await this.run(async (id) => {
-      await this.api.updateProduction(id, {
-        name: null,
-        standbySlate: null,
-        endSlate: null,
-        textTheme,
-      });
-      this.toasts.show(t('regie.header.production.textColorsSaved'));
-      this.mode.set('menu');
-    });
-  }
-
-  protected async rename(event: Event): Promise<void> {
-    event.preventDefault();
-    const name = this.renameControl.value.trim();
-    if (this.renameControl.invalid || !name) {
-      this.renameControl.markAsTouched();
+    if (this.live()) {
+      this.confirming.set(production);
       return;
     }
-    await this.run(async (id) => {
-      await this.api.updateProduction(id, { name, standbySlate: null, endSlate: null });
-      this.toasts.show(t('regie.header.production.renamed', { name }));
-      this.mode.set('menu');
-    });
-  }
-
-  protected async saveSlates(event: Event): Promise<void> {
-    event.preventDefault();
-    const production = this.store.production();
-    if (this.slatesForm.invalid || !production) {
-      this.slatesForm.markAllAsTouched();
-      return;
-    }
-    const value = this.slatesForm.getRawValue();
-    const slate = (title: string, subtitle: string, background: string): SlateDto => ({
-      title: title.trim(),
-      subtitle: subtitle.trim() || null,
-      backgroundAssetId: background || null,
-    });
-    await this.run(async (id) => {
-      await this.api.updateProduction(id, {
-        name: null,
-        standbySlate: slate(value.standbyTitle, value.standbySubtitle, value.standbyBackground),
-        endSlate: slate(value.endTitle, value.endSubtitle, value.endBackground),
-      });
-      this.toasts.show(t('regie.header.production.slatesSaved'));
-      this.mode.set('menu');
-    });
-  }
-
-  protected setCanvasFormat(format: CanvasFormat): void {
-    this.canvasFormat.set(format);
-    this.confirmingCanvas.set(false);
-  }
-
-  protected setCanvasResolution(resolution: CanvasResolution): void {
-    this.canvasResolution.set(resolution);
-    this.confirmingCanvas.set(false);
-  }
-
-  /** Save: another format asks first when scenes have elements; a resolution change or an empty production does not. */
-  protected saveCanvas(event: Event): void {
-    event.preventDefault();
-    if (this.live() || !this.canvasChanged()) {
-      return;
-    }
-    if (this.canvasChange().formatChanged && this.scenesWithElements() > 0) {
-      this.confirmingCanvas.set(true);
-      return;
-    }
-    void this.applyCanvas();
-  }
-
-  protected async applyCanvas(): Promise<void> {
-    const format = this.canvasFormat();
-    const resolution = this.canvasResolution();
-    await this.run(async (id) => {
-      await this.api.changeCanvas(id, { format, resolution });
-      this.toasts.show(
-        t('regie.canvas.saved', {
-          size: canvasSizeLabel(canvasSize(format, resolution)),
-          ratio: formatRatioLabel(format),
-        }),
-      );
-      this.mode.set('menu');
-    });
-  }
-
-  protected async create(event: Event): Promise<void> {
-    event.preventDefault();
-    const name = this.createControl.value.trim();
-    if (this.createControl.invalid || !name) {
-      this.createControl.markAsTouched();
-      return;
-    }
-    await this.run(async () => {
-      const created = await this.api.createProduction({
-        name,
-        format: this.newFormat(),
-        resolution: this.newResolution(),
-      });
-      if (this.live()) {
-        this.toasts.show(t('regie.header.production.createdSwitchLater', { name: created.name }));
-      } else {
-        await this.store.switchProduction(created.id);
-        this.toasts.show(t('regie.header.production.created', { name: created.name }));
-      }
-      this.popovers.close(this.popoverId);
-    });
+    void this.switchTo(production);
   }
 
   protected async switchTo(production: ProductionSummaryDto): Promise<void> {
-    if (production.isActive || this.live()) {
+    if (this.busy()) {
       return;
     }
-    await this.run(async () => {
+    this.busy.set(true);
+    try {
       await this.store.switchProduction(production.id);
       this.toasts.show(t('regie.header.production.switched', { name: production.name }));
-      this.popovers.close(this.popoverId);
-    });
+      this.close();
+    } catch (error) {
+      this.toasts.error(error);
+    } finally {
+      this.busy.set(false);
+    }
   }
 
-  /** The export was started by the link; the browser downloads the file, the menu closes. */
-  protected exported(): void {
-    this.toasts.show(t('regie.transfer.export.started', { name: this.name() }));
-    // The link has to stay in the page until the browser has followed it.
-    setTimeout(() => this.popovers.close(this.popoverId));
-  }
-
-  /** A copy or an import was created: back to the menu, where it is listed (it is not the active production). */
-  protected async created(): Promise<void> {
-    this.mode.set('menu');
-    await this.loadProductions();
-  }
-
-  protected logout(): void {
+  /** Closes the menu (also before a link leads to the settings window, so it is closed on the way back). */
+  protected close(): void {
     this.popovers.close(this.popoverId);
-    // A refused logout keeps the session (see AuthService.logout): say so instead of pretending.
-    this.auth
-      .logout()
-      .catch((error: unknown) =>
-        this.toasts.show(
-          t('regie.header.production.signOutFailed', { reason: toUserMessage(error) }),
-        ),
-      );
   }
 
   private async loadProductions(): Promise<void> {
@@ -423,21 +119,6 @@ export class ProductionMenuComponent {
       this.productions.set(await this.api.listProductions());
     } catch {
       this.listError.set(true);
-    }
-  }
-
-  private async run(action: (productionId: string) => Promise<void>): Promise<void> {
-    const productionId = this.store.productionId();
-    if (!productionId || this.busy()) {
-      return;
-    }
-    this.busy.set(true);
-    try {
-      await action(productionId);
-    } catch (error) {
-      this.toasts.error(error);
-    } finally {
-      this.busy.set(false);
     }
   }
 }
