@@ -1,144 +1,138 @@
-<div class="c-mon">
-  <header class="c-mon__top">
-    <div class="c-mon__brand"><svg sfIcon="mark"></svg>StudioFlow</div>
-    <h1 class="c-mon__title">{{ t('regie.monitoring.title') }}</h1>
-    <span class="c-mon__prod">{{ store.production()?.name ?? '' }}</span>
-    <span class="c-mon__conn" role="status">
-      <span class="c-lamp" aria-hidden="true" [class]="connection().lamp"></span
-      >{{ connection().text }}
-    </span>
-    <span class="c-mon__clock u-mono">{{ clockText() }}</span>
-    <a class="c-btn c-btn--sm c-mon__back" routerLink="/">{{ t('regie.monitoring.back') }}</a>
-  </header>
-
-  <main class="c-mon__main">
-    <div class="c-mon__bar">
-      <h2 class="c-label">{{ t('regie.monitoring.stations') }}</h2>
+<div class="c-page c-page--wide">
+  <sf-settings-page-head [title]="t('regie.monitoring.title')" [note]="t('regie.monitoring.lead')">
+    <p class="c-mon__status">
+      <span class="c-mon__conn" role="status">
+        <span class="c-lamp" aria-hidden="true" [class]="connection().lamp"></span
+        >{{ connection().text }}
+      </span>
       @if (store.state()) {
         <span class="c-mon__summary">{{ summary() }}</span>
       }
-      <span class="c-hint c-mon__note">{{ t('regie.monitoring.note') }}</span>
-    </div>
+      <span class="c-mon__clock u-mono" aria-hidden="true">{{ clockText() }}</span>
+    </p>
+  </sf-settings-page-head>
 
+  <div class="c-page__body">
     @if (!store.state()) {
-      <div class="c-empty">
-        <strong>{{ t('regie.monitoring.empty.loading') }}</strong
-        >{{ t('regie.monitoring.empty.loadingHint') }}
+      <div class="c-mon__empty" role="status">
+        <strong>{{ t('regie.monitoring.empty.loading') }}</strong>
+        <span>{{ t('regie.monitoring.empty.loadingHint') }}</span>
       </div>
     } @else if (rows().length === 0) {
-      <div class="c-empty">
-        <strong>{{ t('regie.monitoring.empty.none') }}</strong
-        >{{ t('regie.monitoring.empty.noneHint') }}
+      <div class="c-mon__empty">
+        <strong>{{ t('regie.monitoring.empty.none') }}</strong>
+        <span>{{ t('regie.monitoring.empty.noneHint') }}</span>
+        <a class="c-btn c-btn--primary" routerLink="/">{{ t('regie.settings.nav.back') }}</a>
       </div>
     } @else {
-      <div class="c-mon__scroll">
-        <table class="c-mon-table">
-          <caption class="u-sr-only">
-            {{
-              t('regie.monitoring.caption')
-            }}
-          </caption>
-          <thead>
-            <tr>
-              @for (column of columns; track column.id) {
-                <th
-                  scope="col"
-                  [class.is-num]="column.numeric"
-                  [attr.aria-sort]="ariaSort(column.id)"
-                >
-                  <button class="c-mon-table__sort" type="button" (click)="sortBy(column.id)">
-                    {{ column.label ? t(column.label) : column.unit }}
-                    @if (ariaSort(column.id); as direction) {
+      <section class="c-group">
+        <div class="c-mon__table">
+          <table class="c-mon-table">
+            <caption class="u-sr-only">
+              {{
+                t('regie.monitoring.caption')
+              }}
+            </caption>
+            <thead>
+              <tr>
+                @for (column of columns; track column.id) {
+                  <th
+                    scope="col"
+                    [class.is-num]="column.numeric"
+                    [class.is-sorted]="ariaSort(column.id)"
+                    [attr.aria-sort]="ariaSort(column.id)"
+                  >
+                    <button class="c-mon-table__sort" type="button" (click)="sortBy(column.id)">
+                      <span>{{ heading(column) }}</span>
                       <svg
                         class="c-mon-table__dir"
                         sfIcon="chev"
                         [size]="12"
-                        [class.is-up]="direction === 'ascending'"
+                        [class.is-up]="ariaSort(column.id) === 'ascending'"
                       ></svg>
-                    }
-                  </button>
-                </th>
-              }
-            </tr>
-          </thead>
-          <tbody>
-            @for (row of rows(); track row.id) {
-              <tr
-                [class.is-warn]="row.stateTone === 'warn'"
-                [class.is-bad]="row.stateTone === 'bad'"
-                [class.is-stale]="row.stale"
-              >
-                <th scope="row">
-                  <span class="c-mon-table__name">{{ row.name }}</span>
-                  <span class="c-mon-table__sub">{{ row.platform }}</span>
-                </th>
-                <td>
-                  <span class="c-mon-table__state">
-                    <span class="c-lamp" aria-hidden="true" [class]="row.lamp"></span>
-                    <span [class]="toneClass(row.stateTone)">{{ row.stateWord }}</span>
-                  </span>
-                </td>
-                <td>
-                  @for (slot of row.slots; track slot.code) {
-                    <span class="c-mon-table__line">
-                      <span class="c-code">{{ slot.code }}</span>
-                      <span class="c-mon-table__sub">{{ slot.state }}</span>
-                    </span>
-                  } @empty {
-                    <span class="c-mon-table__sub">{{ t('regie.monitoring.slot.none') }}</span>
-                  }
-                </td>
-                <td class="u-mono">
-                  @for (slot of row.slots; track slot.code) {
-                    <span class="c-mon-table__line">{{ slot.resolution }}</span>
-                  }
-                </td>
-                <td class="is-num u-mono">
-                  @for (slot of row.slots; track slot.code) {
-                    <span class="c-mon-table__line">{{ slot.fps }}</span>
-                  }
-                </td>
-                <td class="is-num u-mono">
-                  @for (slot of row.slots; track slot.code) {
-                    <span class="c-mon-table__line">{{ slot.bitrate }}</span>
-                  }
-                </td>
-                <td class="u-mono">
-                  @for (slot of row.slots; track slot.code) {
-                    <span class="c-mon-table__line">
-                      {{ slot.encoding }}
-                      @if (slot.cpuLimited) {
-                        <span
-                          class="c-tag c-tag--warn"
-                          [attr.title]="t('regie.load.cpuLimitHint')"
-                          >{{ t('regie.load.cpuLimit') }}</span
-                        >
-                      }
-                    </span>
-                  }
-                </td>
-                <td class="is-num u-mono">
-                  @for (slot of row.slots; track slot.code) {
-                    <span class="c-mon-table__line">{{ slot.loss }}</span>
-                  }
-                </td>
-                <td class="is-num u-mono">{{ rtt(row) }}</td>
-                <td class="is-num u-mono" [class.c-state--warn]="lowBattery(row)">
-                  {{ battery(row) }}
-                </td>
-                <td>{{ row.network ?? '–' }}</td>
-                <td>
-                  <span class="c-mon-table__state">
-                    <span class="c-lamp" aria-hidden="true" [class]="row.techLamp"></span
-                    >{{ row.techText }}
-                  </span>
-                </td>
-                <td class="is-num u-mono" [class.c-state--warn]="row.stale">{{ seen(row) }}</td>
+                    </button>
+                  </th>
+                }
               </tr>
-            }
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              @for (row of rows(); track row.id) {
+                <tr
+                  [class.is-warn]="row.stateTone === 'warn'"
+                  [class.is-bad]="row.stateTone === 'bad'"
+                  [class.is-stale]="row.stale"
+                >
+                  <th scope="row">
+                    <span class="c-mon-table__name">{{ row.name }}</span>
+                    <span class="c-mon-table__sub">{{ row.platform }}</span>
+                  </th>
+                  <td>
+                    <span class="c-mon-table__state">
+                      <span class="c-lamp" aria-hidden="true" [class]="row.lamp"></span>
+                      <span [class]="toneClass(row.stateTone)">{{ row.stateWord }}</span>
+                    </span>
+                  </td>
+                  <td class="c-mon-table__lines">
+                    @for (slot of row.slots; track slot.code) {
+                      <span class="c-mon-table__line">
+                        <span class="c-code">{{ slot.code }}</span>
+                        <span class="c-mon-table__sub">{{ slot.state }}</span>
+                      </span>
+                    } @empty {
+                      <span class="c-mon-table__sub">{{ t('regie.monitoring.slot.none') }}</span>
+                    }
+                  </td>
+                  <td class="c-mon-table__lines u-mono">
+                    @for (slot of row.slots; track slot.code) {
+                      <span class="c-mon-table__line">{{ slot.resolution }}</span>
+                    }
+                  </td>
+                  <td class="c-mon-table__lines is-num u-mono">
+                    @for (slot of row.slots; track slot.code) {
+                      <span class="c-mon-table__line">{{ slot.fps }}</span>
+                    }
+                  </td>
+                  <td class="c-mon-table__lines is-num u-mono">
+                    @for (slot of row.slots; track slot.code) {
+                      <span class="c-mon-table__line">{{ slot.bitrate }}</span>
+                    }
+                  </td>
+                  <td class="c-mon-table__lines">
+                    @for (slot of row.slots; track slot.code) {
+                      <span class="c-mon-table__line">
+                        {{ slot.encoding }}
+                        @if (slot.cpuLimited) {
+                          <span class="c-tag c-tag--warn" [attr.title]="t('regie.load.cpuLimitHint')">{{
+                            t('regie.load.cpuLimit')
+                          }}</span>
+                        }
+                      </span>
+                    }
+                  </td>
+                  <td class="c-mon-table__lines is-num u-mono">
+                    @for (slot of row.slots; track slot.code) {
+                      <span class="c-mon-table__line">{{ slot.loss }}</span>
+                    }
+                  </td>
+                  <td class="is-num u-mono">{{ rtt(row) }}</td>
+                  <td class="is-num u-mono" [class.c-state--warn]="lowBattery(row)">
+                    {{ battery(row) }}
+                  </td>
+                  <td>{{ row.network ?? '–' }}</td>
+                  <td>
+                    <span class="c-mon-table__state">
+                      <span class="c-lamp" aria-hidden="true" [class]="row.techLamp"></span
+                      >{{ row.techText }}
+                    </span>
+                  </td>
+                  <td class="is-num u-mono" [class.c-state--warn]="row.stale">{{ seen(row) }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <p class="c-group__footer">{{ t('regie.monitoring.sortHint') }}</p>
+      </section>
     }
-  </main>
+  </div>
 </div>

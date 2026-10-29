@@ -7,16 +7,21 @@ export type SettingsScope = 'production' | 'browser' | 'server' | 'none';
 
 /**
  * The head of a settings page: the large title and one line that says where its choices apply ("Applies to the
- * production “Demo webinar”.", "Saved in this browser only.", "Applies to the whole server …").
+ * production “Demo webinar”.", "Saved in this browser only.", "Applies to the whole server …"), then an optional
+ * sentence about the page. Content projected into it (a live status line) follows below the lead.
  */
 @Component({
   selector: 'sf-settings-page-head',
   template: `
     <header class="c-page__head">
       <h1 class="c-page__title">{{ title() }}</h1>
-      @if (lead(); as text) {
+      @if (scopeLine(); as text) {
         <p class="c-page__lead">{{ text }}</p>
       }
+      @if (note(); as text) {
+        <p class="c-page__lead">{{ text }}</p>
+      }
+      <ng-content />
     </header>
   `,
   styles: `
@@ -33,34 +38,23 @@ export class SettingsPageHeadComponent {
   readonly title = input.required<string>();
   /** The scope line under the title. */
   readonly scope = input<SettingsScope>('none');
-  /** An extra sentence after the scope line. */
+  /** A sentence about the page after the scope line. */
   readonly note = input<string | null>(null);
 
-  protected readonly lead = computed(() => {
-    const parts: string[] = [];
+  protected readonly scopeLine = computed(() => {
     switch (this.scope()) {
       case 'production': {
         const name = this.store.production()?.name;
-        parts.push(
-          name
-            ? t('regie.settings.scope.production', { name })
-            : t('regie.settings.scope.productionNone'),
-        );
-        break;
+        return name
+          ? t('regie.settings.scope.production', { name })
+          : t('regie.settings.scope.productionNone');
       }
       case 'browser':
-        parts.push(t('regie.settings.scope.browser'));
-        break;
+        return t('regie.settings.scope.browser');
       case 'server':
-        parts.push(t('regie.settings.scope.server'));
-        break;
+        return t('regie.settings.scope.server');
       case 'none':
-        break;
+        return null;
     }
-    const note = this.note();
-    if (note) {
-      parts.push(note);
-    }
-    return parts.length > 0 ? parts.join(' ') : null;
   });
 }

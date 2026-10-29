@@ -1,91 +1,121 @@
 import type { Namespace } from '../../types';
 
 /**
- * The first-run wizard after the account (media address, address and certificate, embedding) and the "Server settings"
- * page of the Regie (issue #27): the same sections in both places, plus the backup schedule and the latest backups.
+ * The first-run wizard after the account (media server, address and certificate, embedding) and the server pages of the
+ * settings window (issue #27): the same sections in both places, plus the backup schedule and the latest backups.
  */
 export const regieServer = {
-  // --- the page and what both places share
-  'regie.server.title': 'Server settings',
+  // --- what the server pages and the wizard share
   'regie.server.menu': 'Server settings',
-  'regie.server.back': 'Back to the control room',
-  'regie.server.loading': 'Loading the settings …',
+  'regie.server.loading': 'Loading the settings…',
   'regie.server.loadError': 'The settings could not be loaded.',
+  'regie.server.loadErrorHint': 'Check that the server is running, then try again.',
   'regie.server.retry': 'Try again',
   'regie.server.save': 'Save',
-  'regie.server.saving': 'Saving …',
+  'regie.server.saving': 'Saving…',
   'regie.server.saved': 'Saved.',
+  'regie.server.onAir': 'Not possible while the broadcast is on air. End the broadcast first.',
+  'regie.server.details.summary': 'Technical details',
+  'regie.server.details.run': 'For whoever runs the server, this command shows more:',
   'regie.server.apply.timeout':
-    'The services have not taken over the settings yet. Check: docker compose ps',
+    'The services have not taken over the settings yet. The status at the top of the page shows when they do.',
   'regie.server.apply.caddy':
-    'The web server (Caddy) refused the settings. Check: docker compose logs api caddy',
-  'regie.server.apply.liveKit':
-    'The media server (LiveKit) did not restart. Check: docker compose logs livekit',
+    'The web server did not accept the settings. The previous settings stay active.',
+  'regie.server.apply.liveKit': 'The media server did not restart with the new address.',
   'regie.server.apply.backup':
-    'The backup service has not taken over the settings yet. Check: docker compose ps backup',
-  'regie.server.status.heading': 'Services',
+    'The backup service has not taken over the settings yet. They are saved and apply as soon as it runs.',
+  'regie.server.status.label': 'Status',
   'regie.server.status.caddy': 'Web server',
   'regie.server.status.liveKit': 'Media server',
   'regie.server.status.backup': 'Backup service',
-  'regie.server.status.ok': 'runs the saved settings',
-  'regie.server.status.pending': 'is taking over the settings …',
-  'regie.server.status.failed': 'refused the settings',
+  'regie.server.status.ok': 'Running with the saved settings',
+  'regie.server.status.pending': 'Taking over the new settings…',
+  'regie.server.status.failed': 'Did not take over the saved settings',
+  'regie.server.status.unknown': 'Checking…',
+  'regie.server.status.unreachable': 'The status could not be read. The next check follows soon.',
+  'regie.server.status.checked': 'Checked at {time}',
 
   // --- the wizard
   'regie.server.wizard.title': 'Set up the server',
-  'regie.server.wizard.lead': 'Set up the server',
-  'regie.server.wizard.step': 'Step {current} of {total}',
+  'regie.server.wizard.steps': 'Setup steps',
   'regie.server.wizard.stepsAccount': 'Account',
-  'regie.server.wizard.stepsMedia': 'Media address',
-  'regie.server.wizard.stepsAddress': 'Address and certificate',
+  'regie.server.wizard.stepsMedia': 'Media server',
+  'regie.server.wizard.stepsAddress': 'Address',
   'regie.server.wizard.stepsEmbedding': 'Embedding',
+  'regie.server.wizard.stepsDone': 'Done',
+  'regie.server.wizard.stepDone': 'completed',
+  'regie.server.wizard.mediaTitle': 'Connect the media server',
+  'regie.server.wizard.mediaLead':
+    'Cameras, phones and the output exchange picture and sound directly with this server. Enter the address of this computer in your network.',
+  'regie.server.wizard.addressTitle': 'Choose how browsers reach the server',
+  'regie.server.wizard.addressLead':
+    'Browsers open the control room, the output and the pairing page only over HTTPS, with a certificate they trust.',
+  'regie.server.wizard.embeddingTitle': 'Allow websites to show the output',
+  'regie.server.wizard.embeddingLead':
+    'Add the page that shows the output to your audience, for example your streaming proxy.',
   'regie.server.wizard.next': 'Save and continue',
-  'regie.server.wizard.keep': 'Keep the defaults',
   'regie.server.wizard.finish': 'Save and finish',
+  'regie.server.wizard.back': 'Back',
+  'regie.server.wizard.keep': 'Keep the defaults',
+  'regie.server.wizard.keepAddress':
+    'Keep the defaults: the server keeps its local certificate and is opened by its IP address. You can change this later in Settings.',
+  'regie.server.wizard.keepEmbedding':
+    'Keep the defaults: no other website may show the output. You can add websites later in Settings.',
   'regie.server.wizard.loadError': 'The wizard could not read the settings of the server.',
   'regie.server.wizard.doneTitle': 'The server is ready',
   'regie.server.wizard.doneText':
-    'Open the control room and pair the first phone or laptop. You can change everything here later under "Server settings".',
+    'Open the control room and add the first phone or laptop. You can change these settings any time in Settings.',
   'regie.server.wizard.doneOpen': 'Open the control room',
+  'regie.server.wizard.doneHere': 'Stay at this address',
   'regie.server.wizard.doneNewAddress':
-    'The control room now also answers at the new address. Devices and browsers use this one from now on; sign in again there.',
+    'The control room now answers at a new address. Devices use it from now on; open it there and sign in again.',
   'regie.server.wizard.doneNewAddressLink': 'Open {url}',
 
-  // --- media address
+  // --- media server
   'regie.server.media.heading': 'Media address',
   'regie.server.media.intro':
-    'Cameras, phones and the output exchange picture and sound directly with this server. Enter the IPv4 address of this computer in your network; every device must be able to reach it.',
+    'Cameras, phones and the output exchange picture and sound directly with this server through this address.',
   'regie.server.media.label': 'IPv4 address of this server',
   'regie.server.media.hint':
     'Find it on the server: Linux "hostname -I", Windows "ipconfig", macOS "ipconfig getifaddr en0". Reserve the address in your router so that it stays the same.',
-  'regie.server.media.suggest': 'Use {address}',
-  'regie.server.media.suggestFromHost': 'the address you opened this page with',
+  'regie.server.media.suggestions': 'Suggestions',
+  'regie.server.media.suggestFromHost': 'Address of this page',
+  'regie.server.media.suggestInterface': 'Network of the server',
+  'regie.server.media.suggestName': 'Use {address} ({source})',
   'regie.server.media.required': 'Enter the IPv4 address.',
   'regie.server.media.invalid':
     'Enter four numbers from 0 to 255 separated by dots, for example 192.168.1.50.',
-  'regie.server.media.test': 'Test connection',
-  'regie.server.media.testing': 'Testing …',
+  'regie.server.media.testHeading': 'Connection test',
+  'regie.server.media.testLabel': 'Test this address',
   'regie.server.media.testNote':
-    'The test restarts the media server for a few seconds and sends a message from this browser through the address and back.',
+    'Restarts the media server for a few seconds, then sends a message from this browser through the address and back.',
+  'regie.server.media.test': 'Test connection',
+  'regie.server.media.testing': 'Testing…',
   'regie.server.media.testOk':
     'The test worked: this browser exchanged data with the media server at {address} (round trip {ms} ms).',
-  'regie.server.media.testSignal':
-    'The media server does not answer through the web server. Check: docker compose ps livekit caddy',
+  'regie.server.media.testSignal': 'The media server does not answer through the web server.',
   'regie.server.media.testTransport':
-    'The connection to {address} could not be established. Check that this is the address of the server and that its firewall lets the media ports through (by default 7881/tcp and 7882/udp).',
+    'The connection to {address} could not be established. Check that this is the address of the server and that its firewall lets the media ports through (7881/tcp and 7882/udp).',
   'regie.server.media.testData':
     'Connected, but the test message did not come back. Check the firewall and any VPN on this computer, then test again.',
-  'regie.server.media.changeNote':
-    'Saving a new address restarts the media server. That is not possible while a broadcast is live.',
+  'regie.server.media.changeNote': 'Saving a new address restarts the media server.',
 
   // --- address and certificate
-  'regie.server.address.heading': 'Address and certificate',
   'regie.server.address.intro':
-    'Browsers only open the control room, the output and the pairing page over HTTPS with a certificate they trust. Choose how the server gets one.',
+    'Browsers open the control room, the output and the pairing page only over HTTPS, with a certificate they trust.',
   'regie.server.address.modeLabel': 'Certificate',
-  'regie.server.address.modeInternal': 'Local certificate (no domain needed)',
-  'regie.server.address.modeCustom': 'My own certificate',
-  'regie.server.address.modeDns': 'Let’s Encrypt through DNS: {provider}',
+  'regie.server.address.modeInternal': 'Local certificate',
+  'regie.server.address.modeInternalText':
+    'The server signs its own certificate. Every device trusts it once; no domain is needed.',
+  'regie.server.address.recommended': 'Recommended on a LAN',
+  'regie.server.address.modeCustom': 'Own certificate',
+  'regie.server.address.modeCustomText': 'Upload a certificate and its key that you already have.',
+  'regie.server.address.modeDns': 'Let’s Encrypt via DNS',
+  'regie.server.address.modeDnsText':
+    'A free certificate for your domain, confirmed through your DNS provider. Nothing has to be reachable from the internet.',
+  'regie.server.address.provider': 'DNS provider',
+  'regie.server.address.providerHint': 'The domain must belong to your account at this provider.',
+  'regie.server.address.nameHeading': 'Name',
   'regie.server.address.domainLabel': 'Domain',
   'regie.server.address.domainHintInternal':
     'Optional. A name for this server that your devices can resolve, for example studioflow.example.com. Without one the control room is opened by the IP address.',
@@ -94,13 +124,13 @@ export const regieServer = {
   'regie.server.address.domainRequired': 'Enter the domain.',
   'regie.server.address.domainInvalid':
     'Enter a host name such as studioflow.example.com: letters, digits and hyphens, with a dot.',
+  'regie.server.address.trustHeading': 'Trust on every device',
   'regie.server.address.internalNote':
-    'The server signs its own certificate. Each browser and phone has to trust the certificate authority of the server once; until then it shows a warning.',
+    'Every browser and phone has to trust the certificate authority of this server once; until then it shows a warning.',
   'regie.server.address.internalDownload': 'Download the CA certificate',
   'regie.server.address.internalInstall':
-    'Install it on every device as a trusted root certificate (steps in the runbook).',
-  'regie.server.address.dnsNote':
-    'The server gets a Let’s Encrypt certificate by publishing a DNS record, so nothing has to be reachable from the internet. The domain must belong to the account of the provider.',
+    'Install it on every device as a trusted root certificate.',
+  'regie.server.address.more': 'More options',
   'regie.server.address.dnsEmailLabel': 'E-mail for expiry notices (optional)',
   'regie.server.address.dnsEmailInvalid': 'Enter a valid e-mail address.',
   'regie.server.address.dnsChallengeLabel': 'Delegated challenge domain (optional)',
@@ -121,13 +151,19 @@ export const regieServer = {
   'regie.server.address.credentialApplicationKey': 'Application key',
   'regie.server.address.credentialApplicationSecret': 'Application secret',
   'regie.server.address.credentialConsumerKey': 'Consumer key',
+  'regie.server.address.customHeading': 'Certificate files',
   'regie.server.address.customNote':
-    'Upload the certificate chain (PEM, the certificate of the server first) and its private key without a password.',
+    'The certificate chain (PEM, the certificate of the server first) and its private key without a password.',
   'regie.server.address.customCertificate': 'Certificate file (PEM)',
   'regie.server.address.customKey': 'Private key file (PEM)',
-  'regie.server.address.customCurrent': 'Current certificate: {subject}, valid until {date}.',
-  'regie.server.address.customNames': 'Names: {names}',
-  'regie.server.address.customKeep': 'Choose both files to replace it.',
+  'regie.server.address.customChoose': 'Choose file…',
+  'regie.server.address.customNoFile': 'No file chosen',
+  'regie.server.address.customKeep': 'Choose both files only to replace the current certificate.',
+  'regie.server.address.currentHeading': 'Current certificate',
+  'regie.server.address.currentSubject': 'Issued to',
+  'regie.server.address.currentNames': 'Names',
+  'regie.server.address.currentExpiry': 'Valid until',
+  'regie.server.address.currentFingerprint': 'Fingerprint',
   'regie.server.address.customFileRequired': 'Choose the file.',
   'regie.server.address.customReadError': 'The file could not be read.',
   'regie.server.address.errorCertificateRequired': 'Upload a certificate first.',
@@ -142,41 +178,59 @@ export const regieServer = {
   'regie.server.address.errorTlsMode': 'This certificate mode is not available.',
   'regie.server.address.warning':
     'Paired phones, laptops and output links open the address they were paired with. After a change of the domain or the certificate they have to open {url} instead.',
-  'regie.server.address.newUrl': 'The control room will then be at {url}',
+  'regie.server.address.newUrl': 'The control room will then be at {url}.',
   'regie.server.address.openNew': 'Open {url}',
 
   // --- embedding
-  'regie.server.embedding.heading': 'Embedding the output',
+  'regie.server.embedding.heading': 'Allowed websites',
   'regie.server.embedding.intro':
-    'The output can be shown inside a web page of these origins, for example in a streaming proxy. The control room itself can never be embedded.',
-  'regie.server.embedding.label': 'Allowed origins, one per line',
+    'Websites that may show the output, for example your streaming proxy. The control room itself can never be embedded.',
+  'regie.server.embedding.row': 'Website {index}',
+  'regie.server.embedding.add': 'Add website',
+  'regie.server.embedding.remove': 'Remove website {index}',
+  'regie.server.embedding.empty': 'No website may show the output yet.',
   'regie.server.embedding.hint':
-    'For example https://proxy.example.ch or https://*.example.com. Leave empty to allow none.',
+    'Enter each address as https://host, or https://*.example.com for every subdomain, optionally with a port.',
   'regie.server.embedding.invalid':
-    'Line {line} is not an origin. Use https://host or https://*.host, optionally with a port.',
-  'regie.server.embedding.tooMany': 'At most {max} origins are possible.',
+    'This is not a website address. Use https://host or https://*.host, optionally with a port.',
+  'regie.server.embedding.tooMany': 'At most {max} websites are possible.',
 
-  // --- backups
-  'regie.server.backup.heading': 'Backups',
+  // --- backups: schedule, keep and the off-site copy
   'regie.server.backup.intro':
-    'The backup service copies the database, the login keys, the certificates and the media to the backups volume of this server. A scheduled backup never starts while a broadcast is live; it waits for the end.',
-  'regie.server.backup.scheduleLabel': 'Schedule',
+    'The backup service copies the database, the login keys, the certificates and the media to the backups volume of this server. A scheduled backup never starts during a broadcast; it waits for the end.',
+  'regie.server.backup.scheduleHeading': 'Schedule',
+  'regie.server.backup.scheduleLabel': 'Automatic backups',
+  'regie.server.backup.presetOff': 'Off',
+  'regie.server.backup.presetDaily': 'Daily',
+  'regie.server.backup.presetWeekly': 'Weekly',
+  'regie.server.backup.presetCustom': 'Custom',
+  'regie.server.backup.timeLabel': 'Time',
+  'regie.server.backup.dayLabel': 'Day',
+  'regie.server.backup.cronLabel': 'Schedule (cron)',
   'regie.server.backup.scheduleHint':
-    'Five fields as in cron, for example 0 3 * * * for every day at 03:00. Empty: no automatic backups.',
+    'Five fields as in cron, for example 0 3 * * 1-5 for 03:00 from Monday to Friday.',
   'regie.server.backup.scheduleInvalid':
     'This is not a schedule of five fields (minute, hour, day, month, weekday).',
-  'regie.server.backup.timezoneLabel': 'Time zone of the schedule',
-  'regie.server.backup.timezoneHint': 'For example Europe/Zurich. Empty: UTC.',
+  'regie.server.backup.timeInvalid': 'Enter a time such as 03:00.',
+  'regie.server.backup.timezoneLabel': 'Time zone',
   'regie.server.backup.timezoneInvalid': 'Enter a time zone name such as Europe/Zurich.',
-  'regie.server.backup.keepDailyLabel': 'Daily backups kept',
-  'regie.server.backup.keepWeeklyLabel': 'Weekly backups kept',
+  'regie.server.backup.nextToday': 'Next backup today at {time}.',
+  'regie.server.backup.nextTomorrow': 'Next backup tomorrow at {time}.',
+  'regie.server.backup.nextDay': 'Next backup on {day} at {time}.',
+  'regie.server.backup.nextOff': 'No automatic backups. “Back up now” still works.',
+  'regie.server.backup.nextCustom': 'The server runs this schedule in the chosen time zone.',
+  'regie.server.backup.keepHeading': 'Keep',
+  'regie.server.backup.keepDailyLabel': 'Daily backups',
+  'regie.server.backup.keepWeeklyLabel': 'Weekly backups',
+  'regie.server.backup.keepFooter': 'The newest backups are kept; older ones are deleted.',
   'regie.server.backup.keepInvalid': 'Enter a whole number from {min} to {max}.',
   'regie.server.backup.offsiteHeading': 'Off-site copy',
+  'regie.server.backup.offsiteSwitch': 'Copy every backup to a second place',
   'regie.server.backup.offsiteIntro':
-    'Copies every backup to a second place with rclone (S3-compatible storage, SFTP and others). What leaves the server is encrypted with age.',
+    'With rclone to S3-compatible storage, SFTP and others. What leaves the server is encrypted with age.',
   'regie.server.backup.offsiteRemoteLabel': 'rclone remote',
-  'regie.server.backup.offsiteRemoteHint':
-    'Name and folder, for example offsite:studioflow. Empty: no off-site copy.',
+  'regie.server.backup.offsiteRemoteHint': 'Name and folder, for example offsite:studioflow.',
+  'regie.server.backup.offsiteRemoteRequired': 'Enter the remote, or switch the off-site copy off.',
   'regie.server.backup.offsiteRemoteInvalid': 'Use the form name:folder.',
   'regie.server.backup.offsiteRemoteNotInConfig':
     'The configuration does not define a remote with this name.',
@@ -195,18 +249,30 @@ export const regieServer = {
   'regie.server.backup.offsiteAgeRequired':
     'Enter at least one public age key, or confirm below that the remote encrypts by itself.',
   'regie.server.backup.offsiteUnencrypted': 'The remote encrypts by itself (upload without age)',
+
+  // --- backups: the latest backups
   'regie.server.backup.listHeading': 'Latest backups',
   'regie.server.backup.listEmpty': 'There is no backup yet.',
+  'regie.server.backup.listEmptyHint':
+    'The first one appears here after the next scheduled run or after “Back up now”.',
   'regie.server.backup.listNow': 'Back up now',
+  'regie.server.backup.listIdle': 'Ready',
   'regie.server.backup.listRequested':
     'The backup was requested. It appears in the list when it is done.',
-  'regie.server.backup.listRunning': 'A backup is running …',
+  'regie.server.backup.listRunning': 'A backup is running…',
   'regie.server.backup.listPostponed': 'A backup waits for the end of the broadcast.',
-  'regie.server.backup.listNotSeen':
-    'The backup service has not reported yet. Check: docker compose ps backup',
-  'regie.server.backup.listFailed': 'The last backup failed. Check: docker compose logs backup',
-  'regie.server.backup.listAuto': 'automatic',
-  'regie.server.backup.listManual': 'manual',
+  'regie.server.backup.listNotSeen': 'The backup service has not reported yet.',
+  'regie.server.backup.listFailed': 'The last backup failed.',
+  'regie.server.backup.listLoadError': 'The list of backups could not be loaded.',
+  'regie.server.backup.listAuto': 'Automatic',
+  'regie.server.backup.listManual': 'Manual',
+  'regie.server.backup.listColumnName': 'Backup',
+  'regie.server.backup.listColumnKind': 'Kind',
+  'regie.server.backup.listColumnSize': 'Size',
+  'regie.server.backup.listColumnTime': 'Finished',
+  'regie.server.backup.listCaption': 'The latest backups, newest first',
+  'regie.server.backup.listCopy': 'Copy the restore command for {name}',
   'regie.server.backup.listRestore':
-    'Restoring is a command on the server: docker compose run --rm backup restore <folder>. The runbook describes it.',
+    'Restoring replaces the database and needs the stack stopped, so it is a command on the server. Copy it from a row above, or use this one with the name of the backup:',
+  'regie.server.backup.listRestoreCopy': 'Copy command',
 } as const satisfies Namespace<'regie.server'>;

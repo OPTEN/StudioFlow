@@ -1,0 +1,186 @@
+// Address and certificate: the three certificate cards, the current certificate as key-value rows, styled file pickers
+// and the "More options" disclosure of Let's Encrypt. Tokens only.
+@use 'mixins' as *;
+
+// The certificate choice: a fieldset whose legend reads like a group title, and three radio cards side by side (stacked
+// on narrow windows). The selected card carries the accent ring; the radio itself stays visible for clarity.
+.c-kind {
+  border: 0;
+  container-type: inline-size;
+  margin: 0;
+  min-inline-size: 0;
+  padding: 0;
+}
+
+// Floated, the legend is an ordinary grid item of the group (spaced like every group title).
+.c-kind__legend {
+  float: left;
+}
+
+// Side by side on a settings page; one below the other in the narrower wizard card and on narrow windows.
+.c-kind__cards {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+
+  @container (max-width: 600px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.c-kind__card {
+  @include state-transition(box-shadow, background-color);
+  align-content: start;
+  background: var(--group);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 0 0 0.5px var(--seam);
+  column-gap: 10px;
+  cursor: pointer;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  padding: 12px 14px 14px;
+  row-gap: 4px;
+
+  &:hover {
+    box-shadow: 0 0 0 1px var(--seam-strong);
+  }
+
+  &.is-selected {
+    background: color-mix(in srgb, var(--blue) 6%, var(--group));
+    box-shadow: 0 0 0 2px var(--blue);
+  }
+
+  &:has(.c-kind__radio:focus-visible) {
+    box-shadow:
+      0 0 0 2px var(--blue),
+      var(--shadow-focus);
+  }
+}
+
+.c-kind__radio {
+  accent-color: var(--blue-fill);
+  grid-row: 1;
+  height: 16px;
+  margin: 1px 0 0;
+  width: 16px;
+
+  &:focus-visible {
+    outline: none;
+  }
+}
+
+.c-kind__title {
+  align-items: center;
+  color: var(--text);
+  cursor: pointer;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 13px;
+  font-weight: 600;
+  gap: 4px 8px;
+  grid-row: 1;
+}
+
+.c-kind__badge {
+  background: var(--fill);
+  border-radius: var(--radius-pill);
+  color: var(--text-2);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 7px;
+  white-space: nowrap;
+}
+
+.c-kind__text {
+  color: var(--muted);
+  font-size: 12px;
+  grid-column: 2;
+  line-height: 1.4;
+}
+
+.c-address__provider {
+  width: 200px;
+}
+
+// "More options": a plain disclosure button with a turning chevron, the fields in a group below it.
+.c-address__more {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+
+  .c-group__body {
+    width: 100%;
+  }
+}
+
+.c-address__toggle {
+  padding-left: 2px;
+
+  .c-icon {
+    transition: transform var(--dur-state) var(--ease);
+
+    &.is-open {
+      transform: rotate(90deg);
+    }
+  }
+}
+
+// The current certificate: key-value rows of a group.
+.c-address__kv {
+  margin: 0;
+
+  dt {
+    color: var(--muted);
+  }
+}
+
+.c-address__value {
+  color: var(--text);
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
+.c-address__fingerprint {
+  font-size: 11.5px;
+  max-width: 46ch;
+}
+
+// File pickers: the native input stays focusable but invisible; its label is drawn as a button and shows the focus.
+.c-address__picker {
+  display: inline-flex;
+  position: relative;
+}
+
+.c-address__input {
+  clip-path: inset(50%);
+  height: 1px;
+  opacity: 0;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+
+  &:focus-visible + .c-btn {
+    @include focus-ring;
+  }
+}
+
+.c-address__file {
+  @include ellipsis;
+
+  &.is-chosen {
+    @include code;
+    color: var(--text-2);
+    font-size: 12px;
+  }
+}
+
+.c-address__error {
+  grid-column: 1 / -1;
+}
+
+.c-address__link {
+  overflow-wrap: anywhere;
+}

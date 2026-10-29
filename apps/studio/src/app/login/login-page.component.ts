@@ -19,6 +19,10 @@ import { LanguageSelectComponent } from '../core/ui/language-select.component';
 /** Default lockout when the server sends 429 without Retry-After (spec 5: 15 minutes). */
 const DEFAULT_LOCKOUT_SECONDS = 15 * 60;
 
+/** The command that deletes the account on the server, so the first-run setup opens again (spec 5, forgotten password). */
+export const RESET_ADMIN_COMMAND =
+  'docker compose exec api dotnet Opten.StudioFlow.Web.dll reset-admin';
+
 /** The message for a failed login; it stays correct when the language changes while it is shown. */
 export function loginErrorMsg(error: unknown): Msg {
   const apiError = ApiError.from(error);
@@ -36,9 +40,11 @@ function lockedMsg(seconds: number): Msg {
 }
 
 /**
- * Login of the Regie (`/login`, spec 5): one admin account. Dark console look with the brand mark, typed reactive
- * form, errors for wrong credentials, lockout (429 with Retry-After, the button stays disabled until it ends) and a
- * missing server. After success it continues to `?next=` (in-app paths only) or `/`.
+ * Login of the Regie (`/login`, spec 5): one admin account. A setup-assistant card with the mark, a large title, the two
+ * fields (the password with a show toggle) and "Sign in" at the bottom right; errors for wrong credentials, lockout
+ * (429 with Retry-After, the button stays disabled until it ends and names the reason) and a missing server; "Forgot
+ * your password?" explains the reset on the server. The language and the sponsor sit below the card. After success it
+ * continues to `?next=` (in-app paths only) or `/`.
  */
 @Component({
   selector: 'sf-login-page',
@@ -60,6 +66,11 @@ export class LoginPageComponent {
   });
   protected readonly submitting = signal(false);
   protected readonly error = signal<Msg | null>(null);
+  /** The password is shown in clear text. */
+  protected readonly revealed = signal(false);
+  /** "Forgot your password?" is open. */
+  protected readonly forgotOpen = signal(false);
+  protected readonly resetCommand = RESET_ADMIN_COMMAND;
   private readonly lockedUntil = signal<number | null>(null);
   private readonly passwordInput = viewChild<ElementRef<HTMLInputElement>>('password');
 

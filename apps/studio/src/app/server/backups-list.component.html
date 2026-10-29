@@ -1,68 +1,85 @@
-<div class="c-srv">
-  @if (state(); as backups) {
-    @if (!backups.serviceSeen) {
-      <p class="c-srv__result c-srv__result--bad" role="status">
-        <span class="c-lamp is-warn" aria-hidden="true"></span
-        ><span>{{ t('regie.server.backup.listNotSeen') }}</span>
-      </p>
-    } @else if (backups.postponed) {
-      <p class="c-srv__result" role="status">
-        <span class="c-lamp is-warn" aria-hidden="true"></span
-        ><span>{{ t('regie.server.backup.listPostponed') }}</span>
-      </p>
-    } @else if (backups.running) {
-      <p class="c-srv__result" role="status">
-        <span class="c-lamp is-warn" aria-hidden="true"></span
-        ><span>{{ t('regie.server.backup.listRunning') }}</span>
-      </p>
-    } @else if (requested()) {
-      <p class="c-srv__result" role="status">
-        <span class="c-lamp" aria-hidden="true"></span
-        ><span>{{ t('regie.server.backup.listRequested') }}</span>
-      </p>
+<section class="c-group" aria-labelledby="backups-heading">
+  <h2 class="c-group__title" id="backups-heading">{{ t('regie.server.backup.listHeading') }}</h2>
+  <div class="c-group__body">
+    <div class="c-group__row c-backups__status">
+      <span class="c-lamp" aria-hidden="true" [class]="status().lamp"></span>
+      <span class="c-group__label" role="status">{{ status().text }}</span>
+      <button
+        class="c-btn c-btn--primary"
+        type="button"
+        [disabled]="requesting() || !state()?.serviceSeen"
+        (click)="backUpNow()"
+      >
+        <svg sfIcon="archive"></svg>{{ t('regie.server.backup.listNow') }}
+      </button>
+    </div>
+    @if (state() && !state()?.serviceSeen) {
+      <div class="c-group__row c-group__row--stack">
+        <sf-technical-details command="docker compose ps backup" />
+      </div>
     }
-    @if (backups.lastError) {
-      <p class="c-srv__result c-srv__result--bad" role="alert">
-        <span class="c-lamp is-bad" aria-hidden="true"></span
-        ><span>{{ t('regie.server.backup.listFailed') }}</span>
-      </p>
+    @if (failure(); as problem) {
+      <div class="c-group__row c-group__row--stack">
+        <sf-server-problem [problem]="problem" />
+      </div>
     }
 
     @if (rows().length > 0) {
-      <table class="c-srv__table">
-        <tbody>
-          @for (row of rows(); track row.name) {
+      <div class="c-group__row c-group__row--stack c-backups__table">
+        <table class="c-srv__table">
+          <caption class="u-sr-only">
+            {{
+              t('regie.server.backup.listCaption')
+            }}
+          </caption>
+          <thead>
             <tr>
-              <td class="c-srv__mono">{{ row.name }}</td>
-              <td>{{ row.kind }}</td>
-              <td class="c-srv__mono">{{ row.size }}</td>
-              <td class="c-srv__mono">{{ row.time }}</td>
+              <th scope="col">{{ t('regie.server.backup.listColumnName') }}</th>
+              <th scope="col">{{ t('regie.server.backup.listColumnKind') }}</th>
+              <th scope="col" class="c-srv__num">{{ t('regie.server.backup.listColumnSize') }}</th>
+              <th scope="col">{{ t('regie.server.backup.listColumnTime') }}</th>
+              <th scope="col"><span class="u-sr-only">{{ t('regie.server.backup.listRestoreCopy') }}</span></th>
             </tr>
-          }
-        </tbody>
-      </table>
-    } @else {
-      <p class="c-hint">{{ t('regie.server.backup.listEmpty') }}</p>
+          </thead>
+          <tbody>
+            @for (row of rows(); track row.name) {
+              <tr>
+                <td class="c-srv__code">{{ row.name }}</td>
+                <td>{{ row.kind }}</td>
+                <td class="c-srv__num">{{ row.size }}</td>
+                <td class="u-mono">{{ row.time }}</td>
+                <td class="c-backups__copy">
+                  <button
+                    class="c-ibtn"
+                    type="button"
+                    [attr.aria-label]="t('regie.server.backup.listCopy', { name: row.name })"
+                    [attr.title]="t('regie.server.backup.listCopy', { name: row.name })"
+                    (click)="copyRestore(row.name)"
+                  >
+                    <svg sfIcon="copy"></svg>
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    } @else if (state()) {
+      <div class="c-group__row">
+        <span class="c-group__label">
+          {{ t('regie.server.backup.listEmpty') }}
+          <span class="c-group__sub">{{ t('regie.server.backup.listEmptyHint') }}</span>
+        </span>
+      </div>
     }
-  } @else if (loadFailed()) {
-    <p class="c-srv__result c-srv__result--bad" role="alert">
-      <span class="c-lamp is-bad" aria-hidden="true"></span
-      ><span>{{ t('regie.server.loadError') }}</span>
-    </p>
-  } @else {
-    <p class="c-hint">{{ t('regie.server.loading') }}</p>
-  }
-
-  <p class="c-hint">{{ t('regie.server.backup.listRestore') }}</p>
-
-  <div class="c-srv__actions">
-    <button
-      class="c-btn"
-      type="button"
-      [disabled]="requesting() || !state()?.serviceSeen"
-      (click)="backUpNow()"
-    >
-      {{ t('regie.server.backup.listNow') }}
-    </button>
   </div>
-</div>
+  <div class="c-group__footer c-backups__restore">
+    <p>{{ t('regie.server.backup.listRestore') }}</p>
+    <div class="c-backups__command">
+      <code #command>{{ restoreTemplate }}</code>
+      <button class="c-btn c-btn--sm" type="button" (click)="copyTemplate(command)">
+        <svg sfIcon="copy"></svg>{{ t('regie.server.backup.listRestoreCopy') }}
+      </button>
+    </div>
+  </div>
+</section>

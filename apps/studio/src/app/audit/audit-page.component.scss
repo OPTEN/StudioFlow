@@ -1,64 +1,25 @@
-// Audit log page: header bar like the Regie, one hairline, then the filters and the table of entries.
+// Activity log in the settings window: the filters on one row with the Export menu at its end, the categories as toggle
+// chips below, then the entries in a rounded group with the count and "Load more" in its footer.
 @use 'mixins' as *;
 
 :host {
   display: block;
-  height: 100%;
 }
 
 .c-audit {
-  background: var(--seam);
+  gap: 16px;
+}
+
+.c-audit__toolbar {
   display: grid;
-  gap: 1px;
-  grid-template-rows: auto minmax(0, 1fr);
-  height: 100%;
-}
-
-.c-audit__top {
-  align-items: center;
-  background: var(--panel);
-  display: flex;
-  flex-wrap: wrap;
   gap: 12px;
-  min-height: 50px;
-  padding: 6px var(--gr) 6px var(--gl);
-}
-
-.c-audit__brand {
-  align-items: center;
-  display: flex;
-  font-size: 16.5px;
-  font-weight: 700;
-  gap: 9px;
-  letter-spacing: 0.01em;
-  white-space: nowrap;
-}
-
-.c-audit__title {
-  @include label-text;
-  margin: 0;
-}
-
-.c-audit__spacer {
-  flex: 1 1 auto;
-}
-
-.c-audit__back {
-  text-decoration: none;
-}
-
-.c-audit__main {
-  background: var(--panel);
-  overflow: auto;
-  padding: 12px var(--gr) 24px var(--gl);
 }
 
 .c-audit__filters {
   align-items: flex-end;
   display: flex;
   flex-wrap: wrap;
-  gap: 10px 14px;
-  margin-bottom: 10px;
+  gap: 10px 12px;
 }
 
 .c-audit__field {
@@ -68,86 +29,137 @@
 
   .c-select,
   .c-input {
-    min-width: 150px;
+    min-width: 160px;
     width: auto;
   }
 }
 
+.c-audit__label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
 .c-audit__field--search {
-  flex: 1 1 200px;
-  max-width: 340px;
+  flex: 1 1 220px;
+  max-width: 360px;
+}
+
+// The search field with its glass inside, on the left.
+.c-audit__search {
+  display: block;
+  position: relative;
+
+  .c-icon {
+    color: var(--muted);
+    left: 9px;
+    pointer-events: none;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+  }
 
   .c-input {
+    padding-left: 28px;
     width: 100%;
   }
 }
 
+.c-audit__export {
+  margin-left: auto;
+
+  .c-btn {
+    gap: 6px;
+  }
+}
+
+.c-audit__menu {
+  min-width: 220px;
+}
+
+.c-audit__item {
+  display: grid;
+  gap: 1px;
+  text-align: left;
+}
+
+// Category chips: capsules that read as on/off, a check on the chosen ones.
 .c-audit__chips {
+  align-items: center;
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
 }
 
 .c-audit__chip {
-  background: transparent;
-  border: 1px solid var(--seam-strong);
-  border-radius: var(--radius-md);
+  @include state-transition(background-color, color, box-shadow);
+  align-items: center;
+  background: var(--fill);
+  border: 0;
+  border-radius: var(--radius-pill);
   color: var(--text-2);
   cursor: pointer;
-  font: 600 12.5px var(--font-ui);
-  height: 30px;
-  padding: 0 10px;
+  display: inline-flex;
+  font: 500 12.5px var(--font-ui);
+  gap: 5px;
+  height: 28px;
+  padding: 0 12px;
   white-space: nowrap;
 
   &:hover {
-    background: var(--raised);
+    background: var(--fill-hover);
+    color: var(--text);
   }
 
   &[aria-pressed='true'] {
-    background: var(--raised-2);
-    box-shadow: var(--shadow-selected);
-    color: var(--text);
+    background: var(--blue-wash);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--blue) 45%, transparent);
+    color: var(--blue);
+    font-weight: 600;
   }
 }
 
-.c-audit__actions {
+.c-audit__clear {
+  margin-left: 4px;
+}
+
+.c-audit__note {
+  padding: 0 4px;
+}
+
+// "Last broadcast" says which broadcast it shows.
+.c-audit__range {
   align-items: center;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-left: auto;
-}
-
-.c-audit__export {
-  display: inline-flex;
-  gap: 6px;
-}
-
-.c-audit__bar {
-  align-items: baseline;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 14px;
-  margin: 6px 0 8px;
-}
-
-.c-audit__count {
   color: var(--text-2);
+  display: flex;
   font-size: 13px;
-}
-
-.c-audit__bar .c-hint {
-  margin-left: auto;
-}
-
-.c-audit__error {
-  align-items: flex-start;
-  display: grid;
   gap: 8px;
-  justify-items: start;
+  padding: 0 4px;
+
+  .c-icon {
+    color: var(--muted);
+  }
+}
+
+.c-audit__state {
+  background: var(--group);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 0 0 0.5px var(--seam);
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  padding: 36px 24px;
+  text-align: center;
+
+  .c-btn {
+    margin-top: 6px;
+  }
 }
 
 .c-audit__scroll {
+  background: var(--group);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 0 0 0.5px var(--seam);
   overflow-x: auto;
 }
 
@@ -159,29 +171,34 @@
 
   th,
   td {
-    border-bottom: 1px solid var(--seam);
-    line-height: 22px;
-    padding: 6px 10px;
+    line-height: 20px;
+    padding: 8px 12px;
     text-align: left;
     vertical-align: top;
   }
 
   thead th {
-    @include label-text(11px);
-    background: var(--panel);
-    padding-block: 4px;
-    position: sticky;
-    top: 0;
-    z-index: 1;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 600;
+    padding-block: 9px 7px;
+  }
+
+  tbody tr {
+    box-shadow: inset 0 1px 0 var(--seam);
   }
 
   tbody tr.is-fresh {
     animation: audit-fresh 2.4s var(--ease) 1;
   }
 
-  tbody tr.is-open > td {
-    background: var(--raised);
-    border-bottom-color: transparent;
+  tbody tr.is-open,
+  tbody tr.c-audit-table__details {
+    background: var(--fill);
+  }
+
+  tbody tr.c-audit-table__details {
+    box-shadow: none;
   }
 }
 
@@ -191,7 +208,7 @@
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
+@include reduced-motion {
   .c-audit-table tbody tr.is-fresh {
     animation: none;
   }
@@ -205,61 +222,99 @@
   width: 1%;
 }
 
+td.c-audit-table__time {
+  color: var(--text-2);
+  padding-left: 6px;
+}
+
 .c-audit-table__event {
   min-width: 220px;
   overflow-wrap: anywhere;
 }
 
+.c-audit-table__production {
+  color: var(--text-2);
+}
+
 .c-audit-table__toggle {
+  @include state-transition(background-color, color);
   align-items: center;
   background: transparent;
   border: 0;
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-sm);
   color: var(--muted);
   cursor: pointer;
   display: inline-flex;
   height: 28px;
   justify-content: center;
+  margin-block: -4px;
   padding: 0;
   width: 28px;
 
   &:hover {
-    background: var(--raised-2);
+    background: var(--fill-hover);
     color: var(--text);
   }
 
   .c-icon {
-    transform: rotate(-90deg);
     transition: transform var(--dur-state) var(--ease);
 
     &.is-open {
-      transform: none;
+      transform: rotate(90deg);
     }
   }
 }
 
 .c-audit-table__details td {
-  background: var(--raised);
-  padding-left: 42px;
+  padding: 4px 12px 14px 44px;
 }
 
+// The details of an entry: plain labels first, then the raw values the server recorded.
 .c-audit-details {
   display: grid;
-  gap: 2px 14px;
+  font-size: 12.5px;
+  gap: 4px 16px;
   grid-template-columns: max-content minmax(0, 1fr);
   margin: 0;
 
   dt {
     color: var(--muted);
-    font-size: 12px;
   }
 
   dd {
-    color: var(--text-2);
-    font-size: 12px;
+    color: var(--text);
     margin: 0;
     overflow-wrap: anywhere;
   }
+
+  .is-first-raw {
+    border-top: 1px solid var(--seam);
+    margin-top: 4px;
+    padding-top: 8px;
+  }
+}
+
+.c-audit-details__code {
+  @include code;
+  font-size: 12px;
+}
+
+dd.c-audit-details__code {
+  color: var(--text-2);
+}
+
+.c-audit__footer {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  justify-content: space-between;
+  min-height: 28px;
+}
+
+.c-audit__count {
+  @include mono;
+  color: var(--muted);
 }
 
 .c-audit__more {
@@ -267,13 +322,4 @@
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  justify-content: center;
-  padding: 14px 0 4px;
-}
-
-// A tablet: the filters wrap and the table scrolls sideways when it does not fit.
-@media (max-width: 900px) {
-  .c-audit__actions {
-    margin-left: 0;
-  }
 }

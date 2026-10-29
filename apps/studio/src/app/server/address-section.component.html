@@ -1,239 +1,363 @@
 <form class="c-srv" novalidate autocomplete="off" (submit)="save($event)">
-  <p class="c-srv__intro">{{ t('regie.server.address.intro') }}</p>
-
-  <div class="c-srv__field">
-    <label class="c-srv__label" for="address-mode">{{ t('regie.server.address.modeLabel') }}</label>
-    <select
-      id="address-mode"
-      class="c-select"
-      [formControl]="modeControl"
-      [class.is-invalid]="fieldError('mode')"
-      [attr.aria-invalid]="fieldError('mode') ? 'true' : null"
-      aria-describedby="address-mode-error"
-    >
-      <option value="internal">{{ t('regie.server.address.modeInternal') }}</option>
-      <option value="custom">{{ t('regie.server.address.modeCustom') }}</option>
-      @for (candidate of providers(); track candidate.id) {
-        <option [value]="candidate.id">{{ modeLabel(candidate) }}</option>
+  <fieldset class="c-group c-kind">
+    <legend class="c-group__title c-kind__legend">{{ t('regie.server.address.modeLabel') }}</legend>
+    <div class="c-kind__cards">
+      @for (card of cards; track card.id) {
+        <div
+          class="c-kind__card"
+          [class.is-selected]="kind() === card.id"
+          (click)="chooseKind(card.id)"
+        >
+          <input
+            class="c-kind__radio"
+            type="radio"
+            name="address-kind"
+            [id]="'address-kind-' + card.id"
+            [value]="card.id"
+            [checked]="kind() === card.id"
+            [attr.aria-describedby]="
+              'address-kind-' + card.id + '-text' + (fieldError('mode') ? ' address-mode-error' : '')
+            "
+            [attr.aria-invalid]="fieldError('mode') && kind() === card.id ? 'true' : null"
+            (change)="chooseKind(card.id)"
+          />
+          <label class="c-kind__title" [for]="'address-kind-' + card.id">
+            {{ t(card.title) }}
+            @if (card.recommended) {
+              <span class="c-kind__badge">{{ t('regie.server.address.recommended') }}</span>
+            }
+          </label>
+          <span class="c-kind__text" [id]="'address-kind-' + card.id + '-text'">{{
+            t(card.text)
+          }}</span>
+        </div>
       }
-    </select>
+    </div>
     @if (fieldError('mode'); as message) {
       <p class="c-field-error" id="address-mode-error" role="alert">{{ message }}</p>
     }
-  </div>
+  </fieldset>
 
-  <div class="c-srv__field">
-    <label class="c-srv__label" for="address-domain">{{
-      t('regie.server.address.domainLabel')
-    }}</label>
-    <input
-      id="address-domain"
-      class="c-input c-srv__mono"
-      type="text"
-      autocomplete="off"
-      autocapitalize="off"
-      spellcheck="false"
-      maxlength="253"
-      [formControl]="domain"
-      aria-describedby="address-domain-hint address-domain-error"
-      [class.is-invalid]="fieldError('domain')"
-      [attr.aria-invalid]="fieldError('domain') ? 'true' : null"
-    />
-    <p class="c-hint" id="address-domain-hint">
-      {{
-        isInternal()
-          ? t('regie.server.address.domainHintInternal')
-          : t('regie.server.address.domainHintPublic')
-      }}
-    </p>
-    @if (fieldError('domain'); as message) {
-      <p class="c-field-error" id="address-domain-error" role="alert">{{ message }}</p>
-    }
-  </div>
-
-  @if (isInternal()) {
-    <div class="c-srv__group">
-      <p class="c-srv__note">{{ t('regie.server.address.internalNote') }}</p>
-      <div class="c-srv__row">
-        <a class="c-btn c-btn--sm" href="/ca.crt" download="studioflow-ca.crt">{{
-          t('regie.server.address.internalDownload')
-        }}</a>
-        <span class="c-hint">{{ t('regie.server.address.internalInstall') }}</span>
+  <section class="c-group" aria-labelledby="address-name-heading">
+    <h2 class="c-group__title" id="address-name-heading">
+      {{ t('regie.server.address.nameHeading') }}
+    </h2>
+    <div class="c-group__body">
+      @if (kind() === 'dns') {
+        <div class="c-group__row">
+          <label class="c-group__label" for="address-provider">
+            {{ t('regie.server.address.provider') }}
+            <span class="c-group__sub">{{ t('regie.server.address.providerHint') }}</span>
+          </label>
+          <select id="address-provider" class="c-select c-address__provider" [formControl]="modeControl">
+            @for (candidate of providers(); track candidate.id) {
+              <option [value]="candidate.id">{{ providerOption(candidate) }}</option>
+            }
+          </select>
+        </div>
+      }
+      <div class="c-group__row c-group__row--stack">
+        <div class="c-srv__field">
+          <label class="c-srv__label" for="address-domain">{{
+            t('regie.server.address.domainLabel')
+          }}</label>
+          <input
+            id="address-domain"
+            class="c-input c-srv__code"
+            type="text"
+            autocomplete="off"
+            autocapitalize="off"
+            spellcheck="false"
+            maxlength="253"
+            placeholder="studioflow.example.com"
+            [formControl]="domain"
+            aria-describedby="address-domain-error address-domain-hint"
+            [class.is-invalid]="fieldError('domain')"
+            [attr.aria-invalid]="fieldError('domain') ? 'true' : null"
+          />
+          @if (fieldError('domain'); as message) {
+            <p class="c-field-error" id="address-domain-error" role="alert">{{ message }}</p>
+          }
+          <p class="c-hint" id="address-domain-hint">
+            {{
+              isInternal()
+                ? t('regie.server.address.domainHintInternal')
+                : t('regie.server.address.domainHintPublic')
+            }}
+          </p>
+        </div>
       </div>
     </div>
+  </section>
+
+  @if (isInternal()) {
+    <section class="c-group" aria-labelledby="address-trust-heading">
+      <h2 class="c-group__title" id="address-trust-heading">
+        {{ t('regie.server.address.trustHeading') }}
+      </h2>
+      <div class="c-group__body">
+        <div class="c-group__row">
+          <span class="c-group__label">
+            {{ t('regie.server.address.internalInstall') }}
+            <span class="c-group__sub">{{ t('regie.server.address.internalNote') }}</span>
+          </span>
+          <a class="c-btn" href="/ca.crt" download="studioflow-ca.crt">
+            <svg sfIcon="download"></svg>{{ t('regie.server.address.internalDownload') }}
+          </a>
+        </div>
+      </div>
+    </section>
   }
 
   @if (provider()) {
-    <div class="c-srv__group">
-      <p class="c-srv__note">{{ t('regie.server.address.dnsNote') }}</p>
-      <div class="c-srv__field">
-        <label class="c-srv__label" for="address-email">{{
-          t('regie.server.address.dnsEmailLabel')
-        }}</label>
-        <input
-          id="address-email"
-          class="c-input"
-          type="email"
-          autocomplete="off"
-          spellcheck="false"
-          maxlength="254"
-          [formControl]="email"
-          aria-describedby="address-email-error"
-          [class.is-invalid]="fieldError('email')"
-          [attr.aria-invalid]="fieldError('email') ? 'true' : null"
-        />
-        @if (fieldError('email'); as message) {
-          <p class="c-field-error" id="address-email-error" role="alert">{{ message }}</p>
-        }
-      </div>
-      <div class="c-srv__field">
-        <label class="c-srv__label" for="address-challenge">{{
-          t('regie.server.address.dnsChallengeLabel')
-        }}</label>
-        <input
-          id="address-challenge"
-          class="c-input c-srv__mono"
-          type="text"
-          autocomplete="off"
-          autocapitalize="off"
-          spellcheck="false"
-          maxlength="253"
-          [formControl]="challenge"
-          aria-describedby="address-challenge-hint address-challenge-error"
-          [class.is-invalid]="fieldError('challenge')"
-          [attr.aria-invalid]="fieldError('challenge') ? 'true' : null"
-        />
-        <p class="c-hint" id="address-challenge-hint">
-          {{ t('regie.server.address.dnsChallengeHint') }}
-        </p>
-        @if (fieldError('challenge'); as message) {
-          <p class="c-field-error" id="address-challenge-error" role="alert">{{ message }}</p>
-        }
-      </div>
-
-      <h3 class="c-srv__group-title">
+    <section class="c-group" aria-labelledby="address-credentials-heading">
+      <h2 class="c-group__title" id="address-credentials-heading">
         {{ t('regie.server.address.credentialsHeading', { provider: providerLabel() }) }}
-      </h3>
-      <div class="c-srv__grid">
+      </h2>
+      <div class="c-group__body">
         @for (field of credentialFields(); track field.name) {
-          <div class="c-srv__field">
-            <label class="c-srv__label" [for]="'address-credential-' + field.name">{{
-              field.label
-            }}</label>
-            <input
-              class="c-input c-srv__mono"
-              [id]="'address-credential-' + field.name"
-              type="password"
-              autocomplete="new-password"
-              spellcheck="false"
-              maxlength="2048"
-              [formControl]="credentialControl(field.name)"
-              [attr.placeholder]="credentialsStored() ? '••••••••' : null"
-              [attr.aria-describedby]="'address-credential-' + field.name + '-error'"
-              [class.is-invalid]="fieldError('credential:' + field.name)"
-              [attr.aria-invalid]="fieldError('credential:' + field.name) ? 'true' : null"
-            />
-            @if (fieldError('credential:' + field.name); as message) {
-              <p
-                class="c-field-error"
-                [id]="'address-credential-' + field.name + '-error'"
-                role="alert"
-              >
-                {{ message }}
-              </p>
-            }
+          <div class="c-group__row c-group__row--stack">
+            <div class="c-srv__field">
+              <label class="c-srv__label" [for]="'address-credential-' + field.name">{{
+                field.label
+              }}</label>
+              <input
+                class="c-input c-srv__code"
+                [id]="'address-credential-' + field.name"
+                type="password"
+                autocomplete="new-password"
+                spellcheck="false"
+                maxlength="2048"
+                [formControl]="credentialControl(field.name)"
+                [attr.placeholder]="credentialsStored() ? '••••••••' : null"
+                [attr.aria-describedby]="'address-credential-' + field.name + '-error'"
+                [class.is-invalid]="fieldError('credential:' + field.name)"
+                [attr.aria-invalid]="fieldError('credential:' + field.name) ? 'true' : null"
+              />
+              @if (fieldError('credential:' + field.name); as message) {
+                <p
+                  class="c-field-error"
+                  [id]="'address-credential-' + field.name + '-error'"
+                  role="alert"
+                >
+                  {{ message }}
+                </p>
+              }
+            </div>
           </div>
         }
       </div>
-      <p class="c-hint">
+      <p class="c-group__footer">
         {{
           credentialsStored()
             ? t('regie.server.address.credentialsStored')
             : t('regie.server.address.credentialsHint')
         }}
       </p>
+    </section>
+
+    <div class="c-address__more">
+      <button
+        class="c-btn c-btn--plain c-address__toggle"
+        type="button"
+        aria-controls="address-more"
+        [attr.aria-expanded]="moreOpen()"
+        (click)="toggleMore()"
+      >
+        <svg sfIcon="chev-right" [size]="13" [class.is-open]="moreOpen()"></svg>
+        {{ t('regie.server.address.more') }}
+      </button>
+      @if (moreOpen()) {
+        <div class="c-group__body" id="address-more">
+          <div class="c-group__row c-group__row--stack">
+            <div class="c-srv__field">
+              <label class="c-srv__label" for="address-email">{{
+                t('regie.server.address.dnsEmailLabel')
+              }}</label>
+              <input
+                id="address-email"
+                class="c-input"
+                type="email"
+                autocomplete="off"
+                spellcheck="false"
+                maxlength="254"
+                [formControl]="email"
+                aria-describedby="address-email-error"
+                [class.is-invalid]="fieldError('email')"
+                [attr.aria-invalid]="fieldError('email') ? 'true' : null"
+              />
+              @if (fieldError('email'); as message) {
+                <p class="c-field-error" id="address-email-error" role="alert">{{ message }}</p>
+              }
+            </div>
+          </div>
+          <div class="c-group__row c-group__row--stack">
+            <div class="c-srv__field">
+              <label class="c-srv__label" for="address-challenge">{{
+                t('regie.server.address.dnsChallengeLabel')
+              }}</label>
+              <input
+                id="address-challenge"
+                class="c-input c-srv__code"
+                type="text"
+                autocomplete="off"
+                autocapitalize="off"
+                spellcheck="false"
+                maxlength="253"
+                [formControl]="challenge"
+                aria-describedby="address-challenge-error address-challenge-hint"
+                [class.is-invalid]="fieldError('challenge')"
+                [attr.aria-invalid]="fieldError('challenge') ? 'true' : null"
+              />
+              @if (fieldError('challenge'); as message) {
+                <p class="c-field-error" id="address-challenge-error" role="alert">
+                  {{ message }}
+                </p>
+              }
+              <p class="c-hint" id="address-challenge-hint">
+                {{ t('regie.server.address.dnsChallengeHint') }}
+              </p>
+            </div>
+          </div>
+        </div>
+      }
     </div>
   }
 
   @if (isCustom()) {
-    <div class="c-srv__group">
-      <p class="c-srv__note">{{ t('regie.server.address.customNote') }}</p>
-      @if (certificate(); as current) {
-        <p class="c-srv__note">
-          {{
-            t('regie.server.address.customCurrent', {
-              subject: current.subject,
-              date: certificateDate(),
-            })
-          }}
-          {{ t('regie.server.address.customNames', { names: current.names.join(', ') }) }}
-          <span class="c-srv__mono">{{ current.fingerprint }}</span>
+    @if (certificate(); as current) {
+      <section class="c-group" aria-labelledby="address-current-heading">
+        <h2 class="c-group__title" id="address-current-heading">
+          {{ t('regie.server.address.currentHeading') }}
+        </h2>
+        <dl class="c-group__body c-address__kv">
+          <div class="c-group__row">
+            <dt class="c-group__label">{{ t('regie.server.address.currentSubject') }}</dt>
+            <dd class="c-address__value c-srv__code">{{ current.subject }}</dd>
+          </div>
+          <div class="c-group__row">
+            <dt class="c-group__label">{{ t('regie.server.address.currentNames') }}</dt>
+            <dd class="c-address__value c-srv__code">{{ current.names.join(', ') }}</dd>
+          </div>
+          <div class="c-group__row">
+            <dt class="c-group__label">{{ t('regie.server.address.currentExpiry') }}</dt>
+            <dd class="c-address__value">{{ certificateDate() }}</dd>
+          </div>
+          <div class="c-group__row">
+            <dt class="c-group__label">{{ t('regie.server.address.currentFingerprint') }}</dt>
+            <dd class="c-address__value c-srv__code c-address__fingerprint">
+              {{ current.fingerprint }}
+            </dd>
+          </div>
+        </dl>
+      </section>
+    }
+
+    <section class="c-group" aria-labelledby="address-files-heading">
+      <h2 class="c-group__title" id="address-files-heading">
+        {{ t('regie.server.address.customHeading') }}
+      </h2>
+      <div class="c-group__body">
+        <div class="c-group__row">
+          <span class="c-group__label">
+            <span id="address-certificate-label">{{
+              t('regie.server.address.customCertificate')
+            }}</span>
+            <span
+              class="c-group__sub c-address__file"
+              [class.is-chosen]="certificateFile()"
+              id="address-certificate-name"
+              >{{ certificateFile()?.name ?? t('regie.server.address.customNoFile') }}</span
+            >
+          </span>
+          <span class="c-address__picker">
+            <input
+              id="address-certificate"
+              class="c-address__input"
+              type="file"
+              accept=".pem,.crt,.cer,.cert,text/plain,application/x-pem-file"
+              aria-labelledby="address-certificate-label"
+              aria-describedby="address-certificate-name address-certificate-error"
+              [attr.aria-invalid]="fieldError('certificate') ? 'true' : null"
+              (change)="pick('certificate', $event)"
+            />
+            <label class="c-btn" for="address-certificate" aria-hidden="true">{{
+              t('regie.server.address.customChoose')
+            }}</label>
+          </span>
+          @if (fieldError('certificate'); as message) {
+            <p class="c-field-error c-address__error" id="address-certificate-error" role="alert">
+              {{ message }}
+            </p>
+          }
+        </div>
+        <div class="c-group__row">
+          <span class="c-group__label">
+            <span id="address-key-label">{{ t('regie.server.address.customKey') }}</span>
+            <span
+              class="c-group__sub c-address__file"
+              [class.is-chosen]="keyFile()"
+              id="address-key-name"
+              >{{ keyFile()?.name ?? t('regie.server.address.customNoFile') }}</span
+            >
+          </span>
+          <span class="c-address__picker">
+            <input
+              id="address-key"
+              class="c-address__input"
+              type="file"
+              accept=".pem,.key,text/plain,application/x-pem-file"
+              aria-labelledby="address-key-label"
+              aria-describedby="address-key-name address-key-error"
+              [attr.aria-invalid]="fieldError('key') ? 'true' : null"
+              (change)="pick('key', $event)"
+            />
+            <label class="c-btn" for="address-key" aria-hidden="true">{{
+              t('regie.server.address.customChoose')
+            }}</label>
+          </span>
+          @if (fieldError('key'); as message) {
+            <p class="c-field-error c-address__error" id="address-key-error" role="alert">
+              {{ message }}
+            </p>
+          }
+        </div>
+      </div>
+      <p class="c-group__footer">
+        {{ t('regie.server.address.customNote') }}
+        @if (certificate()) {
           {{ t('regie.server.address.customKeep') }}
-        </p>
-      }
-      <div class="c-srv__field">
-        <label class="c-srv__label" for="address-certificate">{{
-          t('regie.server.address.customCertificate')
-        }}</label>
-        <input
-          id="address-certificate"
-          class="c-srv__file"
-          type="file"
-          accept=".pem,.crt,.cer,.cert,text/plain,application/x-pem-file"
-          (change)="pick('certificate', $event)"
-          aria-describedby="address-certificate-error"
-          [attr.aria-invalid]="fieldError('certificate') ? 'true' : null"
-        />
-        @if (fieldError('certificate'); as message) {
-          <p class="c-field-error" id="address-certificate-error" role="alert">{{ message }}</p>
         }
-      </div>
-      <div class="c-srv__field">
-        <label class="c-srv__label" for="address-key">{{
-          t('regie.server.address.customKey')
-        }}</label>
-        <input
-          id="address-key"
-          class="c-srv__file"
-          type="file"
-          accept=".pem,.key,text/plain,application/x-pem-file"
-          (change)="pick('key', $event)"
-          aria-describedby="address-key-error"
-          [attr.aria-invalid]="fieldError('key') ? 'true' : null"
-        />
-        @if (fieldError('key'); as message) {
-          <p class="c-field-error" id="address-key-error" role="alert">{{ message }}</p>
-        }
-      </div>
-    </div>
+      </p>
+    </section>
   }
 
   @if (mode() === 'save' && addressWillChange()) {
-    <p class="c-srv__warning" role="note">
-      {{ t('regie.server.address.warning', { url: futureAddress() }) }}
+    <p class="c-srv__note c-address__warning" role="note">
+      <svg sfIcon="info" [size]="15"></svg>
+      <span>{{ t('regie.server.address.warning', { url: futureAddress() }) }}</span>
     </p>
   } @else if (mode() === 'next' && domain.value.trim()) {
-    <p class="c-hint">{{ t('regie.server.address.newUrl', { url: futureAddress() }) }}</p>
-  }
-
-  @if (errorText(); as text) {
-    <p class="c-srv__result c-srv__result--bad" role="alert">
-      <span class="c-lamp is-bad" aria-hidden="true"></span><span>{{ text }}</span>
+    <p class="c-srv__note">
+      <svg sfIcon="info" [size]="15"></svg>
+      <span>{{ t('regie.server.address.newUrl', { url: futureAddress() }) }}</span>
     </p>
   }
+
+  <sf-server-problem [problem]="problem()" />
 
   @if (newAddress(); as url) {
-    <p class="c-srv__result c-srv__result--ok" role="status">
-      <span class="c-lamp" aria-hidden="true"></span>
-      <span
-        ><a class="c-srv__link" [href]="url">{{
-          t('regie.server.address.openNew', { url })
-        }}</a></span
-      >
+    <p class="c-srv__note" role="status">
+      <svg sfIcon="external" [size]="15"></svg>
+      <a class="c-address__link" [href]="url">{{ t('regie.server.address.openNew', { url }) }}</a>
     </p>
   }
 
+  <ng-content select="[sfSectionNote]" />
+
   <div class="c-srv__actions">
+    <ng-content select="[sfSectionStart]" />
+    <ng-content />
     <button class="c-btn c-btn--fill" type="submit" [disabled]="saving()">
       @if (saving()) {
         {{ t('regie.server.saving') }}

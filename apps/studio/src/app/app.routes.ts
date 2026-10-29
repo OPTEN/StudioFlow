@@ -1,11 +1,13 @@
+import { inject } from '@angular/core';
 import type { Route, Routes } from '@angular/router';
 import type { PlainMessageKey } from '@studioflow/i18n';
 import { authGuard, loginGuard, setupGuard } from './core/auth/auth.guard';
 import { configuredGuard, wizardGuard } from './core/state/server-settings.guard';
 import { LoginPageComponent } from './login/login-page.component';
+import { SettingsMemoryService } from './settings/settings-memory.service';
 import { SetupPageComponent } from './setup/setup-page.component';
 
-/** A server page of the settings window (one section of the server settings). */
+/** A server page of the settings window (one section of the server settings, saved on its own). */
 function serverPage(
   section: 'media' | 'network' | 'embedding' | 'backups',
   titleKey: PlainMessageKey,
@@ -81,7 +83,12 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./audit/audit-page.component').then((m) => m.AuditPageComponent),
       },
-      { path: 'settings', pathMatch: 'full', redirectTo: 'settings/production' },
+      {
+        // The gear of the toolbar opens the settings page this browser visited last.
+        path: 'settings',
+        pathMatch: 'full',
+        redirectTo: () => inject(SettingsMemoryService).lastPage(),
+      },
       productionPage('production', 'regie.settings.nav.general'),
       productionPage('slates', 'regie.settings.nav.slates'),
       productionPage('text-style', 'regie.settings.nav.textStyle'),

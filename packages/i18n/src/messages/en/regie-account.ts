@@ -5,11 +5,13 @@ export const regieAccount = {
   'regie.account.change.current': 'Current password',
   'regie.account.change.currentRequired': 'Enter your current password.',
   'regie.account.change.done': 'Password changed. All other sessions were signed out.',
-  'regie.account.change.hint': 'All other sessions are signed out.',
+  'regie.account.change.hint':
+    'Every other browser signed in with this account is signed out. This one stays signed in.',
   'regie.account.change.menu': 'Change password',
   'regie.account.change.new': 'New password',
   'regie.account.change.repeat': 'Repeat new password',
-  'regie.account.change.submit': 'Change password',
+  'regie.account.change.submit': 'Update password',
+  'regie.account.change.submitting': 'Updating…',
   'regie.account.password.equalsUsername': 'The password must differ from the username.',
   'regie.account.password.hint':
     'At least {min} characters. Not your username, not a common password.',

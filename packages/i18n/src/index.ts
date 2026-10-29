@@ -31,15 +31,18 @@ export { missingKeys, setMissingHandler } from './diagnostics';
 export type { I18nProblem, ProblemHandler } from './diagnostics';
 
 export {
+  browserTimeZone,
   compareText,
   countCharacters,
   formatDate,
   formatDateTime,
   formatNumber,
   formatTime,
+  formatWeekday,
   lowerCase,
+  zonedClock,
 } from './format';
-export type { NumberFormatOptions } from './format';
+export type { NumberFormatOptions, ZonedClock } from './format';
 
 export type { MessageKey } from './catalogue';
 export type {

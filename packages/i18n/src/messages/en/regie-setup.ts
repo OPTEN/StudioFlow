@@ -3,14 +3,16 @@ import type { Namespace } from '../../types';
 /** The first-run setup page of the Regie (the control room): creates the account before anyone can sign in. */
 export const regieSetup = {
   'regie.setup.code.format': 'The setup code has 8 letters and digits, like K7QM-3XD2.',
-  'regie.setup.code.hint': 'Shown in the server log: docker compose logs api',
+  'regie.setup.code.hint':
+    'Shown in the server log of whoever installed StudioFlow: docker compose logs api',
   'regie.setup.code.label': 'Setup code',
   'regie.setup.code.required': 'Enter the setup code.',
+  'regie.setup.heading': 'Create your account',
   'regie.setup.intro':
-    'No account exists yet. Enter the setup code from the server log and choose a username and a password for the control room.',
-  'regie.setup.lead': 'First-run setup',
+    'This is the one account of this installation, and its username cannot be changed later. Enter the setup code from the server log, then choose a username and a password.',
   'regie.setup.password.label': 'Password',
   'regie.setup.repeat.label': 'Repeat password',
+  'regie.setup.reveal': 'Show passwords',
   'regie.setup.submit': 'Create account',
   'regie.setup.submitting': 'Creating account…',
   'regie.setup.title': 'First-run setup',

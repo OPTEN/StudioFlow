@@ -1,24 +1,13 @@
-// First-run setup: the login surface (login-page.component.scss is loaded first) plus the intro text and the code field.
+// First-run setup: the standalone card (login-page.component.scss is loaded first) plus the setup code field.
 @use 'mixins' as *;
 
-.c-login__lead {
-  margin-bottom: 0;
-}
-
-.c-setup__step {
-  color: var(--text-2);
-  font-size: 13px;
-  margin: 0;
-}
-
-.c-setup__intro {
-  color: var(--text-2);
-  font-size: 13px;
-}
-
-// The setup code is read off a log: capitals in the mono face, spaced out.
+// The setup code is read off a log: capitals in the code face, spaced out.
 .c-setup__code {
-  @include mono;
+  @include code;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+
+  &::placeholder {
+    letter-spacing: 0.12em;
+  }
 }

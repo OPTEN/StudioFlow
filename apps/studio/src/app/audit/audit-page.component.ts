@@ -10,7 +10,6 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { formatDateTime, getLocale, msg, t, tm } from '@studioflow/i18n';
 import {
   logEntryText,
@@ -21,7 +20,13 @@ import {
 import { toUserMessage } from '../core/api/api-error';
 import { StudioApiService, type AuditQuery } from '../core/api/studio-api.service';
 import { IconComponent } from '../core/ui/icon.component';
+import {
+  PopoverDirective,
+  PopoverService,
+  PopoverTriggerDirective,
+} from '../core/ui/popover.directive';
 import { ToastService } from '../core/ui/toast.service';
+import { SettingsPageHeadComponent } from '../settings/pages/settings-page-head.component';
 import {
   AUDIT_CATEGORIES,
   BROADCAST_QUERY,
@@ -45,15 +50,20 @@ export const SEARCH_DEBOUNCE_MS = 300;
 /** How often the page looks for new entries while it is open. */
 export const AUDIT_REFRESH_MS = 15_000;
 
+/** Id of the export menu (PopoverService). */
+export const EXPORT_MENU = 'audit-export';
+
 /**
- * The audit log page `/audit` (issue #17): who did what and when. Newest entries first, loaded page by page (a button,
- * and automatically when it scrolls into view), filtered by time range, production, category and text, with the
- * details of an entry on demand and an export of the filtered entries. New entries are added at the top while the
- * page is open. Read only.
+ * The activity log `/audit` (issue #17) in the settings window: who did what and when. Newest entries first, loaded
+ * page by page (a button, and automatically when it scrolls into view). The filters sit on one row (time range,
+ * production, search) with the categories as toggle chips below; "Last broadcast" names the production and the times
+ * it shows. The details of an entry open on demand with plain labels (when, who, event code) before the raw values,
+ * and the "Export" menu saves the filtered entries as CSV or JSON. New entries are added at the top while the page is
+ * open. Read only.
  */
 @Component({
   selector: 'sf-audit-page',
-  imports: [IconComponent, RouterLink],
+  imports: [IconComponent, PopoverDirective, PopoverTriggerDirective, SettingsPageHeadComponent],
   providers: [AuditLogStore],
   templateUrl: './audit-page.component.html',
   styleUrl: './audit-page.component.scss',
@@ -65,6 +75,8 @@ export class AuditPageComponent {
   private readonly api = inject(StudioApiService);
   private readonly toasts = inject(ToastService);
   private readonly saveFile = inject(FILE_SAVER);
+  protected readonly popovers = inject(PopoverService);
+  protected readonly exportMenu = EXPORT_MENU;
 
   protected readonly categories = AUDIT_CATEGORIES;
   protected readonly categoryKeys = AUDIT_CATEGORY_KEYS;
@@ -79,6 +91,27 @@ export class AuditPageComponent {
   protected readonly exporting = signal(false);
   /** A sentence under the filters when the range could not be resolved ("no broadcast yet"). */
   protected readonly rangeNote = signal<string | null>(null);
+  /** The broadcast "Last broadcast" shows: its production and times, so the filter never changes silently. */
+  private readonly broadcastShown = signal<{ production: string; range: BroadcastRange } | null>(
+    null,
+  );
+  protected readonly broadcastText = computed(() => {
+    const shown = this.broadcastShown();
+    if (!shown) {
+      return null;
+    }
+    const name =
+      this.productions().find((production) => production.id === shown.production)?.name ??
+      shown.production;
+    const from = formatDateTime(new Date(shown.range.from));
+    return shown.range.to === null
+      ? t('regie.audit.range.broadcastLive', { name, from })
+      : t('regie.audit.range.broadcast', {
+          name,
+          from,
+          to: formatDateTime(new Date(shown.range.to)),
+        });
+  });
 
   protected readonly rangeInvalid = computed(() => isCustomRangeInvalid(this.filters()));
   protected readonly filtered = computed(() => hasFilters(this.filters()));
@@ -129,6 +162,14 @@ export class AuditPageComponent {
 
   protected time(entry: AuditEntryDto): string {
     return formatDateTime(new Date(entry.at), { seconds: true });
+  }
+
+  /** The exact time in UTC, readable: "2026-10-26 11:00:00.250". */
+  protected utc(entry: AuditEntryDto): string {
+    const date = new Date(entry.at);
+    return Number.isNaN(date.getTime())
+      ? entry.at
+      : date.toISOString().replace('T', ' ').replace('Z', '');
   }
 
   protected actor(entry: AuditEntryDto): string {
@@ -223,6 +264,7 @@ export class AuditPageComponent {
 
   protected async exportAs(format: 'csv' | 'json'): Promise<void> {
     const query = this.lastQuery;
+    this.popovers.close(EXPORT_MENU);
     if (!query || this.exporting()) {
       return;
     }
@@ -240,6 +282,19 @@ export class AuditPageComponent {
     } finally {
       this.exporting.set(false);
     }
+  }
+
+  /** Arrow keys move between the items of the export menu, as in a system menu. */
+  protected menuKey(event: KeyboardEvent): void {
+    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') {
+      return;
+    }
+    const menu = event.currentTarget as HTMLElement;
+    const items = Array.from(menu.querySelectorAll<HTMLElement>('[role="menuitem"]'));
+    const index = items.indexOf(document.activeElement as HTMLElement);
+    const step = event.key === 'ArrowDown' ? 1 : -1;
+    items[(index + step + items.length) % items.length]?.focus();
+    event.preventDefault();
   }
 
   protected errorText(): string {
@@ -261,6 +316,7 @@ export class AuditPageComponent {
   private async apply(filters: AuditFilters): Promise<void> {
     const resolution = ++this.resolution;
     this.rangeNote.set(null);
+    this.broadcastShown.set(null);
     if (isCustomRangeInvalid(filters)) {
       return;
     }
@@ -286,6 +342,7 @@ export class AuditPageComponent {
         this.showNothing();
         return;
       }
+      this.broadcastShown.set({ production: filters.production, range: broadcast });
     }
     const query = auditQuery(filters, new Date(), broadcast);
     this.lastQuery = query;

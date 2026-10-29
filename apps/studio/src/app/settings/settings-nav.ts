@@ -22,10 +22,13 @@ export interface SettingsNavGroup {
   readonly items: readonly SettingsNavItem[];
 }
 
+/** Where `/settings` lands while this browser has not opened a settings page yet. */
+export const SETTINGS_HOME = '/settings/production';
+
 /**
  * The sidebar of the settings window, grouped by scope so every page says where its choices apply: the active
  * production, this browser, the whole server, diagnostics, and the account. The order is the reading order of the
- * sidebar; the first page is where `/settings` lands.
+ * sidebar; `/settings` opens the page visited last ({@link SETTINGS_HOME} the first time).
  */
 export const SETTINGS_NAV: readonly SettingsNavGroup[] = [
   {

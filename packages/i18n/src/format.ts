@@ -93,6 +93,68 @@ export function formatDateTime(
   ).format(date);
 }
 
+/** Name of a weekday (0 = Sunday … 6 = Saturday, as in cron): "Monday", "Montag". */
+export function formatWeekday(day: number): string {
+  const { dateTag } = activeLocale();
+  const options = { weekday: 'long', timeZone: 'UTC' } as const;
+  // 7 January 2024 was a Sunday.
+  return cached('weekday', dateTag, options, () => new Intl.DateTimeFormat(dateTag, options)).format(
+    new Date(Date.UTC(2024, 0, 7 + (((day % 7) + 7) % 7))),
+  );
+}
+
+/** The IANA time zone of this browser ("Europe/Zurich"), or "UTC" when the browser does not tell. */
+export function browserTimeZone(): string {
+  try {
+    return new Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  } catch {
+    return 'UTC';
+  }
+}
+
+/** Wall clock of a moment in an IANA time zone. */
+export interface ZonedClock {
+  /** 0 = Sunday … 6 = Saturday. */
+  readonly weekday: number;
+  readonly hour: number;
+  readonly minute: number;
+}
+
+const WEEKDAY_NUMBERS: Readonly<Record<string, number>> = {
+  Sun: 0,
+  Mon: 1,
+  Tue: 2,
+  Wed: 3,
+  Thu: 4,
+  Fri: 5,
+  Sat: 6,
+};
+
+/** The weekday, hour and minute of `date` in `timeZone`, or null for a time zone the browser does not know. */
+export function zonedClock(date: Date, timeZone: string): ZonedClock | null {
+  const options = {
+    timeZone,
+    weekday: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  } as const;
+  let parts: Intl.DateTimeFormatPart[];
+  try {
+    parts = cached('zoned', 'en-US', options, () =>
+      new Intl.DateTimeFormat('en-US', options),
+    ).formatToParts(date);
+  } catch {
+    return null;
+  }
+  const part = (type: Intl.DateTimeFormatPartTypes): string =>
+    parts.find((entry) => entry.type === type)?.value ?? '';
+  const weekday = WEEKDAY_NUMBERS[part('weekday')];
+  return weekday === undefined
+    ? null
+    : { weekday, hour: Number(part('hour')), minute: Number(part('minute')) };
+}
+
 /** Compares user-visible text case-insensitively; `numeric` orders "K2" before "K10". */
 export function compareText(
   a: string,

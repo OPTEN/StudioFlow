@@ -7,8 +7,9 @@ export const regieAudit: Translation<typeof en> = {
   'regie.audit.actor.deviceNamed': 'Gerät {name}',
   'regie.audit.actor.system': 'System',
 
-  'regie.audit.back': 'Zurück zur Regie',
   'regie.audit.caption': 'Einträge des Protokolls, die neuesten zuerst',
+  'regie.audit.lead':
+    'Wer hat was wann getan. Neue Einträge erscheinen oben, solange diese Seite offen ist.',
 
   'regie.audit.category.devices': 'Geräte',
   'regie.audit.category.label': 'Kategorie',
@@ -25,42 +26,48 @@ export const regieAudit: Translation<typeof en> = {
   'regie.audit.column.production': 'Produktion',
   'regie.audit.column.time': 'Zeit',
 
-  'regie.audit.count': { one: '{count} Eintrag geladen', other: '{count} Einträge geladen' },
+  'regie.audit.count': { one: '{count} Eintrag angezeigt', other: '{count} Einträge angezeigt' },
 
-  'regie.audit.details.action': 'Aktion',
-  'regie.audit.details.actor': 'Akteur',
+  'regie.audit.details.action': 'Ereigniscode',
+  'regie.audit.details.actor': 'Erfasst als',
   'regie.audit.details.entry': 'Eintrag',
   'regie.audit.details.hide': 'Details des Eintrags von {time} ausblenden',
   'regie.audit.details.show': 'Details des Eintrags von {time} einblenden',
-  'regie.audit.details.time': 'Genaue Zeit (UTC)',
+  'regie.audit.details.time': 'In UTC',
+  'regie.audit.details.when': 'Wann',
+  'regie.audit.details.who': 'Wer',
 
-  'regie.audit.empty.hint': 'Filter ändern oder zurücksetzen.',
+  'regie.audit.empty.hint': 'Filter ändern oder zurücksetzen, um mehr zu sehen.',
   'regie.audit.empty.none': 'Keine passenden Einträge.',
 
   'regie.audit.error.load': 'Das Protokoll konnte nicht geladen werden.',
   'regie.audit.error.more': 'Weitere Einträge konnten nicht geladen werden.',
   'regie.audit.error.retry': 'Erneut versuchen',
 
-  'regie.audit.export.csv': 'CSV exportieren',
+  'regie.audit.export.csv': 'Als CSV exportieren',
+  'regie.audit.export.csvSub': 'Für Tabellenkalkulationen',
   'regie.audit.export.done': '{name} exportiert',
-  'regie.audit.export.json': 'JSON exportieren',
+  'regie.audit.export.json': 'Als JSON exportieren',
+  'regie.audit.export.jsonSub': 'Für andere Programme',
   'regie.audit.export.label': 'Die gefilterten Einträge exportieren',
-  'regie.audit.export.running': 'Exportiert…',
+  'regie.audit.export.menu': 'Exportieren',
+  'regie.audit.export.running': 'Exportiert …',
   'regie.audit.export.tooLarge': 'Der Export wäre zu gross. Zeitraum oder Filter einschränken.',
 
   'regie.audit.filters.label': 'Filter',
-  'regie.audit.live': 'Neue Einträge erscheinen oben, solange diese Seite offen ist.',
-  'regie.audit.loading': 'Protokoll wird geladen…',
+  'regie.audit.loading': 'Protokoll wird geladen …',
   'regie.audit.loadMore': 'Mehr laden',
-  'regie.audit.loadingMore': 'Lädt…',
+  'regie.audit.loadingMore': 'Lädt …',
   'regie.audit.menu': 'Protokoll',
 
   'regie.audit.production.active': '{name} (aktiv)',
   'regie.audit.production.all': 'Alle Produktionen',
   'regie.audit.production.label': 'Produktion',
-  'regie.audit.production.none': 'Ohne Produktion (Anmeldungen und Konto)',
+  'regie.audit.production.none': 'Ohne Produktion (Anmeldungen, Konto)',
 
   'regie.audit.range.any': 'Beliebige Zeit',
+  'regie.audit.range.broadcast': 'Die letzte Sendung von «{name}»: {from} bis {to}.',
+  'regie.audit.range.broadcastLive': 'Die Sendung von «{name}», live seit {from}.',
   'regie.audit.range.custom': 'Eigener Zeitraum',
   'regie.audit.range.from': 'Von',
   'regie.audit.range.invalid': 'Das Ende muss nach dem Anfang liegen.',
@@ -72,7 +79,7 @@ export const regieAudit: Translation<typeof en> = {
   'regie.audit.range.today': 'Heute',
 
   'regie.audit.search.label': 'Suche',
-  'regie.audit.search.placeholder': 'Gerät, Szene, Benutzer…',
+  'regie.audit.search.placeholder': 'Gerät, Szene, Benutzer …',
 
   'regie.audit.title': 'Protokoll',
 };

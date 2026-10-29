@@ -4,13 +4,13 @@ import { t, tm, type PlainMessageKey } from '@studioflow/i18n';
 import {
   MISSING_VALUE,
   formatClock,
-  formatKbpsAsMbit,
   formatPercent,
 } from '@studioflow/scene-model';
 import { ProductionStoreService } from '../core/state/production-store.service';
 import { ClockService } from '../core/ui/clock.service';
 import { IconComponent } from '../core/ui/icon.component';
 import { toneClass, type LampTone, type StateTone } from '../docks/shared/source-view';
+import { SettingsPageHeadComponent } from '../settings/pages/settings-page-head.component';
 import {
   monitoringRows,
   nextSort,
@@ -24,42 +24,67 @@ import {
 /** A column of the table. */
 interface ColumnDefinition {
   readonly id: MonitoringColumn;
-  /** Message key of the heading, or null for a unit that is never translated ({@link ColumnDefinition.unit}). */
-  readonly label: PlainMessageKey | null;
-  /** Heading that is the same in every language (fps, Mbit/s, RTT). */
+  readonly label: PlainMessageKey;
+  /** The unit of the figures in the column, the same in every language (fps, Mbit/s, ms, %). */
   readonly unit?: string;
   /** Right-aligned numbers. */
   readonly numeric: boolean;
+  /** One value per source (a line per source in the row) rather than one per device. */
+  readonly perSource: boolean;
 }
 
 /** Columns in display order. */
 export const MONITORING_COLUMNS: readonly ColumnDefinition[] = [
-  { id: 'station', label: 'regie.monitoring.column.station', numeric: false },
-  { id: 'state', label: 'regie.monitoring.column.state', numeric: false },
-  { id: 'codes', label: 'regie.monitoring.column.codes', numeric: false },
-  { id: 'resolution', label: 'regie.monitoring.column.resolution', numeric: false },
-  { id: 'fps', label: null, unit: 'fps', numeric: true },
-  { id: 'bitrate', label: null, unit: 'Mbit/s', numeric: true },
-  { id: 'encoding', label: 'regie.monitoring.column.encoding', numeric: false },
-  { id: 'loss', label: 'regie.monitoring.column.loss', numeric: true },
-  { id: 'rtt', label: null, unit: 'RTT', numeric: true },
-  { id: 'battery', label: 'regie.monitoring.column.battery', numeric: true },
-  { id: 'network', label: 'regie.monitoring.column.network', numeric: false },
-  { id: 'tech', label: 'regie.monitoring.column.tech', numeric: false },
-  { id: 'seen', label: 'regie.monitoring.column.seen', numeric: true },
+  { id: 'station', label: 'regie.monitoring.column.station', numeric: false, perSource: false },
+  { id: 'state', label: 'regie.monitoring.column.state', numeric: false, perSource: false },
+  { id: 'codes', label: 'regie.monitoring.column.codes', numeric: false, perSource: true },
+  {
+    id: 'resolution',
+    label: 'regie.monitoring.column.resolution',
+    numeric: false,
+    perSource: true,
+  },
+  {
+    id: 'fps',
+    label: 'regie.monitoring.column.fps',
+    unit: 'fps',
+    numeric: true,
+    perSource: true,
+  },
+  {
+    id: 'bitrate',
+    label: 'regie.monitoring.column.bitrate',
+    unit: 'Mbit/s',
+    numeric: true,
+    perSource: true,
+  },
+  { id: 'encoding', label: 'regie.monitoring.column.encoding', numeric: false, perSource: true },
+  {
+    id: 'loss',
+    label: 'regie.monitoring.column.loss',
+    unit: '%',
+    numeric: true,
+    perSource: true,
+  },
+  { id: 'rtt', label: 'regie.monitoring.column.rtt', unit: 'ms', numeric: true, perSource: false },
+  { id: 'battery', label: 'regie.monitoring.column.battery', numeric: true, perSource: false },
+  { id: 'network', label: 'regie.monitoring.column.network', numeric: false, perSource: false },
+  { id: 'tech', label: 'regie.monitoring.column.tech', numeric: false, perSource: false },
+  { id: 'seen', label: 'regie.monitoring.column.seen', numeric: true, perSource: false },
 ];
 
 /**
- * The monitoring page `/monitoring` (spec 9.1, phase 2): a full-page table of every station with its live
- * telemetry (state, slot codes, resolution, fps, bit rate, packet loss, RTT, battery and charging, network, technical
- * check, last contact) and how each slot is encoded on the sender (codec, hardware or software, and a "CPU at limit" tag
- * where the sender lowers its picture, issue #12). It updates with the store's telemetry stream (every 2 s per device) and the shared clock;
- * stale values are dimmed. Every column sorts (ascending, descending, back to the Regie order). Same visual language
- * as the Regie: one graphite surface, hairlines, mono figures, lamps and washes.
+ * Monitoring (`/monitoring`, spec 9.1) in the settings window: a table of every device with its live telemetry (state,
+ * sources, resolution, frame rate, bit rate, encoding with the "CPU at limit" tag of issue #12, packet loss, round trip,
+ * battery, network, technical check and last contact). Devices with a problem come first (the order of the Devices
+ * dock); a device with several sources shows one aligned line per source, so a value always sits next to its code.
+ * Headings carry the units and sort on click (ascending, descending, back to the order of the devices) with a quiet
+ * arrow on every column. It follows the store's telemetry stream (every 2 s per device) and the shared clock; stale
+ * values are dimmed.
  */
 @Component({
   selector: 'sf-monitoring-page',
-  imports: [IconComponent, RouterLink],
+  imports: [IconComponent, RouterLink, SettingsPageHeadComponent],
   templateUrl: './monitoring-page.component.html',
   styleUrl: './monitoring-page.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -94,7 +119,7 @@ export class MonitoringPageComponent {
       t('regie.monitoring.summary.incidents', { count: open }),
     ].join(' · ');
   });
-  /** Connection state in the header: "Live", "Connecting…" or "Offline" with the time of the last state. */
+  /** Connection state in the page head: "Live", "Connecting…" or "Offline" with the time of the last state. */
   protected readonly connection = computed<{ lamp: LampTone; text: string }>(() => {
     const discovery = this.store.discoveryError();
     if (discovery) {
@@ -123,6 +148,10 @@ export class MonitoringPageComponent {
     this.store.start();
   }
 
+  protected heading(column: ColumnDefinition): string {
+    return column.unit ? `${t(column.label)} (${column.unit})` : t(column.label);
+  }
+
   protected sortBy(column: MonitoringColumn): void {
     this.sort.update((current) => nextSort(current, column));
   }
@@ -143,12 +172,9 @@ export class MonitoringPageComponent {
     return seenText(row.seenAt, this.serverNow());
   }
 
-  protected bitrate(row: MonitoringRow): string {
-    return row.bitrateKbps === null ? MISSING_VALUE : formatKbpsAsMbit(row.bitrateKbps);
-  }
-
+  /** Round trip in ms; the unit is in the heading. */
   protected rtt(row: MonitoringRow): string {
-    return row.rttMs === null ? MISSING_VALUE : `${Math.round(row.rttMs)} ms`;
+    return row.rttMs === null ? MISSING_VALUE : String(Math.round(row.rttMs));
   }
 
   protected battery(row: MonitoringRow): string {

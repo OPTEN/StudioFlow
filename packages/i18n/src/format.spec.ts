@@ -1,11 +1,14 @@
 import {
+  browserTimeZone,
   compareText,
   countCharacters,
   formatDate,
   formatDateTime,
   formatNumber,
   formatTime,
+  formatWeekday,
   lowerCase,
+  zonedClock,
 } from './format';
 import { resetLocaleForTests } from './store';
 
@@ -120,5 +123,32 @@ describe('lowerCase', () => {
     expect(lowerCase('Scene K2')).toBe('scene k2');
     resetLocaleForTests('de-CH');
     expect(lowerCase('GRÖSSE')).toBe('grösse');
+  });
+});
+
+describe('formatWeekday', () => {
+  it('names the weekday of a cron number in the active language', () => {
+    expect(formatWeekday(1)).toBe('Monday');
+    expect(formatWeekday(0)).toBe('Sunday');
+    expect(formatWeekday(7)).toBe('Sunday');
+    resetLocaleForTests('de-CH');
+    expect(formatWeekday(1)).toBe('Montag');
+  });
+});
+
+describe('zonedClock and browserTimeZone', () => {
+  it('reads the wall clock of a moment in a time zone', () => {
+    // 26 October 2026, 23:30 UTC was a Monday; in Zurich (CET) it is already Tuesday 00:30.
+    const moment = new Date(Date.UTC(2026, 9, 26, 23, 30));
+    expect(zonedClock(moment, 'UTC')).toEqual({ weekday: 1, hour: 23, minute: 30 });
+    expect(zonedClock(moment, 'Europe/Zurich')).toEqual({ weekday: 2, hour: 0, minute: 30 });
+  });
+
+  it('answers null for a time zone the browser does not know', () => {
+    expect(zonedClock(new Date(), 'Mars/Olympus')).toBeNull();
+  });
+
+  it('knows the time zone of the browser', () => {
+    expect(browserTimeZone()).toMatch(/\S/);
   });
 });
