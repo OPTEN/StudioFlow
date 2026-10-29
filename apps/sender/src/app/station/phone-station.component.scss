@@ -1,13 +1,18 @@
 @use 'mixins' as *;
 @use 'tokens' as *;
 
+// Width of the control rail at the side of a phone in landscape (one column of 44 px buttons plus its padding).
+$RAIL_SIDE: 76px;
+
 :host {
   display: block;
 }
 
-// Full-screen camera station; bars float over the picture with scrims.
+// The camera picture owns the whole screen; the status bar and the control rail float over it on a translucent
+// material, so the picture stays visible behind them.
 .c-phone {
   background: var(--well);
+  color: var(--pic-text);
   inset: 0;
   overflow: hidden;
   position: fixed;
@@ -32,63 +37,43 @@
     transform: scaleX(-1);
   }
 
-  .is-dark & {
+  .is-screen-off & {
     visibility: hidden;
   }
 }
 
-.c-phone__placeholder {
-  color: var(--muted);
-  display: grid;
-  font-size: 16px;
-  gap: $SPACE_MD;
-  justify-items: center;
-  padding: $SPACE_GUTTER;
-  text-align: center;
+.is-hidden {
+  visibility: hidden;
 }
 
-.c-phone__placeholder-icon {
-  --icon-size: 40px;
-}
-
-// Dark mode: black, only the code; a tap shows the controls for a while.
-.c-phone__dark {
-  align-content: center;
-  background: #000000;
-  color: var(--muted);
-  display: grid;
-  gap: $SPACE_MD;
-  inset: 0;
-  justify-items: center;
-  position: absolute;
-  z-index: z(overlay);
-}
-
-.c-phone__dark-code {
-  font-size: 28px;
-  font-weight: 600;
-  opacity: 0.6;
-}
-
-.c-phone__dark-hint {
-  font-size: 14px;
-  opacity: 0.5;
-}
-
+// Top: the status bar, the note about remote camera changes and the banners, in the flow one under the other.
 .c-phone__top {
-  background: linear-gradient(rgba(5, 7, 10, 0.82), rgba(5, 7, 10, 0));
   display: grid;
-  gap: $SPACE_SM;
+  gap: $SPACE_MD;
   left: 0;
-  padding: calc(var(--safe-top) + #{$SPACE_GUTTER}) max(#{$SPACE_GUTTER}, var(--safe-right))
-    $SPACE_XXL max(#{$SPACE_GUTTER}, var(--safe-left));
+  padding: calc(var(--safe-top) + #{$SPACE_ROW}) var(--gr) 0 var(--gl);
   position: absolute;
   right: 0;
   top: 0;
   z-index: z(controls);
 
-  .has-tally & {
-    padding-top: calc(var(--safe-top) + 64px);
+  @include landscape-low {
+    padding-right: calc(var(--gr) + #{$RAIL_SIDE});
+  }
+}
+
+.c-phone__status {
+  @include material;
+  border-radius: var(--radius-xl);
+  display: grid;
+  gap: $SPACE_XS;
+  min-width: 0;
+  padding: $SPACE_ROW $SPACE_LG $SPACE_ROW $SPACE_GUTTER;
+
+  @include landscape-low {
+    justify-self: start;
+    max-width: 100%;
+    padding-block: $SPACE_SM;
   }
 }
 
@@ -100,114 +85,311 @@
 }
 
 .c-phone__name {
-  font-size: 20px;
-  font-weight: 700;
-  line-height: 1.2;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  @include ellipsis;
+  font-size: var(--fs-title-3);
+  font-weight: 600;
+  line-height: 1.25;
 }
 
-// Unobtrusive note about a remote camera change, below the name; it stays out of the way of the picture.
+.c-phone__line {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: $SPACE_SM $SPACE_LG;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.c-phone__tags {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: $SPACE_SM;
+}
+
+// Unobtrusive note about a remote camera change, under the status bar.
 .c-phone__remote {
   display: flex;
   justify-content: center;
-  left: 0;
   margin: 0;
   pointer-events: none;
-  position: absolute;
-  right: 0;
-  top: calc(var(--safe-top) + 96px);
-  z-index: z(controls);
 
-  .has-tally & {
-    top: calc(var(--safe-top) + 144px);
+  &:empty {
+    display: none;
   }
 }
 
 .c-phone__remote-text {
-  background: rgba(5, 7, 10, 0.72);
-  border-radius: 999px;
-  color: var(--text);
-  font-size: 14px;
-  max-width: calc(100% - 2 * #{$SPACE_GUTTER});
-  padding: $SPACE_XS $SPACE_MD;
+  @include material(true);
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-subhead);
+  max-width: 100%;
+  padding: $SPACE_SM $SPACE_LG;
   text-align: center;
 }
 
-.c-phone__problem {
+// Middle: the card of a camera that is off or failed, between the status bar and the rail.
+.c-phone__center {
   display: grid;
-  gap: $SPACE_LG;
-  left: 50%;
-  max-height: calc(100% - 220px);
-  max-width: 480px;
+  inset: 0;
   overflow: auto;
+  padding: calc(var(--safe-top) + 120px) var(--gr) calc(var(--safe-bottom) + 220px) var(--gl);
+  place-items: center;
+  pointer-events: none;
   position: absolute;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  width: calc(100% - 2 * #{$SPACE_GUTTER});
-  z-index: z(controls);
+  z-index: z(overlay);
 
-  .c-notice {
-    background: var(--raised-2);
-    box-shadow: inset 0 0 0 999px var(--red-wash);
+  > * {
+    pointer-events: auto;
   }
+
+  @include landscape-low {
+    padding: calc(var(--safe-top) + 84px) calc(var(--gr) + #{$RAIL_SIDE}) var(--safe-bottom) var(--gl);
+  }
+}
+
+.c-phone__card {
+  @include floating;
+  display: grid;
+  gap: $SPACE_ROW;
+  justify-items: center;
+  max-width: 420px;
+  padding: $SPACE_STAGE;
+  text-align: center;
+  width: 100%;
+}
+
+.c-phone__card-icon {
+  --icon-size: 26px;
+  align-items: center;
+  background: var(--fill);
+  border-radius: 50%;
+  color: var(--text-2);
+  display: inline-flex;
+  height: 52px;
+  justify-content: center;
+  width: 52px;
+
+  &.is-bad {
+    background: var(--red-wash);
+    color: var(--red);
+  }
+}
+
+.c-phone__card-title {
+  font-size: var(--fs-headline);
+  font-weight: 600;
+}
+
+.c-phone__card-text {
+  color: var(--text-2);
+  font-size: var(--fs-callout);
 }
 
 .c-phone__steps {
   color: var(--text-2);
   display: grid;
+  font-size: var(--fs-callout);
   gap: $SPACE_XS;
-  margin: 0;
-  padding-left: 1.2em;
+  justify-self: stretch;
+  line-height: 1.4;
+  margin: 0 0 $SPACE_SM;
+  padding-left: 1.3em;
+  text-align: left;
 }
 
-// Controls: two columns on narrow phones, one row from 600 px (landscape phones, tablets).
-.c-phone__controls {
-  background: linear-gradient(rgba(5, 7, 10, 0), rgba(5, 7, 10, 0.86) 40%);
+.c-phone__starting {
+  color: var(--pic-muted);
+  font-size: var(--fs-callout);
+  left: 50%;
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: z(overlay);
+}
+
+// Bottom: the control rail, a translucent capsule of round labelled buttons. Three per row on a portrait phone, one
+// row from 600 px, one column at the side of a phone in landscape (the picture keeps its full height).
+.c-phone__rail {
   bottom: 0;
-  display: grid;
-  gap: $SPACE_MD;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  display: flex;
+  justify-content: center;
   left: 0;
-  padding: $SPACE_XXL max(#{$SPACE_GUTTER}, var(--safe-right))
-    calc(var(--safe-bottom) + #{$SPACE_GUTTER}) max(#{$SPACE_GUTTER}, var(--safe-left));
+  padding: $SPACE_LG var(--gr) calc(var(--safe-bottom) + #{$SPACE_GUTTER}) var(--gl);
   position: absolute;
   right: 0;
   z-index: z(controls);
 
+  @include landscape-low {
+    align-items: center;
+    left: auto;
+    padding: calc(var(--safe-top) + #{$SPACE_MD}) var(--gr) calc(var(--safe-bottom) + #{$SPACE_GUTTER})
+      $SPACE_MD;
+    top: 0;
+  }
+}
+
+.c-phone__controls {
+  @include material;
+  border-radius: 26px;
+  display: grid;
+  gap: $SPACE_MD;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  max-width: 600px;
+  padding: $SPACE_ROW $SPACE_MD;
+  width: 100%;
+
   @media (min-width: 600px) {
-    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) auto auto auto;
+    grid-auto-columns: minmax(0, 1fr);
+    grid-auto-flow: column;
+    grid-template-columns: none;
+  }
+
+  @include landscape-low {
+    border-radius: var(--radius-pill);
+    grid-auto-columns: auto;
+    grid-auto-flow: row;
+    grid-template-columns: $TOUCH_TARGET;
+    padding: $SPACE_MD;
+    width: auto;
+  }
+
+  @media (orientation: landscape) and (max-height: 380px) {
+    border-radius: 26px;
+    grid-template-columns: repeat(2, $TOUCH_TARGET);
   }
 }
 
-.c-phone__toggle,
-.c-phone__mic {
-  grid-column: 1 / -1;
+// A round labelled button of the rail (as in iOS Control Center): the glyph in a circle, the label below. Pressed
+// toggles (microphone on, screen off) turn the circle white.
+.c-round {
+  align-content: start;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  color: var(--pic-text);
+  cursor: pointer;
+  display: grid;
+  gap: $SPACE_SM;
+  justify-items: center;
+  min-height: $TOUCH_TARGET;
+  min-width: $TOUCH_TARGET;
+  padding: 2px 0;
+  touch-action: manipulation;
 
-  @media (min-width: 600px) {
-    grid-column: auto;
+  &:focus-visible {
+    outline: none;
+
+    .c-round__glyph {
+      @include focus-ring;
+    }
+  }
+
+  &:hover .c-round__glyph {
+    background: color-mix(in srgb, var(--pic-text) 26%, transparent);
+  }
+
+  &:active .c-round__glyph {
+    transform: scale(0.95);
   }
 }
 
-.c-phone__top.is-hidden,
-.c-phone__controls.is-hidden {
-  visibility: hidden;
-}
+.c-round__glyph {
+  --icon-size: 24px;
+  @include state-transition(background-color, color, transform);
+  align-items: center;
+  background: color-mix(in srgb, var(--pic-text) 16%, transparent);
+  border-radius: 50%;
+  display: inline-flex;
+  height: 52px;
+  justify-content: center;
+  position: relative;
+  width: 52px;
 
-.c-phone__check,
-.c-phone__mic,
-.c-phone__dark-toggle {
-  white-space: nowrap;
-}
-
-@include landscape-low {
-  .c-phone__top {
-    padding-bottom: $SPACE_GUTTER;
+  [aria-pressed='true'] > & {
+    background: var(--pic-text);
+    color: var(--pic-ink);
   }
 
-  .c-phone__controls {
-    padding-top: $SPACE_GUTTER;
+  .c-round--stop > & {
+    background: var(--red);
+    color: var(--on-state);
   }
+
+  @include landscape-low {
+    --icon-size: 22px;
+    height: $TOUCH_TARGET;
+    width: $TOUCH_TARGET;
+  }
+}
+
+.c-round__label {
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  line-height: 1.2;
+  max-width: 100%;
+  overflow-wrap: break-word;
+  text-align: center;
+
+  @include landscape-low {
+    @include sr-only;
+  }
+}
+
+// The result of the tech check as a small lamp on its glyph (orange limited, red insufficient).
+.c-round__badge {
+  box-shadow: 0 0 0 2px var(--pic-ink);
+  height: 11px;
+  position: absolute;
+  right: 3px;
+  top: 3px;
+  width: 11px;
+}
+
+// Screen off: black, with the code, the connection and the tally word dimmed but legible (4.5:1), and the hint. The
+// whole black screen is one button: a tap, Enter or Space shows the controls for a while.
+.c-phone__screen-off {
+  align-content: center;
+  background: var(--well);
+  border: 0;
+  color: var(--pic-muted);
+  cursor: pointer;
+  display: grid;
+  font: inherit;
+  gap: $SPACE_LG;
+  inset: 0;
+  justify-items: center;
+  padding: var(--gl);
+  position: absolute;
+  text-align: center;
+  width: 100%;
+  z-index: z(overlay) + 5;
+
+  &:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: -6px;
+  }
+}
+
+.c-phone__screen-off-status {
+  display: grid;
+  gap: $SPACE_SM;
+  justify-items: center;
+}
+
+.c-phone__screen-off-code {
+  @include mono;
+  color: var(--pic-text-2);
+  font-size: var(--fs-title-1);
+  font-weight: 600;
+}
+
+.c-phone__screen-off-line {
+  align-items: center;
+  display: inline-flex;
+  font-size: var(--fs-callout);
+  gap: $SPACE_MD;
+}
+
+.c-phone__screen-off-hint {
+  font-size: var(--fs-subhead);
 }

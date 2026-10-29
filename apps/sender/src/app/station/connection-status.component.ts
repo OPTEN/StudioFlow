@@ -3,26 +3,29 @@ import { t } from '@studioflow/i18n';
 import { formatDuration } from '@studioflow/scene-model';
 import type { ConnectionView } from './device-session.service';
 
-/** Lamp class per connection view (amber = reconnecting, red = down, DESIGN “Lamps”). */
+/** Lamp state per connection view (orange = reconnecting, red = down). */
 const LAMPS: Readonly<Record<ConnectionView, string>> = {
   connected: '',
-  connecting: 'c-lamp--idle',
-  reconnecting: 'c-lamp--warn',
-  offline: 'c-lamp--warn',
-  blocked: 'c-lamp--bad',
-  replaced: 'c-lamp--idle',
-  removed: 'c-lamp--bad',
+  connecting: 'is-idle',
+  reconnecting: 'is-warn',
+  offline: 'is-warn',
+  blocked: 'is-bad',
+  replaced: 'is-idle',
+  removed: 'is-bad',
 };
 
-/** The connection line: lamp, state word and the outage timer (“Reconnecting… 00:12”). */
+/**
+ * The connection line: lamp, state word and the outage timer (“Reconnecting… 00:12”). It is not a live region:
+ * a flapping connection would repeat itself; the offline and unreachable banners are announced instead.
+ */
 @Component({
   selector: 'sf-connection-status',
   template: `
     <span class="c-connection" data-testid="connection-state" [attr.data-state]="view()">
       <span class="c-lamp" [class]="lampClass()" aria-hidden="true"></span>
-      <span class="c-connection__label" role="status">{{ label() }}</span>
+      <span class="c-connection__label">{{ label() }}</span>
       @if (timer(); as time) {
-        <span class="c-connection__timer u-mono" aria-hidden="true">{{ time }}</span>
+        <span class="c-connection__timer u-mono">{{ time }}</span>
       }
     </span>
   `,
@@ -35,8 +38,8 @@ const LAMPS: Readonly<Record<ConnectionView, string>> = {
     .c-connection {
       align-items: center;
       display: inline-flex;
-      font-size: 15px;
-      font-weight: 600;
+      font-size: var(--fs-subhead);
+      font-weight: 500;
       gap: 8px;
       min-width: 0;
       white-space: nowrap;
@@ -49,8 +52,6 @@ const LAMPS: Readonly<Record<ConnectionView, string>> = {
 
     .c-connection__timer {
       color: var(--text-2);
-      font-size: 14px;
-      font-weight: 500;
     }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,

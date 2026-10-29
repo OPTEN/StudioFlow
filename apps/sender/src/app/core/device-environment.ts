@@ -19,6 +19,8 @@ export interface DeviceEnvironment {
   isPhone(): boolean;
   /** True when this browser can share a screen (desktop browser with getDisplayMedia). */
   canShareScreen(): boolean;
+  /** True on a secure context (https or localhost): without it the browser blocks camera, microphone and screen. */
+  secure(): boolean;
   /** Battery level and charging state where exposed. */
   battery(): Promise<{ readonly pct: number; readonly charging: boolean } | null>;
   /** Network type (“wifi”, “4g”) where exposed. */
@@ -37,6 +39,7 @@ export const browserEnvironment: DeviceEnvironment = {
   platform: () => platformLabel(browserNavigator()?.userAgent ?? ''),
   isPhone: () => isLikelyPhone(browserNavigator()?.userAgent ?? ''),
   canShareScreen: () => canShareScreen(browserNavigator()),
+  secure: () => typeof window === 'undefined' || window.isSecureContext !== false,
   battery: () => battery(browserNavigator()),
   networkType: () => networkType(browserNavigator()),
   vibrate: (pattern) => {

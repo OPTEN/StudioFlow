@@ -1,56 +1,134 @@
 <sf-tally-frame
   [state]="tally()"
-  [thin]="dark()"
+  [thin]="screenOff()"
   [compact]="kind() === 'laptop' || kind() === 'audioStation'"
 />
 
+<!-- Banners in the flow under the status bar or the header: they never cover a control or the camera picture. -->
+<ng-template #banners>
+  <div class="c-banners">
+    @if (session.message(); as message) {
+      <sf-message-banner [message]="message" (dismiss)="session.dismissMessage()" />
+    }
+
+    @if (greeting()) {
+      <div class="c-banner is-ok" role="status">
+        <sf-icon name="circleCheck" />
+        <p class="c-banner__text">
+          @if (kind() !== 'phone') {
+            {{ t('sender.station.banner.pairedComputer') }}
+          } @else if (cameraCode(); as code) {
+            {{ t('sender.station.banner.pairedAs', { code }) }}
+          } @else {
+            {{ t('sender.station.banner.paired') }}
+          }
+        </p>
+      </div>
+    }
+
+    @if (session.connection() === 'offline') {
+      <div class="c-banner is-warn" role="status">
+        <sf-icon name="wifiOff" />
+        <p class="c-banner__text">{{ t('sender.station.banner.offline') }}</p>
+      </div>
+    } @else if (unreachable()) {
+      <div class="c-banner is-warn" role="status">
+        <sf-icon name="refresh" />
+        <p class="c-banner__text">{{ t('sender.station.banner.unreachable') }}</p>
+      </div>
+    }
+
+    @if (showUpdate()) {
+      <div class="c-banner" [class.is-warn]="updates.broken()" role="status">
+        <sf-icon name="refresh" />
+        <p class="c-banner__text">
+          {{
+            updates.broken() ? t('sender.station.banner.broken') : t('sender.station.banner.update')
+          }}
+        </p>
+        @if (confirmReload()) {
+          <div class="c-confirm c-station__reload">
+            <p>{{ t('sender.station.banner.reloadConfirm') }}</p>
+            <div class="c-confirm__row">
+              <button class="c-btn c-btn--danger-fill" type="button" (click)="updates.reloadNow()">
+                {{ t('sender.station.banner.reloadNow') }}
+              </button>
+              <button class="c-btn" type="button" (click)="confirmReload.set(false)">
+                {{ t('common.cancel') }}
+              </button>
+            </div>
+          </div>
+        } @else {
+          <div class="c-banner__actions">
+            <button class="c-btn" type="button" (click)="confirmReload.set(true)">
+              {{ t('sender.station.banner.reload') }}
+            </button>
+          </div>
+        }
+      </div>
+    }
+  </div>
+</ng-template>
+
 @switch (phase()) {
   @case ('blocked') {
-    <main class="c-station-state">
-      <sf-icon class="c-station-state__icon is-bad" name="lock" />
-      <h1 class="c-station-state__title" data-route-focus tabindex="-1">
+    <main class="c-state">
+      <span class="c-state__icon is-bad"><sf-icon name="lock" /></span>
+      <h1 class="c-state__title" data-route-focus tabindex="-1">
         {{ t('sender.station.blocked.title') }}
       </h1>
-      <p class="c-station-state__text">{{ t('sender.station.blocked.text') }}</p>
+      <p class="c-state__text">{{ t('sender.station.blocked.text') }}</p>
+      <p class="c-state__text">{{ t('sender.station.blocked.next') }}</p>
       <sf-connection-status [view]="session.connection()" />
-      <p class="c-station-state__hint">{{ t('sender.station.blocked.hint') }}</p>
     </main>
   }
   @case ('replaced') {
-    <main class="c-station-state">
-      <sf-icon class="c-station-state__icon" name="tabs" />
-      <h1 class="c-station-state__title" data-route-focus tabindex="-1">
+    <main class="c-state">
+      <span class="c-state__icon"><sf-icon name="tabs" /></span>
+      <h1 class="c-state__title" data-route-focus tabindex="-1">
         {{ t('sender.station.replaced.title') }}
       </h1>
-      <p class="c-station-state__text">{{ t('sender.station.replaced.text') }}</p>
+      <p class="c-state__text">{{ t('sender.station.replaced.text') }}</p>
       <sf-connection-status [view]="session.connection()" />
-      <button
-        class="c-button c-button--fill c-button--large"
-        type="button"
-        (click)="session.takeOver()"
-      >
-        {{ t('sender.station.replaced.takeOver') }}
-      </button>
+      <div class="c-state__actions">
+        <button
+          class="c-btn c-btn--fill c-btn--lg"
+          type="button"
+          aria-describedby="take-over-hint"
+          (click)="session.takeOver()"
+        >
+          {{ t('sender.station.replaced.takeOver') }}
+        </button>
+        <p class="c-state__hint" id="take-over-hint">
+          {{ t('sender.station.replaced.takeOverHint') }}
+        </p>
+      </div>
     </main>
   }
   @default {
     @switch (kind()) {
       @case ('phone') {
-        <sf-phone-station (openTechCheck)="openTechCheck()" />
+        <sf-phone-station (openTechCheck)="openTechCheck()">
+          <ng-container *ngTemplateOutlet="banners" />
+        </sf-phone-station>
       }
       @case ('laptop') {
-        <sf-laptop-station [justPaired]="justPaired()" (openTechCheck)="openTechCheck()" />
+        <sf-laptop-station (openTechCheck)="openTechCheck()">
+          <ng-container *ngTemplateOutlet="banners" />
+        </sf-laptop-station>
       }
       @case ('audioStation') {
-        <sf-audio-station (openTechCheck)="openTechCheck()" />
+        <sf-audio-station (openTechCheck)="openTechCheck()">
+          <ng-container *ngTemplateOutlet="banners" />
+        </sf-audio-station>
       }
       @default {
-        <main class="c-station-state">
+        <main class="c-state">
           <span class="c-pulse" aria-hidden="true">
             <span class="c-pulse__dot"></span><span class="c-pulse__dot"></span
             ><span class="c-pulse__dot"></span>
           </span>
-          <h1 class="c-station-state__title" data-route-focus tabindex="-1">
+          <h1 class="c-state__title" data-route-focus tabindex="-1">
             {{ t('sender.station.starting') }}
           </h1>
           <sf-connection-status
@@ -58,61 +136,25 @@
             [since]="session.degradedSince()"
             [now]="session.now()"
           />
+          @if (startingSlow()) {
+            <p class="c-state__hint" role="status">{{ t('sender.station.startingSlow') }}</p>
+          }
+          <div class="c-station__banners">
+            <ng-container *ngTemplateOutlet="banners" />
+          </div>
         </main>
       }
     }
   }
 }
 
-<div class="c-station__banners" [class.c-station__banners--phone]="kind() === 'phone'">
-  @if (session.message(); as message) {
-    <sf-message-banner [message]="message" (dismiss)="session.dismissMessage()" />
-  }
-
-  @if (greeting() && kind() === 'phone') {
-    <div class="c-notice c-notice--ok c-station__banner" role="status">
-      <sf-icon class="c-notice__icon" name="check" />
-      <p class="c-notice__text">
-        @if (cameraCode(); as code) {
-          {{ t('sender.station.banner.pairedAs', { code }) }}
-        } @else {
-          {{ t('sender.station.banner.paired') }}
-        }
-      </p>
-    </div>
-  }
-
-  @if (session.connection() === 'offline') {
-    <div class="c-notice c-notice--warn c-station__banner" role="status">
-      <sf-icon class="c-notice__icon" name="wifiOff" />
-      <p class="c-notice__text">{{ t('sender.station.banner.offline') }}</p>
-    </div>
-  } @else if (unreachable()) {
-    <div class="c-notice c-notice--warn c-station__banner" role="status">
-      <sf-icon class="c-notice__icon" name="refresh" />
-      <p class="c-notice__text">{{ t('sender.station.banner.unreachable') }}</p>
-    </div>
-  }
-
-  @if (showUpdate()) {
-    <div class="c-notice c-station__banner c-station__update" role="status">
-      <sf-icon class="c-notice__icon" name="refresh" />
-      <p class="c-notice__text">{{ t('sender.station.banner.update') }}</p>
-      <button class="c-button" type="button" (click)="updates.reloadNow()">
-        {{ t('sender.station.banner.reload') }}
-      </button>
-    </div>
-  }
-</div>
-
 @if (techCheckOpen()) {
-  <div class="c-station__sheet">
-    <sf-tech-check-panel
-      [result]="session.techCheck()"
-      [running]="session.techCheckRunning()"
-      [withCamera]="session.camera() !== null"
-      (run)="session.runTechCheck()"
-      (closed)="closeTechCheck()"
-    />
-  </div>
+  <sf-tech-check-panel
+    [result]="session.techCheck()"
+    [running]="session.techCheckRunning()"
+    [withCamera]="session.camera() !== null"
+    [device]="session.self()"
+    (run)="session.runTechCheck()"
+    (closed)="closeTechCheck()"
+  />
 }

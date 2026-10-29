@@ -1,4 +1,70 @@
-// Layout of the pairing screens is shared (`styles/components/_pairing.scss`); nothing specific here.
+@use 'mixins' as *;
+@use 'tokens' as *;
+
 :host {
   display: block;
+}
+
+// The fast way for a phone: scan the QR code of the control room. The card leads the page on phones.
+.c-qr {
+  background: var(--group);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 0 0 0.5px var(--seam);
+  display: grid;
+  gap: $SPACE_SM $SPACE_GUTTER;
+  grid-template-areas:
+    'art title'
+    'art text';
+  grid-template-columns: auto minmax(0, 1fr);
+  padding: $SPACE_STAGE $SPACE_GUTTER;
+}
+
+.c-qr__art {
+  --icon-size: 30px;
+  align-items: center;
+  align-self: start;
+  background: var(--blue-wash);
+  border-radius: var(--radius-lg);
+  color: var(--blue);
+  display: inline-flex;
+  grid-area: art;
+  height: 56px;
+  justify-content: center;
+  width: 56px;
+}
+
+.c-qr__title {
+  font-size: var(--fs-headline);
+  font-weight: 600;
+  grid-area: title;
+  line-height: 1.3;
+}
+
+.c-qr__text {
+  color: var(--text-2);
+  font-size: var(--fs-callout);
+  grid-area: text;
+  line-height: 1.45;
+}
+
+.c-start__code {
+  display: grid;
+  gap: $SPACE_XS;
+  padding-top: $SPACE_SM;
+}
+
+.c-start__heading {
+  font-size: var(--fs-title-3);
+  font-weight: 600;
+}
+
+.c-start__lead {
+  color: var(--text-2);
+  font-size: var(--fs-callout);
+  line-height: 1.45;
+}
+
+.c-start__form {
+  display: grid;
+  gap: $SPACE_XL;
 }

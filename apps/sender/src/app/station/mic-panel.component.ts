@@ -7,8 +7,9 @@ import { InputLevelComponent } from './input-level.component';
 const BUSY = new Set(['starting', 'live', 'paused']);
 
 /**
- * The microphone of this device: the audio input, on/off, the level and the “Mic live” tag. The audio station shows it
- * as its only content (the sound of the mixing desk, stereo and untouched); a phone or laptop offers it as an extra
+ * The microphone of this device as a card: the state with its lamp, the level, the audio input and on/off, with the
+ * “Mic live” tag. The audio station shows it as its only content (the sound of the mixing desk, stereo and untouched,
+ * with a scaled meter); stopping it while the broadcast uses the sound asks first. A laptop offers it as an extra
  * source that is off until the person switches it on (decision #7: microphones exist but are muted in the mixer).
  */
 @Component({
@@ -27,6 +28,14 @@ export class MicPanelComponent {
   protected readonly running = computed(() => BUSY.has(this.slot()?.state ?? 'idle'));
   protected readonly stream = computed(() => (this.running() ? this.session.micStream() : null));
   protected readonly silent = signal(false);
+  /** “Stop sending sound” was pressed while the sound is live: the consequence is shown with the final button. */
+  protected readonly confirming = signal(false);
+  protected readonly toggleLabel = computed(() => {
+    if (this.station()) {
+      return this.running() ? t('sender.audio.station.stop') : t('sender.audio.station.start');
+    }
+    return this.running() ? t('sender.audio.stop') : t('sender.audio.start');
+  });
   protected readonly selected = computed(() => {
     const wanted = this.session.settings().micInput;
     return wanted !== null && this.session.micInputs().some((input) => input.id === wanted)
@@ -62,11 +71,18 @@ export class MicPanelComponent {
   }
 
   protected toggle(): void {
-    if (this.running()) {
-      this.session.stopMic();
-    } else {
+    if (!this.running()) {
       void this.session.startMic();
+    } else if (this.station() && this.session.micLive()) {
+      this.confirming.set(true);
+    } else {
+      this.session.stopMic();
     }
+  }
+
+  protected stop(): void {
+    this.confirming.set(false);
+    this.session.stopMic();
   }
 
   protected choose(event: Event): void {

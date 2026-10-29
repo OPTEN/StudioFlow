@@ -14,7 +14,8 @@ export const senderAudio = {
   'sender.audio.input.unnamed': 'Input {number}',
 
   'sender.audio.level': 'Input level',
-  'sender.audio.level.silent': '−∞ dB',
+  'sender.audio.level.silent': 'No sound',
+  'sender.audio.level.suspended': 'Click or tap anywhere on this page to start the level meter.',
   'sender.audio.level.value': '{db} dB',
 
   'sender.audio.live': 'Mic live',
@@ -24,8 +25,7 @@ export const senderAudio = {
     'Stereo, sent as it comes: echo cancellation, noise suppression and automatic gain are off.',
   'sender.audio.note.voice': 'The browser reduces echo and background noise.',
 
-  'sender.audio.phone.off': 'Microphone off',
-  'sender.audio.phone.on': 'Microphone on',
+  'sender.audio.phone.label': 'Microphone',
 
   'sender.audio.silent':
     'No signal for a while. Check the cable and the output of the mixing desk, or the chosen input.',
@@ -40,18 +40,23 @@ export const senderAudio = {
   'sender.audio.state.idle': 'Off',
   'sender.audio.state.live': 'Sending',
   'sender.audio.state.paused': 'Paused',
-  'sender.audio.state.starting': 'Starting …',
+  'sender.audio.state.starting': 'Starting…',
 
   'sender.audio.station.hint':
-    'Connect the output of the mixing desk to an input of this computer and choose that input below. The sound starts by itself whenever this page is open and the control room lets it through.',
-  'sender.audio.station.lead': '“{name}” sends the sound of the mixing desk to the control room.',
+    'Connect the output of the mixing desk to an input of this computer and choose that input above. The sound starts by itself whenever this page is open.',
+  'sender.audio.station.lead': 'Sends the sound of the mixing desk to the control room.',
+  'sender.audio.station.start': 'Start sending sound',
+  'sender.audio.station.stop': 'Stop sending sound',
+  'sender.audio.station.stopConfirm':
+    'The broadcast is using this sound right now. Stopping it silences the broadcast.',
   'sender.audio.station.title': 'Sound from the mixing desk',
 
   'sender.audio.title': 'Microphone',
 
   'sender.audio.screen.explain':
     'Chrome and Edge on Windows can share the sound of the whole computer when you share the entire screen. Elsewhere only the sound of a shared browser tab can be shared: tick “Also share tab audio” in the dialog. Firefox and Safari share no sound.',
-  'sender.audio.screen.label': 'Share audio',
+  'sender.audio.screen.help': 'Which browsers share sound?',
+  'sender.audio.screen.label': 'With sound',
   'sender.audio.screen.noSound':
     'No sound is shared with this screen. Share again and tick the sound option in the browser dialog. It is offered for a browser tab, and for an entire screen on Windows.',
   'sender.audio.screen.withSound': 'with sound',

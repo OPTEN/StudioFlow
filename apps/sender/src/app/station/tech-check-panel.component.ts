@@ -1,23 +1,17 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  ElementRef,
-  afterNextRender,
-  computed,
-  inject,
-  input,
-  output,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { t } from '@studioflow/i18n';
 import { techProblemText, type TechCheckResult } from '@studioflow/media-client/device';
 import {
   formatHm,
   formatKbpsAsMbit,
+  type DeviceSelfDto,
   type TechCheckDto,
   type TechCheckLevel,
 } from '@studioflow/scene-model';
+import { APP_VERSION } from '../core/app-version';
 import { IconComponent } from '../shared/icon.component';
 import { LanguageSelectComponent } from '../shared/language-select.component';
+import { SheetComponent } from '../shared/sheet.component';
 
 /** One lamp of the check. */
 interface CheckRow {
@@ -28,9 +22,9 @@ interface CheckRow {
 
 const LEVEL_LAMPS: Readonly<Record<TechCheckLevel, string>> = {
   ok: 'c-lamp',
-  warn: 'c-lamp c-lamp--warn',
-  bad: 'c-lamp c-lamp--bad',
-  unknown: 'c-lamp c-lamp--idle',
+  warn: 'c-lamp is-warn',
+  bad: 'c-lamp is-bad',
+  unknown: 'c-lamp is-idle',
 };
 
 /** Overall verdict of a check. */
@@ -51,10 +45,13 @@ export function techCheckNote(result: TechCheckResult | null): string | null {
     : result.note;
 }
 
-/** “Tech check”: camera, network and upload as lamps, with the problems and “Check again”. */
+/**
+ * “Tech check” as a modal sheet: the verdict in plain words, camera, network and upload as lamps with advice for what is
+ * limited, “Check again”, and what this device is (name, production, app version, language).
+ */
 @Component({
   selector: 'sf-tech-check-panel',
-  imports: [IconComponent, LanguageSelectComponent],
+  imports: [IconComponent, LanguageSelectComponent, SheetComponent],
   templateUrl: './tech-check-panel.component.html',
   styleUrl: './tech-check-panel.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -64,12 +61,14 @@ export class TechCheckPanelComponent {
   readonly running = input(false);
   /** The device has a camera slot (else the camera lamp is left out). */
   readonly withCamera = input(true);
+  /** This device as the server knows it (name and production in the “This device” group). */
+  readonly device = input<DeviceSelfDto | null>(null);
   readonly run = output<void>();
   readonly closed = output<void>();
 
-  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
-
   protected readonly t = t;
+  protected readonly version = APP_VERSION;
+  protected readonly level = computed(() => this.result()?.overall ?? 'unknown');
   protected readonly summary = computed(() => techCheckSummary(this.result()));
   protected readonly note = computed(() => techCheckNote(this.result()));
   protected readonly checkedAt = computed(() => {
@@ -100,8 +99,4 @@ export class TechCheckPanelComponent {
   });
 
   protected readonly lampClass = (level: TechCheckLevel): string => LEVEL_LAMPS[level];
-
-  constructor() {
-    afterNextRender(() => this.host.nativeElement.querySelector<HTMLElement>('h2')?.focus());
-  }
 }

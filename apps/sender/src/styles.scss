@@ -1,62 +1,15 @@
-// Global styles of the sender PWA: self-hosted fonts, colour tokens (DESIGN.md), base rules, shared components.
+// Global styles of the sender PWA: design tokens, base rules, shared components. The sender uses the platform's own
+// UI font (SF Pro, Segoe UI Variable, Roboto) like the Regie, so it downloads no web font.
 @use 'mixins' as *;
 @use 'tokens' as *;
 @use 'components';
 
-// Fonts ship with the build (SIL Open Font License, see fonts/OFL-*.txt); esbuild hashes them so they work under /join/.
-@font-face {
-  font-display: swap;
-  font-family: 'Sofia Sans Semi Condensed';
-  font-style: normal;
-  font-weight: 1 1000;
-  src: url('./fonts/sofia-sans-semi-condensed-latin.woff2') format('woff2');
-}
-
-@font-face {
-  font-display: swap;
-  font-family: 'JetBrains Mono';
-  font-style: normal;
-  font-weight: 100 800;
-  src: url('./fonts/jetbrains-mono-latin.woff2') format('woff2');
-}
-
 :root {
-  --amber: #e3b341;
-  --amber-halo: rgba(227, 179, 65, 0.22);
-  --amber-wash: rgba(227, 179, 65, 0.1);
-  --blue: #79c0ff;
-  --blue-fill: #1f6feb;
-  --blue-fill-hover: #1a5fd0;
-  --blue-wash: rgba(121, 192, 255, 0.08);
-  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
-  --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
-  --font-ui: 'Sofia Sans Semi Condensed', 'Arial Narrow', system-ui, sans-serif;
-  --green: #56d364;
-  --green-hover: #6fe07c;
-  --green-wash: rgba(86, 211, 100, 0.08);
-  --ground: #0d1117;
-  --muted: #8b949e;
-  --on-fill: #ffffff;
-  --on-state: #0d1117;
-  --panel: #151a22;
-  --raised: #1b212b;
-  --raised-2: #232a36;
-  --red: #f85149;
-  --red-halo: rgba(248, 81, 73, 0.25);
-  --red-wash: rgba(248, 81, 73, 0.1);
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
-  --safe-left: env(safe-area-inset-left, 0px);
-  --safe-right: env(safe-area-inset-right, 0px);
-  --safe-top: env(safe-area-inset-top, 0px);
-  --scrim: rgba(13, 17, 23, 0.72);
-  --seam: #262c36;
-  --seam-hover: #445064;
-  --seam-strong: #353d4a;
-  --shadow-pop: 0 4px 10px rgba(1, 4, 9, 0.5);
-  --text: #e6edf3;
-  --text-2: #b4bdc8;
-  --well: #05070a;
-  color-scheme: dark;
+  @include custom-properties;
+
+  @include desktop {
+    @include type-desktop;
+  }
 }
 
 *,
@@ -65,25 +18,49 @@
   box-sizing: border-box;
 }
 
+// Fallback only: templates use @if instead of the hidden attribute, because component display rules would win.
+[hidden] {
+  display: none;
+}
+
 html {
   -webkit-text-size-adjust: 100%;
-  background: var(--ground);
+  background: var(--grouped);
   height: 100%;
 }
 
 body {
+  -moz-osx-font-smoothing: grayscale;
   -webkit-font-smoothing: antialiased;
-  background: var(--ground);
+  -webkit-tap-highlight-color: transparent;
+  background: var(--grouped);
   color: var(--text);
-  font: 400 16px/1.45 var(--font-ui);
+  font: 400 var(--fs-body) / 1.4 var(--font-ui);
+  font-synthesis-weight: none;
   margin: 0;
   min-height: 100%;
   overflow-x: hidden;
 }
 
 ::selection {
-  background: rgba(121, 192, 255, 0.3);
+  background: color-mix(in srgb, var(--blue) 32%, transparent);
   color: var(--text);
+}
+
+* {
+  scrollbar-color: var(--seam-strong) transparent;
+  scrollbar-width: thin;
+}
+
+::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+
+input,
+select,
+textarea {
+  caret-color: var(--blue);
 }
 
 :focus-visible {
@@ -98,9 +75,20 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   color: inherit;
   font: inherit;
+}
+
+// No double-tap zoom delay on any control (docs/testing.md E2E-DEV-11).
+button,
+a,
+label,
+select,
+summary,
+input {
+  touch-action: manipulation;
 }
 
 h1,
@@ -110,8 +98,16 @@ p {
   margin: 0;
 }
 
+h1,
+h2,
+h3 {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
 a {
   color: var(--blue);
+  text-underline-offset: 2px;
 }
 
 // Utilities.
@@ -123,13 +119,29 @@ a {
   @include mono;
 }
 
-// Motion: every animation and transition of the sender is declared inside
-// `@media (prefers-reduced-motion: no-preference)`, so the OS setting turns all of it off (testing GAP-28).
+// Reduced motion: every duration token drops to 0s; the universal rule catches everything else.
+@include reduced-motion {
+  :root {
+    --dur-state: 0s;
+    --dur-reveal: 0s;
+    --dur-pulse: 0s;
+  }
 
-// Forced colours: keep borders and focus visible.
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0s !important;
+    transition-duration: 0s !important;
+  }
+}
+
+// Forced colours: controls keep a visible border (their fills disappear).
 @media (forced-colors: active) {
-  .c-button,
-  .c-segmented__options {
+  .c-btn,
+  .c-ibtn,
+  .c-choice,
+  .c-input,
+  .c-select {
     border-color: ButtonText;
   }
 }

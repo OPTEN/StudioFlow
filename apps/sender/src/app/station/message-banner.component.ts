@@ -4,7 +4,10 @@ import { formatHm } from '@studioflow/scene-model';
 import { IconComponent } from '../shared/icon.component';
 import type { RegieMessage } from './device-session.service';
 
-/** A message from the Regie (Regie-Chat), prominent, with time and “OK”. */
+/**
+ * A message from the Regie (Regie-Chat): large text with the time, on the floating surface, until the person dismisses
+ * it. It never disappears by itself, so an unattended phone or a speaker in another window still sees it later.
+ */
 @Component({
   selector: 'sf-message-banner',
   imports: [IconComponent],
@@ -15,7 +18,7 @@ import type { RegieMessage } from './device-session.service';
       role="alert"
       aria-labelledby="regie-message-title"
     >
-      <sf-icon class="c-message__icon" name="message" />
+      <span class="c-message__icon"><sf-icon name="message" /></span>
       <div class="c-message__body">
         <h2 class="c-message__title" id="regie-message-title">
           {{ t('sender.station.message.title') }}
@@ -23,8 +26,8 @@ import type { RegieMessage } from './device-session.service';
         </h2>
         <p class="c-message__text">{{ message().text }}</p>
       </div>
-      <button class="c-button c-button--fill c-message__ok" type="button" (click)="dismiss.emit()">
-        {{ t('common.ok') }}
+      <button class="c-btn c-btn--fill c-message__dismiss" type="button" (click)="dismiss.emit()">
+        {{ t('sender.station.message.dismiss') }}
       </button>
     </section>
   `,
@@ -35,33 +38,42 @@ import type { RegieMessage } from './device-session.service';
 
     .c-message {
       align-items: center;
-      background: var(--raised-2);
-      border: 1px solid var(--seam-strong);
-      border-radius: 6px;
+      background: var(--float);
+      border-radius: var(--radius-lg);
       box-shadow: var(--shadow-pop);
       display: grid;
-      gap: 12px;
+      gap: 10px 14px;
+      grid-template-areas: 'icon body action';
       grid-template-columns: auto minmax(0, 1fr) auto;
-      padding: 12px 12px 12px 16px;
+      padding: 14px 14px 14px 16px;
     }
 
     .c-message__icon {
-      --icon-size: 24px;
+      --icon-size: 20px;
+      align-items: center;
       align-self: start;
-      color: var(--text);
-      margin-top: 2px;
+      background: var(--blue-wash);
+      border-radius: 50%;
+      color: var(--blue);
+      display: inline-flex;
+      grid-area: icon;
+      height: 38px;
+      justify-content: center;
+      width: 38px;
     }
 
     .c-message__body {
       display: grid;
       gap: 4px;
+      grid-area: body;
       min-width: 0;
     }
 
     .c-message__title {
       color: var(--text-2);
-      font-size: 14px;
-      font-weight: 700;
+      font-size: var(--fs-subhead);
+      font-weight: 600;
+      letter-spacing: 0;
     }
 
     .c-message__time {
@@ -71,14 +83,27 @@ import type { RegieMessage } from './device-session.service';
     }
 
     .c-message__text {
-      font-size: 20px;
-      font-weight: 700;
-      line-height: 1.25;
+      font-size: var(--fs-title-3);
+      font-weight: 600;
+      line-height: 1.3;
       overflow-wrap: anywhere;
     }
 
-    .c-message__ok {
-      min-width: 64px;
+    .c-message__dismiss {
+      grid-area: action;
+    }
+
+    @media (max-width: 479px) {
+      .c-message {
+        grid-template-areas:
+          'icon body'
+          'action action';
+        grid-template-columns: auto minmax(0, 1fr);
+      }
+
+      .c-message__dismiss {
+        width: 100%;
+      }
     }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,

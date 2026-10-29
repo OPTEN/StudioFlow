@@ -107,7 +107,7 @@ describe('InputLevelComponent', () => {
   it('is empty and silent without a stream', () => {
     setup();
 
-    expect(text()).toBe('−∞ dB');
+    expect(text()).toBe('No sound');
     expect(['', 'scaleX(0)']).toContain(bar().style.transform);
     expect(created).toEqual([]);
   });
@@ -162,7 +162,9 @@ describe('InputLevelComponent', () => {
     await tick(12_000);
 
     expect(fixture.componentInstance.silent()).toBe(false);
-    expect(text()).toBe('−∞ dB');
+    expect(text()).toBe('No sound');
+    fixture.detectChanges();
+    expect(element.textContent).toContain('Click or tap anywhere on this page');
   });
 
   it('asks the suspended context to start at once and again with the first touch of the page', async () => {
@@ -193,7 +195,7 @@ describe('InputLevelComponent', () => {
     await fixture.whenStable();
 
     expect(created[0].disposed).toBe(true);
-    expect(text()).toBe('−∞ dB');
+    expect(text()).toBe('No sound');
 
     await show();
     expect(created).toHaveLength(2);
@@ -205,6 +207,6 @@ describe('InputLevelComponent', () => {
     await show();
     await tick(1000);
 
-    expect(text()).toBe('−∞ dB');
+    expect(text()).toBe('No sound');
   });
 });

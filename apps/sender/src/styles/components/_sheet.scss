@@ -1,0 +1,107 @@
+@use 'mixins' as *;
+@use 'tokens' as *;
+
+// Modal sheet (tech check, picture quality, confirmations while live): a native <dialog> opened with showModal(), so
+// the page behind is inert, Escape closes it and focus stays inside. A bottom sheet on phones, a centred card from
+// 768 px.
+.c-sheet {
+  @include floating;
+  animation: c-sheet-up var(--dur-reveal) var(--ease);
+  border: 0;
+  border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
+  color: var(--text);
+  inset: auto 0 0;
+  margin: 0;
+  max-height: calc(100dvh - var(--safe-top) - #{$SPACE_XL});
+  max-width: none;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: $SPACE_SM var(--gr) calc(var(--safe-bottom) + #{$SPACE_STAGE}) var(--gl);
+  position: fixed;
+  width: 100%;
+
+  &::backdrop {
+    animation: c-sheet-fade var(--dur-reveal) var(--ease);
+    background: color-mix(in srgb, var(--well) 55%, transparent);
+  }
+
+  @include respond-to(md) {
+    animation-name: c-sheet-in;
+    border-radius: var(--radius-sheet);
+    inset: 0;
+    margin: auto;
+    max-height: min(760px, calc(100dvh - 2 * #{$SPACE_XXL}));
+    max-width: $SHEET_WIDTH;
+    padding: $SPACE_SM $SPACE_XL $SPACE_XL;
+  }
+}
+
+// The grabber of a bottom sheet (decorative, phones only).
+.c-sheet__grabber {
+  background: var(--seam-strong);
+  border-radius: var(--radius-pill);
+  height: 5px;
+  margin: 0 auto $SPACE_SM;
+  width: 36px;
+
+  @include respond-to(md) {
+    display: none;
+  }
+}
+
+.c-sheet__head {
+  align-items: center;
+  display: flex;
+  gap: $SPACE_LG;
+  justify-content: space-between;
+  min-height: $TOUCH_TARGET + 4px;
+}
+
+.c-sheet__title {
+  font-size: var(--fs-title-3);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.c-sheet__body {
+  display: grid;
+  gap: $SPACE_STAGE;
+  padding-top: $SPACE_SM;
+}
+
+.c-sheet__text {
+  color: var(--text-2);
+  font-size: var(--fs-body);
+  line-height: 1.45;
+}
+
+.c-sheet__actions {
+  display: grid;
+  gap: $SPACE_MD;
+
+  @include respond-to(md) {
+    display: flex;
+    flex-direction: row-reverse;
+    justify-content: flex-start;
+  }
+}
+
+@keyframes c-sheet-up {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+}
+
+@keyframes c-sheet-in {
+  from {
+    transform: scale(0.97);
+    opacity: 0;
+  }
+}
+
+@keyframes c-sheet-fade {
+  from {
+    opacity: 0;
+  }
+}

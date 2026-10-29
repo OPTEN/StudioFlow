@@ -1,120 +1,16 @@
-@use 'mixins' as *;
 @use 'tokens' as *;
 
 :host {
   display: block;
 }
 
-// Full screens for “blocked”, “Opened in another tab” and the start.
-.c-station-state {
-  align-content: center;
-  display: grid;
-  gap: $SPACE_GUTTER;
-  justify-items: start;
-  margin: 0 auto;
-  max-width: 520px;
-  min-height: 100dvh;
-  padding: calc(var(--safe-top) + #{$SPACE_XXL}) max(#{$SPACE_GUTTER}, var(--safe-right))
-    calc(var(--safe-bottom) + #{$SPACE_XXL}) max(#{$SPACE_GUTTER}, var(--safe-left));
-}
-
-.c-station-state__icon {
-  --icon-size: 40px;
-  color: var(--text-2);
-
-  &.is-bad {
-    color: var(--red);
-  }
-}
-
-.c-station-state__title {
-  font-size: 28px;
-  font-weight: 700;
-  line-height: 1.15;
-}
-
-.c-station-state__text {
-  color: var(--text-2);
-  font-size: 17px;
-}
-
-.c-station-state__hint {
-  color: var(--muted);
-  font-size: 14px;
-}
-
-// Messages float like the Regie toast: at the bottom of the laptop page (the content stays readable), on phones at
-// the top over the camera picture, below the tally badge and the name (the controls are at the bottom there).
+// The banners of the starting screen sit below its text, as wide as the column.
 .c-station__banners {
-  bottom: calc(var(--safe-bottom) + #{$SPACE_GUTTER});
-  display: grid;
-  gap: $SPACE_MD;
-  left: 50%;
-  max-width: 560px;
-  pointer-events: none;
-  position: fixed;
-  transform: translateX(-50%);
-  width: calc(100% - 2 * #{$SPACE_GUTTER});
-  z-index: z(banner);
-
-  > * {
-    pointer-events: auto;
-  }
+  justify-self: stretch;
+  text-align: left;
 }
 
-.c-station__banners--phone {
-  bottom: auto;
-  top: calc(var(--safe-top) + 120px);
-}
-
-.c-station__banner {
-  align-items: center;
-  border: 1px solid var(--seam-strong);
-  box-shadow: var(--shadow-pop);
-}
-
-// The notice washes are translucent: give floating ones an opaque base.
-.c-notice.c-station__banner {
-  background-color: var(--raised-2);
-  background-image: linear-gradient(var(--wash, transparent), var(--wash, transparent));
-}
-
-.c-notice--ok.c-station__banner {
-  --wash: var(--green-wash);
-}
-
-.c-notice--warn.c-station__banner {
-  --wash: var(--amber-wash);
-}
-
-.c-station__update {
-  flex-wrap: wrap;
-
-  .c-notice__text {
-    flex: 1 1 200px;
-  }
-}
-
-// Technical check as a sheet: bottom on phones, centred from 768 px.
-.c-station__sheet {
-  bottom: 0;
-  left: 0;
-  max-height: 100dvh;
-  overflow: auto;
-  padding: $SPACE_GUTTER max(#{$SPACE_GUTTER}, var(--safe-right))
-    calc(var(--safe-bottom) + #{$SPACE_GUTTER}) max(#{$SPACE_GUTTER}, var(--safe-left));
-  position: fixed;
-  right: 0;
-  z-index: z(dialog);
-
-  @include respond-to(md) {
-    bottom: auto;
-    left: 50%;
-    max-width: 480px;
-    padding: 0;
-    right: auto;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    width: 100%;
-  }
+// The reload confirmation takes the whole width of the update banner.
+.c-station__reload {
+  flex: 1 1 100%;
 }

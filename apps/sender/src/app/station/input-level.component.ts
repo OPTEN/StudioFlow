@@ -59,45 +59,78 @@ export function inputLevelFill(levelDb: number): number {
   return Math.min(1, Math.max(0, (levelDb - FLOOR_DB) / -FLOOR_DB));
 }
 
+/** Marks of the scale under the meter of the audio station (dBFS). */
+const SCALE_MARKS = [-60, -40, -20, -10, -3, 0] as const;
+/** The peak hold mark stays this long before it follows the level down. */
+const PEAK_HOLD_MS = 1500;
+
 /**
  * Level of the microphone before it is sent: a bar with the peak in dB, red close to clipping. After 10 seconds without
  * signal it says so (`silent`), because a cable that fell out of the mixing desk is the most common failure. The
- * browser keeps a new audio context suspended until the person has touched the page; the bar stays empty and the
- * silence is not judged until then.
+ * browser keeps a new audio context suspended until the person has touched the page; the bar stays empty, a hint says
+ * how to start it, and the silence is not judged until then. With `scale` (the audio station) the meter is taller and
+ * has a dB scale and a peak hold mark.
  */
 @Component({
   selector: 'sf-input-level',
   template: `
-    <div
-      class="c-level"
-      role="meter"
-      aria-valuemin="-60"
-      aria-valuemax="0"
-      [attr.aria-valuenow]="valueNow()"
-      [attr.aria-label]="t('sender.audio.level')"
-      data-testid="input-level"
-    >
-      <div class="c-level__bar" [class.is-hot]="hot()" #bar></div>
+    <div class="c-level-row">
+      <div
+        class="c-level"
+        [class.has-scale]="scale()"
+        role="meter"
+        aria-valuemin="-60"
+        aria-valuemax="0"
+        [attr.aria-valuenow]="valueNow()"
+        [attr.aria-label]="t('sender.audio.level')"
+        data-testid="input-level"
+      >
+        <div class="c-level__bar" [class.is-hot]="hot()" #bar></div>
+        @if (scale()) {
+          <div class="c-level__peak" [class.is-hot]="hot()" #peak></div>
+        }
+      </div>
+      <span class="c-level__db u-mono" data-testid="input-level-db">{{ text() }}</span>
     </div>
-    <span class="c-level__db u-mono" data-testid="input-level-db">{{ text() }}</span>
+    @if (scale()) {
+      <div class="c-level__scale" aria-hidden="true">
+        @for (mark of marks; track mark) {
+          <span class="c-level__mark u-mono" [style.left.%]="markAt(mark)">{{ mark }}</span>
+        }
+      </div>
+    }
+    @if (suspended()) {
+      <p class="c-level__hint" role="status">{{ t('sender.audio.level.suspended') }}</p>
+    }
   `,
   styles: `
     :host {
+      display: grid;
+      gap: 6px;
+    }
+
+    .c-level-row {
       align-items: center;
       display: flex;
       gap: 12px;
     }
 
     .c-level {
-      background: var(--raised-2);
-      border-radius: 3px;
+      background: var(--fill);
+      border-radius: var(--radius-pill);
       flex: 1 1 auto;
       height: 10px;
       overflow: hidden;
+      position: relative;
+
+      &.has-scale {
+        border-radius: var(--radius-xs);
+        height: 16px;
+      }
     }
 
     .c-level__bar {
-      background: var(--text-2);
+      background: var(--green);
       height: 100%;
       transform: scaleX(0);
       transform-origin: left center;
@@ -107,18 +140,54 @@ export function inputLevelFill(levelDb: number): number {
       &.is-hot {
         background: var(--red);
       }
+    }
 
-      @media (prefers-reduced-motion: reduce) {
-        transition: none;
+    .c-level__peak {
+      background: var(--text);
+      bottom: 0;
+      left: 0;
+      position: absolute;
+      top: 0;
+      width: 2px;
+
+      &.is-hot {
+        background: var(--red);
       }
     }
 
     .c-level__db {
       color: var(--text-2);
       flex: none;
-      font-size: 14px;
-      min-width: 6ch;
+      font-size: var(--fs-subhead);
+      min-width: 8ch;
       text-align: right;
+    }
+
+    .c-level__scale {
+      height: 18px;
+      margin-right: calc(8ch + 12px);
+      position: relative;
+    }
+
+    .c-level__mark {
+      color: var(--muted);
+      font-size: var(--fs-caption);
+      position: absolute;
+      top: 0;
+      transform: translateX(-50%);
+
+      &:first-child {
+        transform: none;
+      }
+
+      &:last-child {
+        transform: translateX(-100%);
+      }
+    }
+
+    .c-level__hint {
+      color: var(--amber);
+      font-size: var(--fs-footnote);
     }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -126,12 +195,18 @@ export function inputLevelFill(levelDb: number): number {
 export class InputLevelComponent {
   /** The stream to measure (null: nothing is measured and the bar is empty). */
   readonly stream = input<MediaStream | null>(null);
+  /** A taller meter with a dB scale and a peak hold mark (the audio station). */
+  readonly scale = input(false);
   /** True while the stream has been silent for 10 seconds, false when sound returns or nothing is measured. */
   readonly silent = output<boolean>();
 
   protected readonly t = t;
   private readonly factory = inject(INPUT_METER_FACTORY);
   private readonly bar = viewChild<ElementRef<HTMLElement>>('bar');
+  private readonly peakMark = viewChild<ElementRef<HTMLElement>>('peak');
+  protected readonly marks = SCALE_MARKS;
+  /** The audio context waits for a touch of the page; the bar stays empty until then. */
+  protected readonly suspended = signal(false);
   private readonly peak = signal(FLOOR_DB - 40);
   protected readonly hot = signal(false);
   protected readonly valueNow = computed(() => Math.round(Math.max(FLOOR_DB, this.peak())));
@@ -147,6 +222,8 @@ export class InputLevelComponent {
   private stopGesture: (() => void) | null = null;
   private tracker = new SilenceTracker();
   private reportedSilent = false;
+  private holdDb = FLOOR_DB - 40;
+  private holdAt = 0;
 
   constructor() {
     effect(() => {
@@ -180,6 +257,8 @@ export class InputLevelComponent {
     this.release();
     this.peak.set(FLOOR_DB - 40);
     this.hot.set(false);
+    this.suspended.set(false);
+    this.holdDb = FLOOR_DB - 40;
     this.setBar(0);
     this.setSilent(false);
   }
@@ -202,10 +281,16 @@ export class InputLevelComponent {
       return;
     }
     const running = meter.context.state === 'running';
+    this.suspended.set(!running);
     const level = running ? meter.read() : FLOOR_DB - 40;
     const shown = Math.max(level, this.peak() - FALL_DB_PER_TICK);
     this.peak.set(shown);
     this.hot.set(shown >= HOT_DB);
+    const now = Date.now();
+    if (shown >= this.holdDb || now - this.holdAt > PEAK_HOLD_MS) {
+      this.holdDb = shown;
+      this.holdAt = now;
+    }
     this.setBar(inputLevelFill(shown));
     const silent = this.tracker.update(Date.now(), [
       { sourceId: INPUT, audible: running, hasSound: true, levelDb: level },
@@ -225,6 +310,15 @@ export class InputLevelComponent {
     if (element !== undefined) {
       element.style.transform = `scaleX(${fill})`;
     }
+    const mark = this.peakMark()?.nativeElement;
+    if (mark !== undefined) {
+      mark.style.left = `${(inputLevelFill(this.holdDb) * 100).toFixed(1)}%`;
+    }
+  }
+
+  /** Position of a scale mark in percent of the meter. */
+  protected markAt(db: number): number {
+    return inputLevelFill(db) * 100;
   }
 
   /** A new audio context starts suspended until the person touched the page; the first touch starts it. */

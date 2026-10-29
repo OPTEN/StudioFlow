@@ -1,0 +1,276 @@
+@use 'mixins' as *;
+@use 'tokens' as *;
+
+// Pairing screens (form, waiting, redeem): one centred column on the grouped surface, like a setup assistant. Phones
+// start at the top; from 768 px the column sits in the middle of the window.
+.c-page {
+  display: grid;
+  min-height: 100dvh;
+  padding: calc(var(--safe-top) + #{$SPACE_XL}) var(--gr) calc(var(--safe-bottom) + #{$SPACE_XL})
+    var(--gl);
+  place-items: start center;
+
+  @include respond-to(md) {
+    padding-block: $SPACE_XXXL;
+    place-items: center;
+  }
+}
+
+.c-page__inner {
+  display: grid;
+  gap: $SPACE_XL;
+  max-width: $COLUMN_NARROW;
+  min-width: 0;
+  width: 100%;
+}
+
+.c-page__brand {
+  color: var(--text);
+}
+
+.c-page__head {
+  display: grid;
+  gap: $SPACE_SM;
+}
+
+.c-page__title {
+  font-family: var(--font-display);
+  font-size: var(--fs-large-title);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.12;
+  overflow-wrap: anywhere;
+}
+
+.c-page__lead {
+  color: var(--text-2);
+  font-size: var(--fs-body);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.c-page__actions {
+  display: grid;
+  gap: $SPACE_MD;
+}
+
+// The quiet end of a pairing screen: a hairline, then the language.
+.c-page__foot {
+  border-top: 1px solid var(--seam);
+  display: grid;
+  gap: $SPACE_LG;
+  padding-top: $SPACE_STAGE;
+}
+
+// Full-screen states of the station (starting, blocked, opened in another tab): an icon, a title, what happened and
+// what to do next.
+.c-state {
+  align-content: center;
+  display: grid;
+  gap: $SPACE_GUTTER;
+  justify-items: center;
+  margin: 0 auto;
+  max-width: $COLUMN_NARROW + 40px;
+  min-height: 100dvh;
+  padding: calc(var(--safe-top) + #{$SPACE_XXL}) var(--gr) calc(var(--safe-bottom) + #{$SPACE_XXL})
+    var(--gl);
+  text-align: center;
+}
+
+.c-state__icon {
+  --icon-size: 30px;
+  align-items: center;
+  background: var(--fill);
+  border-radius: 50%;
+  color: var(--text-2);
+  display: inline-flex;
+  height: 64px;
+  justify-content: center;
+  width: 64px;
+
+  &.is-bad {
+    background: var(--red-wash);
+    color: var(--red);
+  }
+}
+
+.c-state__title {
+  font-family: var(--font-display);
+  font-size: var(--fs-title-1);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.c-state__text {
+  color: var(--text-2);
+  font-size: var(--fs-body);
+  line-height: 1.45;
+  max-width: 44ch;
+}
+
+.c-state__hint {
+  color: var(--muted);
+  font-size: var(--fs-footnote);
+  max-width: 44ch;
+}
+
+.c-state__actions {
+  display: grid;
+  gap: $SPACE_MD;
+  justify-items: center;
+  margin-top: $SPACE_SM;
+}
+
+// Top of the laptop and the audio station: the header bar and, under it, the banners (Regie message, reconnect,
+// update). Both stay at the top while the page scrolls, so a message is seen on a long page too.
+.c-top {
+  background: var(--grouped);
+  box-shadow: inset 0 -1px 0 var(--seam);
+  position: sticky;
+  top: 0;
+  z-index: z(header);
+}
+
+.c-top__banners {
+  margin: 0 auto;
+  max-width: $COLUMN + 2 * $SPACE_STAGE;
+  padding: 0 var(--gr) $SPACE_LG var(--gl);
+
+  &:not(:has(.c-banners > *)) {
+    display: none;
+  }
+}
+
+// Header bar: the brand, the connection, the on-air capsule and the tech check.
+.c-bar {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: $SPACE_SM $SPACE_LG;
+  min-height: 60px;
+  padding: calc(var(--safe-top) + #{$SPACE_SM}) var(--gr) $SPACE_SM var(--gl);
+}
+
+.c-bar__brand {
+  flex: none;
+}
+
+// Narrow screens: brand and actions on the first row, the connection below.
+.c-bar__connection {
+  flex: 1 0 100%;
+  order: 3;
+
+  @include respond-to(sm) {
+    flex: 1 1 auto;
+    order: 0;
+  }
+}
+
+.c-bar__end {
+  align-items: center;
+  display: flex;
+  gap: $SPACE_MD;
+  margin-left: auto;
+}
+
+// The page column of the laptop and the audio station.
+.c-column {
+  display: grid;
+  gap: $SPACE_XL;
+  margin: 0 auto;
+  max-width: $COLUMN + 2 * $SPACE_STAGE;
+  padding: $SPACE_XL var(--gr) calc(var(--safe-bottom) + #{$SPACE_XXXL}) var(--gl);
+
+  @include respond-to(md) {
+    padding-top: $SPACE_XXL;
+  }
+}
+
+.c-column__head {
+  display: grid;
+  gap: $SPACE_XS;
+}
+
+.c-column__title {
+  font-family: var(--font-display);
+  font-size: var(--fs-title-1);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.c-column__lead {
+  color: var(--text-2);
+  font-size: var(--fs-body);
+  overflow-wrap: anywhere;
+}
+
+.c-column__section {
+  display: grid;
+  gap: $SPACE_LG;
+}
+
+.c-column__heading {
+  color: var(--text);
+  font-size: var(--fs-title-3);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+// Banners of the station (Regie message, greeting, connection, update): in the flow under the header, so they never
+// cover a control. On the laptop and the audio station they stick below the header while the page scrolls.
+.c-banners {
+  display: grid;
+  gap: $SPACE_MD;
+  min-width: 0;
+
+  &:empty {
+    display: none;
+  }
+}
+
+.c-banner {
+  @include floating;
+  align-items: center;
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-wrap: wrap;
+  gap: $SPACE_LG;
+  padding: $SPACE_LG $SPACE_GUTTER;
+
+  > sf-icon {
+    --icon-size: 20px;
+    align-self: flex-start;
+    color: var(--text-2);
+    margin-top: 1px;
+  }
+
+  &.is-ok > sf-icon {
+    color: var(--green);
+  }
+
+  &.is-warn {
+    background-image: linear-gradient(var(--amber-wash), var(--amber-wash));
+
+    > sf-icon {
+      color: var(--amber);
+    }
+  }
+}
+
+.c-banner__text {
+  flex: 1 1 200px;
+  font-size: var(--fs-callout);
+  line-height: 1.4;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.c-banner__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $SPACE_MD;
+  margin-left: auto;
+}

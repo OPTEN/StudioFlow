@@ -1,53 +1,88 @@
+@use 'mixins' as *;
 @use 'tokens' as *;
 
 :host {
   display: block;
 }
 
-// A panel like the rows of the laptop page: hairline above and below, red edge while the microphone is on air.
+// The microphone as a card, like the sources of the laptop. While the sound is on air the card carries the red ring.
 .c-mic {
-  border-bottom: 1px solid var(--seam);
-  border-top: 1px solid var(--seam);
+  @include state-transition(box-shadow);
+  background: var(--group);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 0 0 0.5px var(--seam);
   display: grid;
-  gap: $SPACE_LG;
-  padding: $SPACE_GUTTER 0;
+  gap: $SPACE_GUTTER;
+  padding: $SPACE_GUTTER;
 
   &.is-live {
-    box-shadow: inset 3px 0 0 var(--red);
-    padding-left: $SPACE_LG;
+    box-shadow: 0 0 0 2px var(--red);
+  }
+
+  &.is-station {
+    gap: $SPACE_STAGE;
+    padding: $SPACE_STAGE;
   }
 }
 
 .c-mic__head {
   align-items: center;
   display: flex;
-  flex-wrap: wrap;
-  gap: $SPACE_MD;
+  gap: $SPACE_LG;
 }
 
 .c-mic__icon {
-  color: var(--muted);
-}
-
-.c-mic__title {
-  font-size: 17px;
-  font-weight: 700;
-}
-
-.c-mic__state {
+  --icon-size: 22px;
+  align-items: center;
+  background: var(--fill);
+  border-radius: var(--radius-md);
   color: var(--text-2);
-  font-size: 15px;
+  display: inline-flex;
+  flex: none;
+  height: 44px;
+  justify-content: center;
+  width: 44px;
 
-  &.is-bad {
+  .is-live & {
+    background: var(--red-wash);
     color: var(--red);
-    font-weight: 700;
   }
 }
 
-.c-mic__message,
-.c-mic__note {
+.c-mic__heading {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.c-mic__titleline {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: $SPACE_SM $SPACE_MD;
+}
+
+.c-mic__title {
+  font-size: var(--fs-headline);
+  font-weight: 600;
+}
+
+.c-mic__state {
+  align-items: center;
   color: var(--text-2);
-  font-size: 14px;
+  display: inline-flex;
+  font-size: var(--fs-callout);
+  gap: $SPACE_MD;
+
+  &.is-bad {
+    color: var(--red);
+    font-weight: 600;
+  }
+}
+
+.c-mic__message {
+  color: var(--text-2);
+  font-size: var(--fs-callout);
 }
 
 .c-mic__actions {

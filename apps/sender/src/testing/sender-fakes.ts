@@ -458,6 +458,7 @@ export function fakeEnvironment(overrides: Partial<DeviceEnvironment> = {}): Dev
     platform: () => 'Android · Chrome',
     isPhone: () => true,
     canShareScreen: () => false,
+    secure: () => true,
     battery: () => Promise.resolve({ pct: 81, charging: true }),
     networkType: () => 'wifi',
     vibrate: () => undefined,

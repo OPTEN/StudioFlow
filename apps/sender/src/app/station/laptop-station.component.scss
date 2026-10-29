@@ -9,127 +9,49 @@
   min-height: 100dvh;
 }
 
-// Header bar on panel graphite with a seam underline (DESIGN “Header”).
-.c-laptop__bar {
-  align-items: center;
-  background: var(--panel);
-  border-bottom: 1px solid var(--seam);
-  display: flex;
-  flex-wrap: wrap;
-  gap: $SPACE_MD $SPACE_GUTTER;
-  min-height: 56px;
-  padding: calc(var(--safe-top) + #{$SPACE_SM}) max(#{$SPACE_GUTTER}, var(--safe-right)) $SPACE_SM
-    max(#{$SPACE_GUTTER}, var(--safe-left));
-}
-
-// Narrow screens: brand and “Technik-Check” on the first row, the connection line below.
-.c-laptop__connection {
-  flex: 1 0 100%;
-  order: 3;
-
-  @include respond-to(sm) {
-    flex: 1 1 auto;
-    order: 0;
-  }
-}
-
-.c-laptop__check {
-  margin-left: auto;
-  white-space: nowrap;
-}
-
-.c-laptop__main {
-  display: grid;
-  gap: $SPACE_STAGE;
-  margin: 0 auto;
-  max-width: 880px;
-  padding: $SPACE_XL max(#{$SPACE_GUTTER}, var(--safe-right))
-    calc(var(--safe-bottom) + #{$SPACE_XXL}) max(#{$SPACE_GUTTER}, var(--safe-left));
-}
-
-.c-laptop__intro {
-  display: grid;
-  gap: $SPACE_SM;
-}
-
-.c-laptop__title {
-  font-size: 28px;
-  font-weight: 700;
-  line-height: 1.15;
-  overflow-wrap: anywhere;
-}
-
-.c-laptop__lead {
-  color: var(--text-2);
-  overflow-wrap: anywhere;
-}
-
-.c-laptop__section {
-  color: var(--muted);
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-}
-
-// The Regie asks for the screen again: red wash, one big action.
-.c-laptop__reshare {
-  background: var(--red-wash);
-  border-radius: $RADIUS_LG;
+.c-sources {
   display: grid;
   gap: $SPACE_LG;
-  padding: $SPACE_GUTTER;
-}
-
-.c-laptop__reshare-text {
-  align-items: center;
-  display: flex;
-  flex-wrap: wrap;
-  font-size: 18px;
-  font-weight: 700;
-  gap: $SPACE_MD;
-}
-
-.c-laptop__reshare-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: $SPACE_LG;
-}
-
-.c-laptop__slots {
-  display: grid;
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
-// One row per source, divided by seam hairlines (Stationen rows of the Regie).
-.c-slot {
-  border-top: 1px solid var(--seam);
+// One card per source: the thumbnail, then code, name, Live/Preview and the state, and the primary action next to it.
+.c-source {
+  @include state-transition(box-shadow);
+  background: var(--group);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 0 0 0.5px var(--seam);
   display: grid;
   gap: $SPACE_LG $SPACE_GUTTER;
   grid-template-areas:
     'thumb info'
+    'request request'
     'actions actions';
-  grid-template-columns: 112px minmax(0, 1fr);
-  padding: $SPACE_GUTTER 0;
+  grid-template-columns: 104px minmax(0, 1fr);
+  padding: $SPACE_GUTTER;
 
-  &:last-child {
-    border-bottom: 1px solid var(--seam);
+  @include respond-to(sm) {
+    grid-template-areas:
+      'thumb info'
+      'thumb request'
+      'thumb actions';
+    grid-template-columns: 168px minmax(0, 1fr);
   }
 
-  @include respond-to(md) {
-    align-items: center;
-    grid-template-areas: 'thumb info actions';
-    grid-template-columns: 160px minmax(0, 1fr) auto;
+  // The control room asks for this screen again: the card itself is highlighted, no second section.
+  &.is-requested {
+    box-shadow: 0 0 0 2px var(--amber);
   }
 }
 
-.c-slot__thumb {
+.c-source__thumb {
+  align-self: start;
   aspect-ratio: 16 / 9;
   background: var(--well);
-  border-radius: $RADIUS_SCREEN;
-  color: var(--muted);
+  border-radius: var(--radius-sm);
+  color: var(--pic-muted);
   display: grid;
   grid-area: thumb;
   overflow: hidden;
@@ -137,14 +59,16 @@
 
   .is-program & {
     outline: 2px solid var(--red);
+    outline-offset: 1px;
   }
 
   .is-preview & {
     outline: 2px solid var(--green);
+    outline-offset: 1px;
   }
 }
 
-.c-slot__video {
+.c-source__video {
   height: 100%;
   object-fit: contain;
   width: 100%;
@@ -154,107 +78,131 @@
   }
 }
 
-.c-slot__placeholder {
+.c-source__placeholder {
   --icon-size: 28px;
 }
 
-.c-slot__info {
+.c-source__info {
+  align-content: start;
   display: grid;
   gap: $SPACE_XS;
   grid-area: info;
   min-width: 0;
 }
 
-.c-slot__head {
+.c-source__head {
   align-items: center;
   display: flex;
   flex-wrap: wrap;
-  gap: $SPACE_MD;
+  gap: $SPACE_SM $SPACE_MD;
   min-width: 0;
 }
 
-.c-slot__name {
-  font-size: 17px;
-  font-weight: 700;
+.c-source__name {
+  font-size: var(--fs-headline);
+  font-weight: 600;
 }
 
-.c-slot__state {
+.c-source__state {
   color: var(--text-2);
-  font-size: 15px;
+  font-size: var(--fs-callout);
 
   &.is-bad {
     color: var(--red);
-    font-weight: 700;
+    font-weight: 600;
   }
 }
 
-.c-slot__message {
-  color: var(--text-2);
-  font-size: 14px;
+.c-source__note {
+  color: var(--muted);
+  font-size: var(--fs-footnote);
+  line-height: 1.4;
 }
 
-.c-slot__steps {
+.c-source__steps {
   color: var(--text-2);
   display: grid;
-  font-size: 14px;
+  font-size: var(--fs-footnote);
   gap: 2px;
+  line-height: 1.4;
   margin: $SPACE_XS 0 0;
   padding-left: 1.2em;
 }
 
-.c-slot__actions {
-  align-items: center;
+.c-source__request {
+  align-items: flex-start;
+  background: var(--amber-wash);
+  border-radius: var(--radius-md);
   display: flex;
-  flex-wrap: wrap;
-  gap: $SPACE_LG;
-  grid-area: actions;
+  font-size: var(--fs-callout);
+  font-weight: 600;
+  gap: $SPACE_ROW;
+  grid-area: request;
+  padding: $SPACE_ROW $SPACE_LG;
 
-  > .c-button:first-child {
-    flex: 1 1 auto;
-
-    @include respond-to(md) {
-      flex: none;
-    }
+  sf-icon {
+    color: var(--amber);
+    margin-top: 1px;
   }
 }
 
-// Risky action apart from the others (DESIGN “Danger”).
-.c-slot__remove {
+.c-source__confirm {
+  grid-area: actions;
+}
+
+.c-source__actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: $SPACE_MD $SPACE_LG;
+  grid-area: actions;
+  min-width: 0;
+}
+
+// The ⋯ menu keeps to the end of the row.
+.c-source__more {
   margin-left: auto;
 }
 
+.c-sources__mic {
+  display: block;
+}
+
+// Secondary actions under the cards.
 .c-laptop__add {
+  align-items: center;
   display: flex;
   flex-wrap: wrap;
-  gap: $SPACE_LG;
+  gap: $SPACE_MD $SPACE_LG;
+}
 
-  > .c-button {
-    flex: 1 1 220px;
+// “Which browsers share sound?”: the browser limits behind a disclosure, at the end of the page.
+.c-help {
+  border-top: 1px solid var(--seam);
+  padding-top: $SPACE_MD;
+}
 
-    @include respond-to(md) {
-      flex: none;
-    }
+.c-help__summary {
+  align-items: center;
+  border-radius: var(--radius-md);
+  color: var(--blue);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: var(--fs-callout);
+  gap: $SPACE_MD;
+  list-style: none;
+  min-height: $TOUCH_TARGET;
+  padding: 0 $SPACE_XS;
+
+  &::-webkit-details-marker {
+    display: none;
   }
 }
 
-// “Share audio”: one checkbox row with the honest note about what the browser can share.
-.c-laptop__audio {
-  display: grid;
-  gap: $SPACE_SM;
-}
-
-.c-laptop__check-row {
-  align-items: center;
-  cursor: pointer;
-  display: inline-flex;
-  font-weight: 600;
-  gap: $SPACE_LG;
-  min-height: $TOUCH_TARGET;
-}
-
-.c-laptop__checkbox {
-  accent-color: var(--blue);
-  height: 20px;
-  margin: 0;
-  width: 20px;
+.c-help__text {
+  color: var(--text-2);
+  font-size: var(--fs-callout);
+  line-height: 1.5;
+  max-width: 68ch;
+  padding: $SPACE_XS $SPACE_XS $SPACE_MD;
 }

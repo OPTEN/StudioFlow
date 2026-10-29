@@ -4,32 +4,58 @@
   aria-labelledby="mic-title"
   [attr.data-state]="slot()?.state ?? 'none'"
   [class.is-live]="session.micLive()"
+  [class.is-station]="station()"
 >
   <header class="c-mic__head">
-    <sf-icon class="c-mic__icon" name="mic" />
-    @if (slot()?.code; as code) {
-      <span class="c-code">{{ code }}</span>
-    }
-    <h2 class="c-mic__title" id="mic-title">
-      {{ station() ? t('sender.audio.station.title') : t('sender.audio.title') }}
-    </h2>
-    @if (session.micLive()) {
-      <span class="c-tag c-tag--program" data-testid="mic-live">{{ t('sender.audio.live') }}</span>
-    }
+    <span class="c-mic__icon"><sf-icon [name]="station() ? 'mixer' : 'mic'" /></span>
+    <div class="c-mic__heading">
+      <div class="c-mic__titleline">
+        @if (slot()?.code; as code) {
+          <span class="c-code">{{ code }}</span>
+        }
+        <h2 class="c-mic__title" id="mic-title">
+          {{ station() ? t('sender.audio.station.title') : t('sender.audio.title') }}
+        </h2>
+        @if (session.micLive()) {
+          <span class="c-tag c-tag--pgm" data-testid="mic-live">{{ t('sender.audio.live') }}</span>
+        }
+      </div>
+      @if (slot(); as mic) {
+        <p class="c-mic__state" [class.is-bad]="mic.state === 'failed'">
+          <span
+            class="c-lamp"
+            [class.is-idle]="!running() && mic.state !== 'failed'"
+            [class.is-warn]="mic.state === 'starting' || mic.state === 'paused'"
+            [class.is-bad]="mic.state === 'failed'"
+            aria-hidden="true"
+          ></span>
+          <span data-testid="mic-state">{{ stateText() }}</span>
+        </p>
+      }
+    </div>
   </header>
 
   @if (slot(); as mic) {
-    <p class="c-mic__state" data-testid="mic-state" [class.is-bad]="mic.state === 'failed'">
-      {{ stateText() }}
-    </p>
     @if (mic.messageKey && mic.state !== 'live' && mic.state !== 'idle') {
       <p class="c-mic__message" data-testid="mic-message">{{ t(mic.messageKey) }}</p>
+    }
+
+    @if (running()) {
+      <sf-input-level [stream]="stream()" [scale]="station()" (silent)="silent.set($event)" />
+      @if (silent()) {
+        <div class="c-notice c-notice--warn" role="status" data-testid="mic-silent">
+          <sf-icon name="alert" />
+          <p class="c-notice__text">
+            {{ station() ? t('sender.audio.silent') : t('sender.audio.silentVoice') }}
+          </p>
+        </div>
+      }
     }
 
     <div class="c-field">
       <label class="c-field__label" for="mic-input">{{ t('sender.audio.input') }}</label>
       <select
-        class="c-field__input"
+        class="c-select"
         id="mic-input"
         data-testid="mic-input"
         [value]="selected()"
@@ -47,33 +73,37 @@
       </select>
     </div>
 
-    @if (running()) {
-      <sf-input-level [stream]="stream()" (silent)="silent.set($event)" />
-      @if (silent()) {
-        <div class="c-notice c-notice--warn" role="status" data-testid="mic-silent">
-          <p class="c-notice__text">
-            {{ station() ? t('sender.audio.silent') : t('sender.audio.silentVoice') }}
-          </p>
-        </div>
-      }
-    }
-
-    <p class="c-mic__note">
+    <p class="c-hint">
       {{ station() ? t('sender.audio.note.station') : t('sender.audio.note.voice') }}
     </p>
 
-    <div class="c-mic__actions">
-      <button
-        class="c-button"
-        type="button"
-        data-testid="mic-toggle"
-        [class.c-button--primary]="!running()"
-        (click)="toggle()"
-      >
-        <sf-icon name="mic" />
-        {{ running() ? t('sender.audio.stop') : t('sender.audio.start') }}
-      </button>
-    </div>
+    @if (confirming()) {
+      <div class="c-confirm" role="group" [attr.aria-label]="toggleLabel()">
+        <p>{{ t('sender.audio.station.stopConfirm') }}</p>
+        <div class="c-confirm__row">
+          <button class="c-btn c-btn--danger-fill" type="button" (click)="stop()">
+            {{ toggleLabel() }}
+          </button>
+          <button class="c-btn" type="button" data-cancel (click)="confirming.set(false)">
+            {{ t('common.cancel') }}
+          </button>
+        </div>
+      </div>
+    } @else {
+      <div class="c-mic__actions">
+        <button
+          class="c-btn"
+          type="button"
+          data-testid="mic-toggle"
+          [class.c-btn--fill]="!running() && station()"
+          [class.c-btn--primary]="!running() && !station()"
+          (click)="toggle()"
+        >
+          <sf-icon [name]="running() ? 'micOff' : 'mic'" />
+          {{ toggleLabel() }}
+        </button>
+      </div>
+    }
   }
 
   <p class="u-sr-only" aria-live="polite">

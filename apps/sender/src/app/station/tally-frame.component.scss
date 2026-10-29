@@ -5,8 +5,9 @@
   display: contents;
 }
 
-// The frame sits above everything and never takes input.
+// The frame sits above everything and never takes input. Its colour is the state: red live, green in the preview.
 .c-tally {
+  @include state-transition(box-shadow);
   inset: 0;
   pointer-events: none;
   position: fixed;
@@ -38,37 +39,5 @@
 
   &.is-preview {
     box-shadow: inset 0 0 0 $TALLY_FRAME_THIN var(--green);
-  }
-}
-
-// “LIVE” / “Up next”: filled tab at the top edge, dark text on the state colour.
-.c-tally__badge {
-  border-radius: 0 0 $RADIUS_LG $RADIUS_LG;
-  color: var(--on-state);
-  font-size: 22px;
-  font-weight: 800;
-  left: 50%;
-  letter-spacing: 0.08em;
-  line-height: 1;
-  padding: calc(var(--safe-top) + 12px) 22px 12px;
-  position: absolute;
-  text-transform: uppercase;
-  top: 0;
-  transform: translateX(-50%);
-  white-space: nowrap;
-
-  .is-program & {
-    background: var(--red);
-  }
-
-  .is-preview & {
-    background: var(--green);
-    letter-spacing: 0.04em;
-    text-transform: none;
-  }
-
-  .c-tally--thin & {
-    font-size: 15px;
-    padding: calc(var(--safe-top) + 6px) 14px 6px;
   }
 }

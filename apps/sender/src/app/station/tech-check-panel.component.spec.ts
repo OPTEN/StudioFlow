@@ -31,11 +31,25 @@ describe('TechCheckPanelComponent', () => {
       'Upload: only 2.8 Mbit/s (recommended from 6 Mbit/s).',
     );
     expect(element.textContent).toContain('2.8 Mbit/s');
-    expect(element.querySelector('button.c-button--primary')?.textContent).toContain('Check again');
+    expect(element.querySelector('button.c-btn--primary')?.textContent).toContain('Check again');
   });
 
-  it('offers the language select at the bottom of the sheet', () => {
-    expect(render(null).querySelector('sf-language-select select')).not.toBeNull();
+  it('is a dialog named by its title, with advice for a limited row', () => {
+    const element = render(SLOW);
+    const dialog = element.querySelector('dialog');
+    expect(dialog?.getAttribute('aria-labelledby')).toBe('tech-check-title');
+    expect(element.querySelector('#tech-check-title')?.textContent).toContain('Tech check');
+    expect(element.querySelector('[data-level=warn]')?.textContent).toContain(
+      'Stop other uploads and video calls on this network.',
+    );
+    expect(element.querySelector('[data-level=ok]')?.textContent).not.toContain('Move closer');
+  });
+
+  it('offers the language select in the group about this device', () => {
+    const element = render(null);
+    expect(element.querySelector('sf-language-select select')).not.toBeNull();
+    expect(element.textContent).toContain('This device');
+    expect(element.textContent).toContain('App version');
   });
 });
 

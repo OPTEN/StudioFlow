@@ -1,83 +1,77 @@
+@use 'mixins' as *;
 @use 'tokens' as *;
 
 :host {
-  display: block;
+  display: contents;
 }
 
-// Floating layer: raised, strong-seam border and the pop shadow (DESIGN “Popovers”).
-.c-check {
-  background: var(--raised);
-  border: 1px solid var(--seam-strong);
-  border-radius: $RADIUS_LG;
-  box-shadow: var(--shadow-pop);
-  display: grid;
-  gap: $SPACE_GUTTER;
-  padding: $SPACE_GUTTER;
-}
-
-.c-check__head {
-  align-items: center;
-  display: flex;
-  gap: $SPACE_LG;
-  justify-content: space-between;
-}
-
-.c-check__title {
-  font-size: 20px;
-  font-weight: 700;
-}
-
-.c-check__close {
-  border-color: transparent;
-  padding: 0;
-}
-
+// The verdict in plain words, tinted by its level; the time of the check below.
 .c-check__summary {
-  color: var(--text-2);
+  background: var(--fill);
+  border-radius: var(--radius-lg);
   display: grid;
-  font-size: 16px;
   gap: 2px;
+  padding: $SPACE_LG $SPACE_GUTTER;
+
+  &.is-ok {
+    background: var(--green-wash);
+  }
+
+  &.is-warn {
+    background: var(--amber-wash);
+  }
+
+  &.is-bad {
+    background: var(--red-wash);
+  }
+}
+
+.c-check__verdict {
+  font-size: var(--fs-body);
+  font-weight: 600;
 }
 
 .c-check__time {
-  color: var(--muted);
-  font-size: 14px;
+  color: var(--text-2);
+  font-size: var(--fs-footnote);
 }
 
 .c-check__rows {
-  display: grid;
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
-.c-check__row {
+.c-check__name {
   align-items: center;
-  border-top: 1px solid var(--seam);
-  display: grid;
-  font-size: 16px;
-  gap: $SPACE_LG;
-  grid-template-columns: 14px minmax(0, 1fr) auto;
-  min-height: 48px;
-
-  &:first-child {
-    border-top: 0;
-  }
-}
-
-.c-check__label {
-  font-weight: 600;
+  display: inline-flex;
+  font-size: var(--fs-body);
+  font-weight: 500;
+  gap: $SPACE_ROW;
 }
 
 .c-check__level {
   color: var(--text-2);
-  font-size: 15px;
+  font-size: var(--fs-callout);
   text-align: right;
+}
+
+// What to do about a limited or insufficient result, under its row.
+.c-check__advice {
+  color: var(--muted);
+  font-size: var(--fs-footnote);
+  grid-column: 1 / -1;
+  padding-left: 19px;
 }
 
 .c-check__note {
   background: var(--amber-wash);
-  border-radius: $RADIUS_MD;
-  font-size: 15px;
+  border-radius: var(--radius-md);
+  font-size: var(--fs-callout);
+  line-height: 1.4;
   padding: $SPACE_ROW $SPACE_LG;
+
+  &.is-bad {
+    background: var(--red-wash);
+  }
 }
