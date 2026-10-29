@@ -13,6 +13,8 @@ import {
 import {
   FakeLifecycle,
   FakeMediaStream,
+  FakeRemoteParticipant,
+  FakeRemotePublication,
   FakeRemoteTrack,
   FakeRoom,
   fakeCreateStream,
@@ -225,6 +227,33 @@ describe('LiveKitSourceProvider', () => {
       provider.setWantedSources(wanted([CAMERA]));
       expect(publication.setSubscribed).toHaveBeenLastCalledWith(true);
       expect(publication.setSubscribed).toHaveBeenCalledTimes(3);
+    });
+
+    it('subscribes to the tracks of a participant that was in the room before the page joined', () => {
+      const { room, provider } = setup();
+      provider.setWantedSources(wanted([CAMERA], [`${DEVICE}/mic`]));
+      const participant = room.join(DEVICE, [['camera'], ['screen-1'], ['mic', 'audio']]);
+      const subscribed = (name: string) => participant.trackPublications.get(name)?.setSubscribed;
+      expect(subscribed('camera')).toHaveBeenCalledExactlyOnceWith(true);
+      expect(subscribed('mic')).toHaveBeenCalledExactlyOnceWith(true);
+      expect(subscribed('screen-1')).not.toHaveBeenCalled();
+    });
+
+    it('subscribes to what is already in the room when the connection is up and when it is back', () => {
+      const { room, provider } = setup();
+      const participant = new FakeRemoteParticipant(DEVICE);
+      const camera = new FakeRemotePublication('camera');
+      participant.trackPublications.set('camera', camera);
+      room.remoteParticipants.set(DEVICE, participant);
+      provider.setWantedSources(wanted([CAMERA]));
+      expect(camera.setSubscribed).toHaveBeenCalledTimes(1);
+
+      camera.setSubscribed.mockClear();
+      provider.setWantedSources(wanted([]));
+      room.emit(RoomEvent.Connected);
+      room.emit(RoomEvent.Reconnected);
+      expect(camera.setSubscribed).toHaveBeenCalledTimes(1);
+      expect(camera.setSubscribed).toHaveBeenCalledWith(false);
     });
 
     it('does not touch the room before it is told which sources are wanted', () => {

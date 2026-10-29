@@ -16,6 +16,7 @@ import { DesiredSizes } from './desired-size';
 import { Listeners } from './listeners';
 import type {
   MediaPublicationRef,
+  MediaRemoteParticipant,
   MediaRemotePublication,
   MediaRemoteTrack,
   MediaRoom,
@@ -450,6 +451,13 @@ export class LiveKitSourceProvider implements SourceMediaProvider {
       .on(RoomEvent.TrackSubscribed, (track, publication, participant) =>
         this.#onSubscribed(track, publication, participant.identity),
       )
+      // The tracks that were published before this page joined come with the participants (TrackPublished is only fired for
+      // tracks published after both sides joined).
+      .on(RoomEvent.Connected, () => this.#syncSubscriptions())
+      .on(RoomEvent.Reconnected, () => this.#syncSubscriptions())
+      .on(RoomEvent.ParticipantConnected, (participant) =>
+        this.#subscribeToParticipant(participant),
+      )
       .on(RoomEvent.TrackPublished, (publication, participant) =>
         this.#subscribeIfWanted(publication, participant.identity),
       )
@@ -489,9 +497,13 @@ export class LiveKitSourceProvider implements SourceMediaProvider {
 
   #syncSubscriptions(): void {
     for (const participant of this.#boundRoom?.remoteParticipants.values() ?? []) {
-      for (const publication of participant.trackPublications.values()) {
-        this.#subscribeIfWanted(publication, participant.identity);
-      }
+      this.#subscribeToParticipant(participant);
+    }
+  }
+
+  #subscribeToParticipant(participant: MediaRemoteParticipant): void {
+    for (const publication of participant.trackPublications.values()) {
+      this.#subscribeIfWanted(publication, participant.identity);
     }
   }
 

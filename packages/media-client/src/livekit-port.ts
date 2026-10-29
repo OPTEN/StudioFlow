@@ -92,8 +92,10 @@ export interface MediaRoom {
 export interface MediaRoomEvents {
   [RoomEvent.Reconnecting]: () => void;
   [RoomEvent.SignalReconnecting]: () => void;
+  [RoomEvent.Connected]: () => void;
   [RoomEvent.Reconnected]: () => void;
   [RoomEvent.Disconnected]: (reason?: DisconnectReason) => void;
+  [RoomEvent.ParticipantConnected]: (participant: MediaRemoteParticipant) => void;
   [RoomEvent.ParticipantDisconnected]: (participant: MediaRemoteParticipant) => void;
   [RoomEvent.TrackSubscribed]: (
     track: MediaRemoteTrack,

@@ -320,6 +320,23 @@ export class FakeRoom extends FakeEmitter implements MediaRoom {
     return { participant, publication };
   }
 
+  /**
+   * A participant that was in the room before this page joined: its unsubscribed publications exist when ParticipantConnected
+   * is emitted, and TrackPublished is not (the SDK fires it only for tracks published after both sides joined).
+   */
+  join(
+    identity: string,
+    tracks: Array<[name: string, kind?: 'video' | 'audio']>,
+  ): FakeRemoteParticipant {
+    const participant = new FakeRemoteParticipant(identity);
+    for (const [name, kind] of tracks) {
+      participant.trackPublications.set(name, new FakeRemotePublication(name, kind ?? 'video'));
+    }
+    this.remoteParticipants.set(identity, participant);
+    this.emit(RoomEvent.ParticipantConnected, participant);
+    return participant;
+  }
+
   /** Emits TrackUnsubscribed + TrackUnpublished for a publication, like the SDK on unpublish or full reconnect. */
   unsubscribe(identity: string, trackName: string): void {
     const participant = this.remoteParticipants.get(identity);
