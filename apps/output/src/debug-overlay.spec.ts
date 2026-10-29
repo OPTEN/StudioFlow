@@ -2,6 +2,7 @@ import { canvasDto } from '@studioflow/scene-model';
 import {
   DEBUG_REFRESH_MS,
   formatDebugLines,
+  formatDebugSections,
   mountDebugOverlay,
   type DebugInfo,
 } from './debug-overlay';
@@ -43,9 +44,9 @@ describe('formatDebugLines', () => {
       'Webinar · Scene “Welcome”',
       'Revision 1761127200000123 · Broadcast live',
       'Canvas 1080 × 1920 · 9:16 · 1080p',
-      'Hub connected · Sync up to date',
-      'LiveKit connected',
-      'Latency ≈ 62 ms · Renderer 60 fps',
+      'Server connected · Data up to date',
+      'Media server connected',
+      'Latency ≈ 62 ms · Picture 60 fps',
       'K1 Handy Lea · 1920×1080 · 30 fps · 2.8 Mbit/s · Loss 0.3% · Buffer 48 ms',
       'S1 Laptop Tom · Screen 1 · freeze frame',
       'StudioFlow 0.1.0+1a2b3c4',
@@ -72,9 +73,9 @@ describe('formatDebugLines', () => {
       'Unknown production · no scene',
       'Revision – · Broadcast –',
       'Canvas unknown',
-      'Hub reconnecting · Sync offline, last state',
-      'LiveKit loading…',
-      'Latency ≈ – · Renderer 0 fps',
+      'Server reconnecting · Data offline, last known state',
+      'Media server loading…',
+      'Latency ≈ – · Picture 0 fps',
       'No camera or screen source in the picture',
       'StudioFlow 0.1.0',
     ]);
@@ -122,6 +123,58 @@ describe('formatDebugLines', () => {
   });
 });
 
+describe('formatDebugSections', () => {
+  it('groups the lines under plain headings and keeps the build line last, without a heading', () => {
+    const sections = formatDebugSections({
+      ...INFO,
+      audio: { state: 'running', programDb: -18, channels: [] },
+    });
+    expect(sections.map((section) => section.heading)).toEqual([
+      'Program',
+      'Connections',
+      'Sources',
+      'Audio',
+      null,
+    ]);
+    expect(sections.flatMap((section) => section.lines.map((line) => line.text))).toEqual(
+      formatDebugLines({ ...INFO, audio: { state: 'running', programDb: -18, channels: [] } }),
+    );
+  });
+
+  it('marks attention and failure, and nothing else', () => {
+    const tones = (info: DebugInfo): string[] =>
+      formatDebugSections(info).flatMap((section) =>
+        section.lines
+          .filter((line) => line.tone !== 'ok')
+          .map((line) => `${line.tone} ${line.text}`),
+      );
+    // The second source shows a freeze frame.
+    expect(tones(INFO)).toEqual(['warn S1 Laptop Tom · Screen 1 · freeze frame']);
+    expect(
+      tones({
+        ...INFO,
+        hubState: 'unauthorized',
+        syncStatus: 'unauthorized',
+        mediaState: 'reconnecting',
+        sources: [
+          {
+            code: 'K1',
+            label: null,
+            availability: 'live',
+            stats: { width: 1280, height: 720, decoder: 'software' },
+          },
+        ],
+        audio: { state: 'blocked', programDb: null, channels: [] },
+      }),
+    ).toEqual([
+      'bad Server no access · Data no access',
+      'warn Media server reconnecting',
+      'warn K1 · 1280×720 · – fps · – Mbit/s · Loss – · Buffer – · software decoding',
+      'warn Audio blocked (click the page) · Program –',
+    ]);
+  });
+});
+
 describe('mountDebugOverlay', () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
@@ -147,6 +200,23 @@ describe('mountDebugOverlay', () => {
     await vi.advanceTimersByTimeAsync(DEBUG_REFRESH_MS * 3);
     expect(collect).toHaveBeenCalledTimes(5);
     stage.remove();
+  });
+
+  it('draws the sections with their headings, one line per measurement and the state colour', async () => {
+    const unmount = mountDebugOverlay(document, () => Promise.resolve(INFO));
+    await vi.advanceTimersByTimeAsync(0);
+    const panel = document.querySelector<HTMLElement>('.c-debug');
+    expect(panel?.tagName).toBe('PRE');
+    const headings = [...(panel?.querySelectorAll<HTMLElement>('.c-debug__section') ?? [])].map(
+      (section) => section.dataset['heading'] ?? null,
+    );
+    expect(headings).toEqual(['Program', 'Connections', 'Sources', null]);
+    // The headings are not part of the text: it stays exactly one line per measurement.
+    expect(panel?.textContent).toBe(formatDebugLines(INFO).join('\n'));
+    expect(panel?.querySelector('.c-debug__line.is-warn')?.textContent).toBe(
+      'S1 Laptop Tom · Screen 1 · freeze frame',
+    );
+    unmount();
   });
 
   it('keeps the last text when collecting fails', async () => {

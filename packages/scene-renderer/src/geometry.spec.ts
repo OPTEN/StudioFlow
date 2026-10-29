@@ -4,6 +4,7 @@ import {
   cropBox,
   desiredPixelSize,
   heldBlurPx,
+  heldMessagePx,
   itemLook,
   itemRect,
   maxDesiredSize,
@@ -127,6 +128,21 @@ describe('heldBlurPx', () => {
     expect(heldBlurPx(1920)).toBe(48);
     expect(heldBlurPx(640)).toBe(16);
     expect(heldBlurPx(100)).toBe(3);
+  });
+});
+
+describe('heldMessagePx', () => {
+  it('scales with the item and keeps the message on one line', () => {
+    expect(heldMessagePx(1920, 1080)).toBe(43);
+    expect(heldMessagePx(960, 540)).toBe(22);
+    // A tall item is limited by its width.
+    expect(heldMessagePx(608, 1080)).toBe(19);
+  });
+
+  it('stays readable on a small item and calm on a large one', () => {
+    expect(heldMessagePx(320, 180)).toBe(16);
+    expect(heldMessagePx(3840, 2160)).toBe(44);
+    expect(heldMessagePx(Number.NaN, 1080)).toBe(16);
   });
 });
 

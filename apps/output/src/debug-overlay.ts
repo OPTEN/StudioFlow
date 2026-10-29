@@ -16,10 +16,12 @@ import type { HubState, SyncStatus } from '@studioflow/realtime-client';
 import type { AudioSourceStats, MediaSessionState, SourceStats } from '@studioflow/media-client';
 
 /**
- * `?debug=1`: a small mono panel top left with what a technician needs at the proxy: production and scene, revision,
- * connection states, per visible source resolution / fps / bitrate / packet loss / jitter-buffer delay, the estimated
- * latency and the renderer frame rate, and the version of the build in the last line. Updated every second; `position: fixed` and `pointer-events: none`, so the
- * stage never moves. Loaded lazily, only with the flag.
+ * `?debug=1`: a small panel top left with what a technician needs at the proxy, in sections: Program (production and
+ * scene, revision, canvas), Connections (server and data, media server, latency and the frame rate of the picture),
+ * Sources (per visible source resolution / fps / bitrate / packet loss / jitter-buffer delay), Audio, and the version
+ * of the build in the last line. Lines in attention (reconnecting, freeze frame, software decoding) or failure (no
+ * access) take the state colour. Updated every second; `position: fixed` and `pointer-events: none`, so the stage never
+ * moves. Loaded lazily, only with the flag.
  */
 
 /** Refresh interval of the panel. */
@@ -134,59 +136,195 @@ function audioChannelLine(channel: DebugAudioChannel): string {
   ].join(' · ');
 }
 
-/** The panel text, one entry per line. */
-export function formatDebugLines(info: DebugInfo): string[] {
+/** How a line reads: as usual, in attention (still working, e.g. reconnecting) or as a failure. */
+export type DebugTone = 'ok' | 'warn' | 'bad';
+
+/** One line of the panel. */
+export interface DebugLine {
+  readonly text: string;
+  readonly tone: DebugTone;
+}
+
+/** Lines under a heading; the build line at the end has none. */
+export interface DebugSection {
+  readonly heading: string | null;
+  readonly lines: readonly DebugLine[];
+}
+
+const HUB_TONE: Readonly<Record<HubState, DebugTone>> = {
+  connected: 'ok',
+  connecting: 'warn',
+  idle: 'warn',
+  reconnecting: 'warn',
+  stopped: 'bad',
+  unauthorized: 'bad',
+};
+
+const SYNC_TONE: Readonly<Record<SyncStatus, DebugTone>> = {
+  live: 'ok',
+  connecting: 'warn',
+  syncing: 'warn',
+  offline: 'warn',
+  unauthorized: 'bad',
+};
+
+const MEDIA_TONE: Readonly<Record<MediaSessionState, DebugTone>> = {
+  connected: 'ok',
+  connecting: 'warn',
+  idle: 'warn',
+  reconnecting: 'warn',
+  waiting: 'warn',
+  stopped: 'bad',
+  replaced: 'bad',
+  removed: 'bad',
+  unauthorized: 'bad',
+};
+
+const AUDIO_TONE: Readonly<Record<DebugAudio['state'], DebugTone>> = {
+  running: 'ok',
+  off: 'ok',
+  blocked: 'warn',
+  unavailable: 'bad',
+};
+
+const TONE_RANK: Readonly<Record<DebugTone, number>> = { ok: 0, warn: 1, bad: 2 };
+
+function worst(...tones: DebugTone[]): DebugTone {
+  return tones.reduce<DebugTone>((a, b) => (TONE_RANK[b] > TONE_RANK[a] ? b : a), 'ok');
+}
+
+function line(text: string, tone: DebugTone = 'ok'): DebugLine {
+  return { text, tone };
+}
+
+function sourceTone(source: DebugSource): DebugTone {
+  return source.availability !== 'live' || source.stats?.decoder === 'software' ? 'warn' : 'ok';
+}
+
+/** The panel in sections, one entry per line (see {@link formatDebugLines} for the plain text). */
+export function formatDebugSections(info: DebugInfo): DebugSection[] {
   const scene =
     info.sceneName === null
       ? t('output.debug.sceneNone')
       : t('output.debug.scene', { name: info.sceneName });
   const broadcast =
     info.broadcast === null ? MISSING_VALUE : t(`output.debug.broadcast.${info.broadcast}`);
-  const lines = [
-    `${info.productionName ?? t('output.debug.productionUnknown')} · ${scene}`,
-    t('output.debug.revision', { revision: info.revision ?? MISSING_VALUE, state: broadcast }),
-    info.canvas === null
-      ? t('output.debug.canvasUnknown')
-      : t('output.debug.canvas', {
-          size: canvasSizeLabel(info.canvas),
-          format: formatRatioLabel(info.canvas.format),
-          resolution: resolutionLabel(info.canvas.resolution),
-        }),
-    t('output.debug.connections', {
-      hub: t(`output.debug.hub.${info.hubState}`),
-      sync: t(`output.debug.sync.${info.syncStatus}`),
-    }),
-    t('output.debug.livekit', {
-      state:
-        info.mediaState === null
-          ? t('output.debug.livekitLoading')
-          : t(`output.debug.media.${info.mediaState}`),
-    }),
-    t('output.debug.latency', {
-      latency: ms(info.latencyMs),
-      fps: formatDecimal(info.rendererFps, 0),
-    }),
+  const sections: DebugSection[] = [
+    {
+      heading: t('output.debug.section.program'),
+      lines: [
+        line(`${info.productionName ?? t('output.debug.productionUnknown')} · ${scene}`),
+        line(
+          t('output.debug.revision', {
+            revision: info.revision ?? MISSING_VALUE,
+            state: broadcast,
+          }),
+        ),
+        line(
+          info.canvas === null
+            ? t('output.debug.canvasUnknown')
+            : t('output.debug.canvas', {
+                size: canvasSizeLabel(info.canvas),
+                format: formatRatioLabel(info.canvas.format),
+                resolution: resolutionLabel(info.canvas.resolution),
+              }),
+        ),
+      ],
+    },
+    {
+      heading: t('output.debug.section.connections'),
+      lines: [
+        line(
+          t('output.debug.connections', {
+            hub: t(`output.debug.hub.${info.hubState}`),
+            sync: t(`output.debug.sync.${info.syncStatus}`),
+          }),
+          worst(HUB_TONE[info.hubState], SYNC_TONE[info.syncStatus]),
+        ),
+        line(
+          t('output.debug.mediaServer', {
+            state:
+              info.mediaState === null
+                ? t('output.debug.mediaLoading')
+                : t(`output.debug.media.${info.mediaState}`),
+          }),
+          info.mediaState === null ? 'warn' : MEDIA_TONE[info.mediaState],
+        ),
+        line(
+          t('output.debug.latency', {
+            latency: ms(info.latencyMs),
+            fps: formatDecimal(info.rendererFps, 0),
+          }),
+        ),
+      ],
+    },
+    {
+      heading: t('output.debug.section.sources'),
+      lines:
+        info.sources.length === 0
+          ? [line(t('output.debug.noSources'))]
+          : info.sources.map((source) => line(sourceLine(source), sourceTone(source))),
+    },
   ];
-  if (info.sources.length === 0) {
-    lines.push(t('output.debug.noSources'));
-  }
-  for (const source of info.sources) {
-    lines.push(sourceLine(source));
-  }
   if (info.audio) {
-    lines.push(
-      t('output.debug.audio', {
-        state: t(`output.debug.audioState.${info.audio.state}`),
-        level: dbfs(info.audio.programDb),
-      }),
-    );
-    for (const channel of info.audio.channels) {
-      lines.push(audioChannelLine(channel));
-    }
+    sections.push({
+      heading: t('output.debug.section.audio'),
+      lines: [
+        line(
+          t('output.debug.audio', {
+            state: t(`output.debug.audioState.${info.audio.state}`),
+            level: dbfs(info.audio.programDb),
+          }),
+          AUDIO_TONE[info.audio.state],
+        ),
+        ...info.audio.channels.map((channel) => line(audioChannelLine(channel))),
+      ],
+    });
   }
   // Last, so that the lines above keep their place whatever the number of sources.
-  lines.push(t('output.debug.version', { version: info.version }));
-  return lines;
+  sections.push({
+    heading: null,
+    lines: [line(t('output.debug.version', { version: info.version }))],
+  });
+  return sections;
+}
+
+/** The panel text, one entry per line. */
+export function formatDebugLines(info: DebugInfo): string[] {
+  return formatDebugSections(info).flatMap((section) => section.lines.map((entry) => entry.text));
+}
+
+/**
+ * Draws the sections into the panel: one element per section (its heading is a `data-heading` drawn by CSS) and per
+ * line, with a line break between the lines, so the text of the panel is exactly one line per measurement.
+ */
+function renderSections(
+  doc: Document,
+  panel: HTMLElement,
+  sections: readonly DebugSection[],
+): void {
+  const total = sections.reduce((count, section) => count + section.lines.length, 0);
+  let written = 0;
+  const groups = sections.map((section) => {
+    const group = doc.createElement('span');
+    group.className =
+      section.heading === null ? 'c-debug__section c-debug__section--build' : 'c-debug__section';
+    if (section.heading !== null) {
+      group.dataset['heading'] = section.heading;
+    }
+    for (const entry of section.lines) {
+      const element = doc.createElement('span');
+      element.className = entry.tone === 'ok' ? 'c-debug__line' : `c-debug__line is-${entry.tone}`;
+      element.textContent = entry.text;
+      group.append(element);
+      written += 1;
+      if (written < total) {
+        group.append('\n');
+      }
+    }
+    return group;
+  });
+  panel.replaceChildren(...groups);
 }
 
 /** Mounts the panel and refreshes it every second; returns the function that removes it. */
@@ -201,15 +339,18 @@ export function mountDebugOverlay(
   doc.body.append(panel);
   let busy = false;
   let stopped = false;
+  let shown = '';
   const refresh = async (): Promise<void> => {
     if (busy || stopped) {
       return;
     }
     busy = true;
     try {
-      const text = formatDebugLines(await collect()).join('\n');
-      if (!stopped && panel.textContent !== text) {
-        panel.textContent = text;
+      const sections = formatDebugSections(await collect());
+      const key = JSON.stringify(sections);
+      if (!stopped && key !== shown) {
+        shown = key;
+        renderSections(doc, panel, sections);
       }
     } catch {
       // The next refresh tries again.

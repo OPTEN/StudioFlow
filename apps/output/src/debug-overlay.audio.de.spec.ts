@@ -51,7 +51,7 @@ describe('debug panel: audio in German', () => {
 
   it('writes the words and the decimal comma of de-CH', () => {
     expect(audioLines(AUDIO)).toEqual([
-      'Ton läuft · Programm −18,0 dBFS',
+      'Ton läuft · Program −18,0 dBFS',
       'A1 Mixing desk · −20,0 dBFS · hörbar · Verlust 0,2 % · Jitter 3 ms · Puffer 41 ms · opus',
       'S1 Screen · – · still',
       'M1 · – · kein Ton',

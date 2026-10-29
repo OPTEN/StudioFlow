@@ -157,6 +157,14 @@ export interface StageFit {
   readonly height: number;
 }
 
+/**
+ * A slate the page shows about itself (the output's “No access”) instead of a slate of the production: the same ground,
+ * but smaller and quieter, under a glyph, with an optional last line (`note`, e.g. when the page tries again).
+ */
+export interface SlateNotice {
+  readonly note: string | null;
+}
+
 /** Framework-free renderer of one picture (output page, Regie monitor or thumbnail). */
 export interface SceneRenderer {
   /** The stage of the size of the canvas, scaled with a CSS transform into the container (letterbox). */
@@ -170,8 +178,11 @@ export interface SceneRenderer {
    * first. The promise resolves when the new scene is fully shown and never rejects.
    */
   transitionTo(scene: SceneDto | null, transition: TransitionDto): Promise<void>;
-  /** Shows a standby/end slate above everything (fade 300 ms); null hides it. */
-  showSlate(slate: SlateDto | null, assetUrl?: string | null): void;
+  /**
+   * Shows a standby/end slate above everything (fade 300 ms); null hides it. With `notice` the slate is drawn as a
+   * notice of the page itself (see {@link SlateNotice}).
+   */
+  showSlate(slate: SlateDto | null, assetUrl?: string | null, notice?: SlateNotice | null): void;
   /**
    * Output: the scenes whose sources are kept ready (the preview scene): each device source is requested at the size it
    * will have on stage. Sources of every other scene are not requested at all.

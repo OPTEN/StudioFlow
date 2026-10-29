@@ -45,6 +45,14 @@ export interface ItemLook {
 
 const HELD_BLUR_FRACTION = 0.025;
 const HELD_BLUR_MIN_PX = 3;
+/**
+ * The hold message is about 4 % of the item height, or 3.2 % of its width when that is less (the message then takes
+ * about a third of the width), within these bounds.
+ */
+const HELD_MESSAGE_HEIGHT_FRACTION = 0.04;
+const HELD_MESSAGE_WIDTH_FRACTION = 0.032;
+const HELD_MESSAGE_MIN_PX = 16;
+const HELD_MESSAGE_MAX_PX = 44;
 const DESIRED_SIZE_STEP = 16;
 
 /** Clamps a number into [min, max]; non-finite values become `fallback`. */
@@ -127,6 +135,20 @@ export function mediaBox(cropWidth: number, cropHeight: number, rotation: Rotati
 /** Blur of a held picture: about 2.5 % of the item width, at least 3 px, so nothing reads as overlaid text. */
 export function heldBlurPx(itemWidth: number): number {
   return Math.max(HELD_BLUR_MIN_PX, Math.round(itemWidth * HELD_BLUR_FRACTION));
+}
+
+/**
+ * Font size of the hold message (“Picture returns shortly”) on an item of this size, in canvas pixels: it scales with
+ * the item like a text graphic, so it is calm on a full picture and still fits on one line in a small one.
+ */
+export function heldMessagePx(itemWidth: number, itemHeight: number): number {
+  const size = Math.min(
+    itemHeight * HELD_MESSAGE_HEIGHT_FRACTION,
+    itemWidth * HELD_MESSAGE_WIDTH_FRACTION,
+  );
+  return Math.round(
+    clampNumber(size, HELD_MESSAGE_MIN_PX, HELD_MESSAGE_MAX_PX, HELD_MESSAGE_MIN_PX),
+  );
 }
 
 function roundUpToStep(value: number): number {

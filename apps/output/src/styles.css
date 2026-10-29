@@ -1,6 +1,7 @@
 /*
  * Output page: one stage of the size of the production's canvas (scene renderer, 1920 × 1080 by default), letterboxed
- * into the window or iframe.
+ * into the window or iframe. It is a picture, not a UI: the only things drawn on top are the “Sound on” button while the
+ * browser blocks the sound and, with ?debug=1, the measuring panel.
  * Fonts are self-hosted (spec 3, DESIGN.md “Font delivery”); Vite hashes them and the URLs work under /o/.
  * No `color-scheme` on purpose: an iframe whose colour scheme differs from its embedder gets an opaque backdrop in
  * Chromium, which would break ?bg=transparent.
@@ -22,6 +23,42 @@
   font-display: swap;
 }
 
+/*
+ * Tokens. The page is a picture area, so it is dark whatever the system appearance (DESIGN.md “Picture areas stay
+ * dark”); the values are those of the Regie's picture tokens and filled accent (apps/studio/src/styles/_tokens.scss).
+ */
+:root {
+  --well: #000000;
+  --pic-text: #f5f5f7;
+  --pic-text-2: #d0d0d6;
+  --pic-muted: #a1a1a8;
+  --pic-red: #ff6961;
+  --pic-amber: #ff9f0a;
+  /* Ground of the measuring panel: dark enough for the state colours over any picture. */
+  --pic-panel: rgba(0, 0, 0, 0.8);
+  --blue-fill: #0071e3;
+  --blue-fill-hover: #0062c4;
+  --on-fill: #ffffff;
+  --shadow-pop:
+    0 12px 32px rgba(0, 0, 0, 0.42), 0 2px 6px rgba(0, 0, 0, 0.28),
+    0 0 0 0.5px rgba(255, 255, 255, 0.1);
+  /* The renderer's picture font (slates, hold message); the system font for the page's own controls. */
+  --font-picture: 'Sofia Sans Semi Condensed', 'Arial Narrow', system-ui, sans-serif;
+  --font-ui:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI Variable Text', 'Segoe UI',
+    system-ui, Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  --radius-md: 7px;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-state: 160ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-state: 0s;
+  }
+}
+
 html,
 body {
   margin: 0;
@@ -29,12 +66,12 @@ body {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: #000;
+  background: var(--well);
 }
 
 body {
-  font-family: 'Sofia Sans Semi Condensed', 'Arial Narrow', system-ui, sans-serif;
-  color: #fff;
+  font-family: var(--font-picture);
+  color: var(--pic-text);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -56,50 +93,118 @@ html.is-cursor-idle * {
   overflow: hidden;
 }
 
-/* ?debug=1: measuring panel above the stage; fixed, so it never moves the stage. */
+/*
+ * ?debug=1: measuring panel above the stage; fixed, so it never moves the stage. The lines are grouped in sections whose
+ * headings are drawn by CSS, so the text of the panel stays one line per measurement; a line in attention or failure
+ * takes the state colour (its words already say the state).
+ */
 .c-debug {
   position: fixed;
   top: 8px;
   left: 8px;
   z-index: 10;
+  box-sizing: border-box;
   max-width: calc(100vw - 16px);
+  max-height: calc(100vh - 16px);
   margin: 0;
-  padding: 8px 10px;
-  border-radius: 4px;
-  background: rgba(13, 17, 23, 0.82);
-  color: #e6edf3;
-  font-family: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--pic-panel);
+  color: var(--pic-text);
+  font-family: var(--font-mono);
   font-size: 12px;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
   line-height: 1.45;
-  white-space: pre;
+  white-space: normal;
   overflow: hidden;
   pointer-events: none;
   user-select: none;
 }
 
-/* The browser blocks the sound until the page is clicked: a small button, only while sound is expected. */
+.c-debug__section {
+  display: block;
+}
+
+.c-debug__section + .c-debug__section {
+  margin-top: 8px;
+}
+
+.c-debug__section[data-heading]::before {
+  content: attr(data-heading);
+  display: block;
+  margin-bottom: 2px;
+  color: var(--pic-muted);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.c-debug__section--build {
+  color: var(--pic-muted);
+}
+
+.c-debug__line {
+  display: block;
+  overflow: hidden;
+  white-space: pre;
+  text-overflow: ellipsis;
+}
+
+.c-debug__line.is-warn {
+  color: var(--pic-amber);
+}
+
+.c-debug__line.is-bad {
+  color: var(--pic-red);
+}
+
+/*
+ * The browser blocks the sound until the page is clicked: a small speaker button in the corner, only while sound is
+ * expected. It scales with the window, so it stays small in a small frame.
+ */
 .c-sound-on {
   position: fixed;
-  right: 12px;
-  bottom: 12px;
+  right: clamp(6px, 1.2vmin, 16px);
+  bottom: clamp(6px, 1.2vmin, 16px);
   z-index: 11;
-  padding: 8px 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45em;
+  min-height: 2.4em;
+  padding: 0 1em 0 0.8em;
   border: 0;
-  border-radius: 999px;
-  background: #1f6feb;
-  color: #fff;
-  font: inherit;
-  font-size: 16px;
+  border-radius: 0.7em;
+  background: var(--blue-fill);
+  box-shadow: var(--shadow-pop);
+  color: var(--on-fill);
+  font-family: var(--font-ui);
+  font-size: clamp(12px, 8px + 0.8vmin, 17px);
   font-weight: 600;
   line-height: 1.2;
   cursor: pointer;
+  transition: background-color var(--dur-state) var(--ease);
+}
+
+.c-sound-on:hover {
+  background: var(--blue-fill-hover);
 }
 
 .c-sound-on:focus-visible {
-  outline: 2px solid #fff;
+  outline: 2px solid var(--pic-text);
   outline-offset: 2px;
+}
+
+.c-sound-on__icon {
+  flex: none;
+  width: 1.25em;
+  height: 1.25em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 /* /o/_clock: running clock for glass-to-glass measurements (plan phase 0). */
@@ -112,13 +217,13 @@ html.is-cursor-idle * {
   justify-content: center;
   gap: 4vh;
   padding: 0 4vw;
-  background: #000;
-  color: #fff;
+  background: var(--well);
+  color: var(--pic-text);
   text-align: center;
 }
 
 .c-clock__time {
-  font-family: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: min(11.5vw, 30vh);
   font-weight: 500;
   font-variant-numeric: tabular-nums;
@@ -130,8 +235,9 @@ html.is-cursor-idle * {
 .c-clock__hint {
   max-width: 60ch;
   margin: 0;
-  color: #b4bdc8;
+  color: var(--pic-text-2);
   font-size: clamp(14px, 1.7vw, 30px);
   font-weight: 400;
   line-height: 1.4;
+  text-wrap: pretty;
 }

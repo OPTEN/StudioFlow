@@ -5,7 +5,7 @@ import {
   type ProductionState,
 } from '@studioflow/scene-model';
 import { preloadScenesFor, ProgramView, slateFor } from './program-view';
-import { noAccessSlate } from './slates';
+import { noAccessNotice, noAccessSlate } from './slates';
 import { FakeRenderer } from './testing/fakes';
 import {
   CAMERA,
@@ -298,6 +298,11 @@ describe('ProgramView', () => {
     view.setDenied(true);
     expect(renderer.summary()).toEqual(['slate No access', 'show null', 'preload ']);
     expect(renderer.currentSlate()).toEqual(noAccessSlate());
+    // Drawn as a notice of the page, with the retry in its last line, not as a production slate.
+    expect(renderer.currentNotice()).toEqual(noAccessNotice());
+    expect(renderer.currentNotice()?.note).toBe(
+      'This page tries again by itself every 30 seconds.',
+    );
     expect(view.rendering).toBe(false);
     expect(view.shownSceneId).toBeNull();
 
