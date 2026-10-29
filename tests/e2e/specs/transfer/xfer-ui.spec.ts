@@ -13,18 +13,29 @@ import { pairPhoneViaQr } from '../../support/ui/pairing';
 import { readZip } from '../../support/zip';
 
 /**
- * XFER in the Regie (docs/testing.md 2.19: E2E-XFER-10 ... 12): the production menu offers "Duplicate production…",
- * "Export" and "Import…"; the devices of a copy are placeholders until a phone is paired and takes the place with one
- * click ("Use as K1 · Stage phone"), after which its picture shows in every scene that showed K1.
+ * XFER in the Regie (docs/testing.md 2.19: E2E-XFER-10 ... 12): Settings › All productions offers "Duplicate…",
+ * "Export" and "Import…" (the switcher in the toolbar leads there with "Import…"); the devices of a copy are
+ * placeholders until a phone is paired and takes the place with one click ("Use as K1 · Stage phone"), after which its
+ * picture shows in every scene that showed K1.
  */
 
 const menuButton = (page: Page) => page.getByRole('button', { name: /^Production .*, menu$/ });
 
-async function openMenu(page: Page) {
+/** Settings › All productions in the Regie's tab. */
+async function openProductions(page: Page) {
+  await page.goto('/settings/productions');
+  await expect(page.getByRole('heading', { level: 1, name: 'All productions' })).toBeVisible();
+}
+
+/** The row of a production on the page "All productions". */
+const productionRow = (page: Page, name: string) =>
+  page.getByTestId('production-row').filter({ has: page.getByText(name, { exact: true }) });
+
+/** "Import…" in the switcher of the control room: the page "All productions" with the import form open. */
+async function importFromSwitcher(page: Page) {
   await menuButton(page).click();
-  const dialog = page.getByRole('dialog', { name: 'Production' });
-  await expect(dialog).toBeVisible();
-  return dialog;
+  await page.getByRole('dialog', { name: 'Production' }).getByRole('link', { name: 'Import…' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'All productions' })).toBeVisible();
 }
 
 test.describe('XFER regie', () => {
@@ -41,23 +52,28 @@ test.describe('XFER regie', () => {
       await putInScene(api, production, 1, original.source, LEFT);
       const page = regie.page;
 
-      // Duplicate: the name of the copy starts as "<name> (copy)"; the copy is listed and not active.
-      const dialog = await openMenu(page);
-      await dialog.getByRole('button', { name: 'Duplicate production…' }).click();
+      // Duplicate (Settings › All productions): the name of the copy starts as "<name> (copy)"; the copy is listed and
+      // not active.
+      await openProductions(page);
+      await page.getByRole('button', { name: 'Duplicate…', exact: true }).click();
+      const form = page.locator('[data-form="duplicate"]');
       const name = page.locator('#duplicate-name');
       await expect(name).toHaveValue(`${production.name} (copy)`);
-      await expect(dialog).toContainText('Cameras and screens become placeholders');
+      await expect(form).toContainText('Cameras and screens become placeholders');
       const scanner = new Scanner(page);
-      await scanner.scan('xfer-duplicate-form', { include: ['[role=dialog][aria-label=Production]'] });
-      await dialog.getByRole('button', { name: 'Duplicate', exact: true }).click();
+      await scanner.scan('xfer-duplicate-form', { include: ['[data-form="duplicate"]'] });
+      await form.getByRole('button', { name: 'Duplicate', exact: true }).click();
       await expectToast(page, `Production “${production.name} (copy)” created.`);
-      const copyItem = dialog.getByRole('button', { name: `${production.name} (copy)` });
-      await expect(copyItem).toBeVisible();
-      await expect(copyItem).not.toHaveAttribute('aria-current', 'true');
+      const copyRow = productionRow(page, `${production.name} (copy)`);
+      await expect(copyRow).toBeVisible();
+      await expect(copyRow).not.toHaveAttribute('aria-current', 'true');
       expect((await api.getActiveProduction()).body.id, 'the copy is not active').toBe(production.id);
 
       // Switch to the copy: its items say "Source missing", the Sources dock lists the missing K1.
-      await copyItem.click();
+      await copyRow.getByRole('button', { name: `Switch to “${production.name} (copy)”` }).click();
+      await expect(copyRow).toHaveAttribute('aria-current', 'true');
+      await regie.goto();
+      await regie.waitReady();
       await expect(menuButton(page)).toHaveAccessibleName(`Production ${production.name} (copy), menu`);
       const copyDto = (await api.listProductions()).body.find((entry) => entry.name === `${production.name} (copy)`)!;
       const copy = await adoptProduction(api, production, copyDto);
@@ -112,10 +128,10 @@ test.describe('XFER regie', () => {
       await putInScene(api, production, 1, phone.sourceId('camera'), LEFT);
       const page = regie.page;
 
-      // Export: a download with the extension.
-      const dialog = await openMenu(page);
+      // Export (Settings › All productions › This production): a download with the extension.
+      await openProductions(page);
       const downloading = page.waitForEvent('download');
-      await dialog.getByRole('link', { name: 'Export' }).click();
+      await page.getByTestId('export-production').click();
       const download = await downloading;
       expect(download.suggestedFilename()).toMatch(/\.studioflow\.zip$/);
       const file = testInfo.outputPath(download.suggestedFilename());
@@ -126,7 +142,9 @@ test.describe('XFER regie', () => {
 
       // Import: choose the file, see the preview, nothing is created before "Import".
       const before = (await api.listProductions()).body.length;
-      await openMenu(page).then((menu) => menu.getByRole('button', { name: 'Import…' }).click());
+      await regie.goto();
+      await regie.waitReady();
+      await importFromSwitcher(page);
       await page.locator('[data-testid="import-file"]').setInputFiles(file);
       const preview = page.locator('[data-testid="import-preview"]');
       await expect(preview).toContainText(`${production.name} (2)`);
@@ -135,13 +153,13 @@ test.describe('XFER regie', () => {
       await expect(page.locator('[data-testid="import-placeholders"]')).toContainText('Stage phone');
       await expect(page.getByText('A production with this name exists already.')).toBeVisible();
       const scanner = new Scanner(page);
-      await scanner.scan('xfer-import-preview', { include: ['[role=dialog][aria-label=Production]'] });
+      await scanner.scan('xfer-import-preview', { include: ['[data-form="import"]'] });
       scanner.verify();
       expect((await api.listProductions()).body, 'the preview creates nothing').toHaveLength(before);
 
       await page.locator('[data-testid="import-submit"]').click();
       await expectToast(page, `Production “${production.name} (2)” imported.`);
-      const imported = page.getByRole('dialog', { name: 'Production' }).getByRole('button', { name: `${production.name} (2)` });
+      const imported = productionRow(page, `${production.name} (2)`);
       await expect(imported).toBeVisible();
       await expect(imported).not.toHaveAttribute('aria-current', 'true');
       const list = (await api.listProductions()).body;
@@ -154,8 +172,7 @@ test.describe('XFER regie', () => {
       expect(snapshot.placeholders.map((entry) => entry.code)).toEqual(['K1']);
 
       // A file that is not an export is explained and creates nothing.
-      await imported.press('Escape');
-      await openMenu(page).then((menu) => menu.getByRole('button', { name: 'Import…' }).click());
+      await page.getByRole('button', { name: 'Import…', exact: true }).click();
       const notes = testInfo.outputPath('notes.zip');
       fs.writeFileSync(notes, 'this is not a zip file');
       await page.locator('[data-testid="import-file"]').setInputFiles(notes);

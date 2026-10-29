@@ -39,6 +39,7 @@ export const regieProduction = {
   'regie.production.slates.preview': 'Preview of the slate “{title}”',
   'regie.production.slates.save': 'Save slates',
   'regie.production.slates.showing': 'On the output now',
+  'regie.production.slates.tabs': 'Slate to edit',
   'regie.production.slates.standbyHint':
     'Shown from the moment the output opens until you start the broadcast.',
   'regie.production.slates.titleInvalid': 'Enter a title of at most {max} characters.',
@@ -62,6 +63,13 @@ export const regieProduction = {
   'regie.production.list.loading': 'Loading productions…',
   'regie.production.list.offline':
     'No connection to the server. Switching and creating work again once it is back.',
+
+  'regie.production.menu.keys':
+    'Right-click a production for its commands. F2 renames it, Ctrl+D (⌘D on a Mac) duplicates it.',
+  'regie.production.menu.more': 'More actions for “{name}”',
+  'regie.production.menu.rename': 'Rename',
+  'regie.production.menu.renameLabel': 'New name of “{name}”',
+  'regie.production.menu.all': 'All productions…',
 
   'regie.production.add.create': 'Create production',
   'regie.production.add.liveHint':

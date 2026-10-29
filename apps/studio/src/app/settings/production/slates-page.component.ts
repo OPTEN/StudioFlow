@@ -16,9 +16,9 @@ import type { ProductionDto, SlateDto } from '@studioflow/scene-model';
 import { StudioApiService } from '../../core/api/studio-api.service';
 import { ProductionStoreService } from '../../core/state/production-store.service';
 import { focusFirstInvalid } from '../../core/ui/form-feedback';
-import { IconComponent } from '../../core/ui/icon.component';
 import { ToastService } from '../../core/ui/toast.service';
 import { SettingsPageHeadComponent } from '../pages/settings-page-head.component';
+import { tabFromKey } from './tab-keys';
 import { FormActionsComponent } from './form-actions.component';
 import { PicturePreviewComponent } from './picture-preview.component';
 
@@ -36,7 +36,11 @@ function slateGroup(): FormGroup<{
   return new FormGroup({
     title: new FormControl('', {
       nonNullable: true,
-      validators: [Validators.required, Validators.maxLength(SLATE_TEXT_MAX), Validators.pattern(/\S/)],
+      validators: [
+        Validators.required,
+        Validators.maxLength(SLATE_TEXT_MAX),
+        Validators.pattern(/\S/),
+      ],
     }),
     subtitle: new FormControl('', {
       nonNullable: true,
@@ -47,7 +51,11 @@ function slateGroup(): FormGroup<{
 }
 
 /** The form value of a slate. */
-function slateValue(slate: SlateDto | undefined): { title: string; subtitle: string; background: string } {
+function slateValue(slate: SlateDto | undefined): {
+  title: string;
+  subtitle: string;
+  background: string;
+} {
   return {
     title: slate?.title ?? '',
     subtitle: slate?.subtitle ?? '',
@@ -75,13 +83,13 @@ function sameSlate(a: SlateDto, b: SlateDto | undefined): boolean {
 /**
  * Settings › Production › Slates (`/settings/slates`): what the audience sees before the broadcast (standby slate) and
  * after it (end slate). Each slate has a title, an optional subtitle and an optional background image, and a live
- * picture drawn by the output's own renderer as the operator types. The slate the output shows right now is marked.
+ * picture drawn by the output's own renderer as the operator types. One tab per slate (←/→ between them); a tab marks
+ * the slate the output shows right now and unsaved changes, and a save with a mistake brings that slate to the front.
  */
 @Component({
   selector: 'sf-slates-page',
   imports: [
     FormActionsComponent,
-    IconComponent,
     PicturePreviewComponent,
     ReactiveFormsModule,
     SettingsPageHeadComponent,
@@ -100,8 +108,13 @@ export class SlatesPageComponent {
   protected readonly t = t;
   protected readonly textMax = SLATE_TEXT_MAX;
   protected readonly saving = signal(false);
+  /** The slate shown in the tab panel (both stay in the form; the hidden one keeps its edits). */
+  protected readonly tab = signal<SlateKey>('standby');
+  protected readonly tabKeys: readonly SlateKey[] = ['standby', 'end'];
   protected readonly form = new FormGroup({ standby: slateGroup(), end: slateGroup() });
-  private readonly value = toSignal(this.form.valueChanges, { initialValue: this.form.getRawValue() });
+  private readonly value = toSignal(this.form.valueChanges, {
+    initialValue: this.form.getRawValue(),
+  });
 
   /** The slates as typed, for the previews. */
   protected readonly drafts = computed<Record<SlateKey, SlateDto>>(() => {
@@ -187,6 +200,29 @@ export class SlatesPageComponent {
     return sameSlate(drafts.standby, base.standby) && sameSlate(drafts.end, base.end);
   }
 
+  /** True when the slate differs from the saved one (its tab shows a dot). */
+  protected changed(key: SlateKey): boolean {
+    const production = this.store.production();
+    if (!this.dirty() || !production) {
+      return false;
+    }
+    const draft = this.drafts()[key];
+    const saved = this.lastSaved();
+    const stored = key === 'standby' ? production.standbySlate : production.endSlate;
+    return !sameSlate(draft, stored) && (saved === null || !sameSlate(draft, saved[key]));
+  }
+
+  /** ←/→ (Home/End) move between the two slates. */
+  protected onTabKeyDown(event: KeyboardEvent): void {
+    const next = tabFromKey(event, this.tabKeys, this.tab());
+    if (next === null) {
+      return;
+    }
+    event.preventDefault();
+    this.tab.set(next);
+    this.host.nativeElement.querySelector<HTMLElement>(`#sf-slate-tab-${next}`)?.focus();
+  }
+
   protected invalid(key: SlateKey): boolean {
     const control = this.form.controls[key].controls.title;
     return control.invalid && control.touched;
@@ -197,6 +233,11 @@ export class SlatesPageComponent {
     const productionId = this.store.productionId();
     if (this.form.invalid) {
       this.form.markAllAsTouched();
+      // The first slate with a mistake comes to the front, so the field that needs a fix is visible.
+      const wrong = this.tabKeys.find((key) => this.form.controls[key].invalid);
+      if (wrong) {
+        this.tab.set(wrong);
+      }
       focusFirstInvalid(this.host, this.injector);
       return;
     }

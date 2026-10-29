@@ -21,25 +21,43 @@
         } @else {
           @for (row of rows(); track row.link.id) {
             <div class="c-links__item" [class.is-open]="isOpen(row.link.id)">
-              <button
-                class="c-links__row"
-                type="button"
-                [attr.aria-expanded]="isOpen(row.link.id)"
-                [attr.aria-controls]="'sf-link-' + row.link.id"
-                (click)="toggle(row.link.id)"
+              <div
+                class="c-links__head"
+                [sfContextMenu]="menuOf(row.link)"
+                [sfContextMenuLabel]="t('regie.output.link.keyLabel', { name: row.link.name })"
+                (keydown)="onRowKeyDown($event, row.link)"
               >
-                <span class="c-lamp" aria-hidden="true" [class]="row.lamp"></span>
-                <span class="c-links__text">
-                  <span class="c-links__name">{{ row.link.name }}</span>
-                  <span class="c-links__state">
-                    {{ row.state }}
-                    @if (row.detail) {
-                      · {{ row.detail }}
-                    }
+                <button
+                  class="c-links__row"
+                  type="button"
+                  aria-keyshortcuts="F2 Delete"
+                  [attr.aria-expanded]="isOpen(row.link.id)"
+                  [attr.aria-controls]="'sf-link-' + row.link.id"
+                  (click)="toggle(row.link.id)"
+                >
+                  <span class="c-lamp" aria-hidden="true" [class]="row.lamp"></span>
+                  <span class="c-links__text">
+                    <span class="c-links__name">{{ row.link.name }}</span>
+                    <span class="c-links__state">
+                      {{ row.state }}
+                      @if (row.detail) {
+                        · {{ row.detail }}
+                      }
+                    </span>
                   </span>
-                </span>
-                <svg sfIcon="chev-right" class="c-links__chev"></svg>
-              </button>
+                  <svg sfIcon="chev-right" class="c-links__chev"></svg>
+                </button>
+                <button
+                  class="c-ibtn c-links__more"
+                  type="button"
+                  aria-haspopup="menu"
+                  [attr.aria-label]="t('regie.output.menu.more', { name: row.link.name })"
+                  [title]="t('regie.output.menu.more', { name: row.link.name })"
+                  (click)="openMenuAt($event, row.link)"
+                >
+                  <svg sfIcon="more"></svg>
+                </button>
+              </div>
               @if (isOpen(row.link.id)) {
                 <sf-output-link
                   [id]="'sf-link-' + row.link.id"
@@ -55,7 +73,11 @@
               {{ t('regie.output.links.empty') }}
             </div>
           }
-          <form class="c-group__row c-group__row--stack c-links__add" novalidate (submit)="addLink($event)">
+          <form
+            class="c-group__row c-group__row--stack c-links__add"
+            novalidate
+            (submit)="addLink($event)"
+          >
             <label class="c-group__label" for="output-link-name">{{
               t('regie.output.link.nameLabel')
             }}</label>
@@ -98,6 +120,9 @@
           </form>
         }
       </div>
+      @if (links().length > 0) {
+        <p class="c-group__footer">{{ t('regie.output.links.keys') }}</p>
+      }
     </section>
 
     @if (settings()) {

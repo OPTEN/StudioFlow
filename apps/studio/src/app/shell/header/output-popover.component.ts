@@ -10,7 +10,7 @@ import {
   signal,
   untracked,
 } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { formatDateTime, t, tm, type Msg } from '@studioflow/i18n';
 import {
   DEFAULT_CANVAS_FORMAT,
@@ -25,6 +25,7 @@ import { toUserMsg } from '../../core/api/api-error';
 import { StudioApiService } from '../../core/api/studio-api.service';
 import { ProductionStoreService } from '../../core/state/production-store.service';
 import { ClipboardService } from '../../core/ui/clipboard.service';
+import { ContextMenuDirective, type ContextMenuEntry } from '../../core/ui/context-menu';
 import { IconComponent } from '../../core/ui/icon.component';
 import { PopoverDirective, PopoverService } from '../../core/ui/popover.directive';
 import { OBS_FPS } from './obs-scene-collection';
@@ -64,7 +65,7 @@ export function linkStateText(state: OutputState): string {
  */
 @Component({
   selector: 'sf-output-popover',
-  imports: [IconComponent, PopoverDirective, RouterLink],
+  imports: [ContextMenuDirective, IconComponent, PopoverDirective, RouterLink],
   templateUrl: './output-popover.component.html',
   styleUrl: './output-popover.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -76,6 +77,7 @@ export class OutputPopoverComponent {
   private readonly clipboard = inject(ClipboardService);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly injector = inject(Injector);
+  private readonly router = inject(Router);
   private lastStateKey: string | null = null;
 
   protected readonly popoverId = OUTPUT_POPOVER;
@@ -103,7 +105,11 @@ export class OutputPopoverComponent {
           ? `${linkStateText(state)} · ${t('regie.audio.output.blocked')}`
           : linkStateText(state),
         stateClass:
-          state === 'connected' && !blocked ? 'c-state--ok' : state === 'none' ? '' : 'c-state--warn',
+          state === 'connected' && !blocked
+            ? 'c-state--ok'
+            : state === 'none'
+              ? ''
+              : 'c-state--warn',
         lamp: state === 'connected' ? '' : state === 'stale' ? 'is-warn' : 'is-idle',
         url: this.revealedId() === link.id ? link.url : maskOutputUrl(link.url),
         title: state === 'none' ? this.lastSeenText(link) : null,
@@ -222,6 +228,30 @@ export class OutputPopoverComponent {
           ),
         { injector: this.injector },
       );
+    }
+  }
+
+  /**
+   * The right-click menu of a link: copy it, or manage it in the settings window. The click on the menu closes the
+   * popover; when the clipboard refuses, the popover opens again, where the copy button shows the real link.
+   */
+  protected readonly menuOf = (link: OutputLinkDto) => (): readonly ContextMenuEntry[] => [
+    { label: t('regie.output.menu.copy'), icon: 'copy', run: () => void this.copyFromMenu(link) },
+    'separator',
+    {
+      label: t('regie.output.pop.manage'),
+      icon: 'sliders',
+      run: () => {
+        this.close();
+        void this.router.navigateByUrl('/settings/output');
+      },
+    },
+  ];
+
+  private async copyFromMenu(link: OutputLinkDto): Promise<void> {
+    if (!(await this.clipboard.copy(link.url, { label: maskOutputUrl(link.url) }))) {
+      // The popover's own copy button shows the real link to copy by hand.
+      this.popovers.open(this.popoverId);
     }
   }
 

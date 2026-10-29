@@ -51,6 +51,13 @@ async function openLinkSettings(page: Page): Promise<Page> {
 const linkDetail = (settings: Page, name: string): Locator =>
   settings.getByRole('region', { name: `Link “${name}”` });
 
+/** The open detail of a link with its tab "Access" (the IP restriction) in front. */
+async function linkAccess(settings: Page, name: string): Promise<Locator> {
+  const detail = linkDetail(settings, name);
+  await detail.getByRole('tab', { name: /^Access/ }).click();
+  return detail;
+}
+
 test.describe('REGIE output popover and output links', () => {
   test(
     'E2E-OUT-15 [regie popover] state, addresses, format and latency follow the output pages; the link is masked and its copy button puts the real link on the clipboard',
@@ -111,7 +118,7 @@ test.describe('REGIE output popover and output links', () => {
     t.p1,
     async ({ regie, api, production }) => {
       const settings = await openLinkSettings(regie.page);
-      const scope = linkDetail(settings, 'Proxy');
+      const scope = await linkAccess(settings, 'Proxy');
       const save = scope.getByRole('button', { name: 'Save access' });
       await expect(scope).toContainText('Any address may open the output.');
       const add = async (text: string) => {
@@ -167,7 +174,7 @@ test.describe('REGIE output popover and output links', () => {
       ]);
       // The list survives a reload of the page (it is read from the server).
       await settings.reload();
-      const again = linkDetail(settings, 'Proxy');
+      const again = await linkAccess(settings, 'Proxy');
       await expect
         .poll(() => again.locator('.c-output-link__address').allTextContents())
         .toEqual(['10.0.0.42', '10.0.0.0/24']);
@@ -199,7 +206,7 @@ test.describe('REGIE output popover and output links', () => {
       expect(await output.slateText(), 'the output is not denied').not.toContain(TEXT.slate.denied);
 
       const settings = await openLinkSettings(page);
-      const scope = linkDetail(settings, 'Proxy');
+      const scope = await linkAccess(settings, 'Proxy');
       const save = async (list: string[]) => {
         for (const entry of await scope.locator('.c-output-link__address').allTextContents())
           await scope.getByRole('button', { name: `Remove ${entry}` }).click();

@@ -74,14 +74,19 @@ describe('SlatesPageComponent', () => {
     return (node?.textContent ?? '').replace(/\s+/g, ' ').trim();
   }
 
-  function group(name: string): HTMLElement {
-    const found = Array.from(element.querySelectorAll<HTMLElement>('[role="group"]')).find(
-      (entry) => text(element.querySelector(`#${entry.getAttribute('aria-labelledby')}`)) === name,
+  function tab(name: string): HTMLButtonElement {
+    const found = Array.from(element.querySelectorAll<HTMLButtonElement>('[role="tab"]')).find(
+      (entry) => text(entry).startsWith(name),
     );
     if (!found) {
-      throw new Error(`no group "${name}"`);
+      throw new Error(`no tab "${name}"`);
     }
     return found;
+  }
+
+  /** The panel of a slate (rendered while hidden, so a hidden slate keeps its edits). */
+  function group(name: string): HTMLElement {
+    return element.querySelector<HTMLElement>(`#${tab(name).getAttribute('aria-controls')}`)!;
   }
 
   function field(slate: 'standby' | 'end', name: string): HTMLInputElement {
@@ -116,14 +121,47 @@ describe('SlatesPageComponent', () => {
 
   it('marks the slate the output shows now', async () => {
     await setup();
-    expect(text(group('Before the broadcast'))).toContain('On the output now');
-    expect(text(group('After the broadcast'))).not.toContain('On the output now');
+    expect(text(tab('Before the broadcast'))).toContain('On the output now');
+    expect(text(tab('After the broadcast'))).not.toContain('On the output now');
+  });
+
+  it('shows one slate at a time in tabs; the arrow keys move between them', async () => {
+    await setup();
+    const before = tab('Before the broadcast');
+    const after = tab('After the broadcast');
+    expect(before.getAttribute('aria-selected')).toBe('true');
+    expect(group('Before the broadcast').hidden).toBe(false);
+    expect(group('After the broadcast').hidden).toBe(true);
+    before.focus();
+    before.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    await render();
+    expect(after.getAttribute('aria-selected')).toBe('true');
+    expect(document.activeElement).toBe(after);
+    expect(group('After the broadcast').hidden).toBe(false);
+    expect(group('Before the broadcast').hidden).toBe(true);
+  });
+
+  it('marks the tab of a changed slate and brings a slate with a mistake to the front', async () => {
+    await setup();
+    type(field('end', 'title'), 'Bye');
+    await render();
+    expect(text(tab('After the broadcast'))).toContain('Unsaved changes');
+    expect(text(tab('Before the broadcast'))).not.toContain('Unsaved changes');
+    type(field('end', 'title'), '   ');
+    tab('Before the broadcast').click();
+    await render();
+    save().click();
+    await render();
+    expect(tab('After the broadcast').getAttribute('aria-selected')).toBe('true');
   });
 
   it('marks the end slate after the broadcast and none while it is live', async () => {
     await setup(snapshotFixture({ production: productionFixture({ broadcast: 'ended' }) }));
-    expect(text(group('After the broadcast'))).toContain('On the output now');
-    harness.emitEvent({ type: 'productionChanged', production: productionFixture({ broadcast: 'live' }) });
+    expect(text(tab('After the broadcast'))).toContain('On the output now');
+    harness.emitEvent({
+      type: 'productionChanged',
+      production: productionFixture({ broadcast: 'live' }),
+    });
     await render();
     expect(text()).not.toContain('On the output now');
   });
@@ -140,7 +178,9 @@ describe('SlatesPageComponent', () => {
     await render();
     expect(renderers[0]?.slates.at(-1)?.title).toBe('Doors open soon');
     expect(renderers[1]?.slates.at(-1)?.title).toBe('Thanks for watching');
-    expect(element.querySelector('[aria-label="Preview of the slate “Before the broadcast”"]')).not.toBeNull();
+    expect(
+      element.querySelector('[aria-label="Preview of the slate “Before the broadcast”"]'),
+    ).not.toBeNull();
   });
 
   it('saves both slates, with an empty subtitle as none', async () => {
@@ -184,7 +224,10 @@ describe('SlatesPageComponent', () => {
     harness.emitEvent({ type: 'assetUpserted', asset: image('ast_bg', 'M1', 'Stage') });
     await render();
     const select = element.querySelector<HTMLSelectElement>('#slate-standby-background')!;
-    expect(Array.from(select.options).map((option) => text(option))).toEqual(['No image', 'M1 · Stage']);
+    expect(Array.from(select.options).map((option) => text(option))).toEqual([
+      'No image',
+      'M1 · Stage',
+    ]);
     type(select, 'ast_bg');
     await render();
     expect(renderers[0]?.slates.at(-1)?.backgroundAssetId).toBe('ast_bg');

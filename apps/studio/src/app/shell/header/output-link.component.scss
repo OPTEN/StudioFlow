@@ -10,13 +10,40 @@
   box-shadow: inset 0 1px 0 var(--seam);
   display: grid;
 
-  > .c-group__row {
+  > .c-group__row,
+  > .c-output-link__panel > .c-group__row {
     padding-left: 38px;
 
     @include narrow {
       padding-left: 14px;
     }
   }
+}
+
+// The parts of the link (Link | Access | Use in OBS) as tabs; the panels keep their state while hidden.
+.c-output-link__tabs {
+  max-width: 420px;
+  width: 100%;
+}
+
+.c-output-link__panel {
+  display: grid;
+
+  &[hidden] {
+    display: none;
+  }
+
+  + .c-group__row {
+    box-shadow: inset 0 1px 0 var(--seam);
+  }
+}
+
+// Unsaved access changes: a small accent dot in the tab (with words for screen readers and a tooltip).
+.c-output-link__dot {
+  background: var(--blue);
+  border-radius: 50%;
+  height: 6px;
+  width: 6px;
 }
 
 .c-output-link__box {
@@ -92,8 +119,4 @@
   @include code;
   font-size: 12.5px;
   max-width: 320px;
-}
-
-.c-output-link__camera {
-  grid-column: 1 / -1;
 }

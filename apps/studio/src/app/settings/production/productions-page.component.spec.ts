@@ -3,6 +3,7 @@ import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { FakeStudioHub, flushMicrotasks } from '../../../testing/fake-studio-hub';
 import { PRODUCTION_ID, productionFixture, snapshotFixture } from '../../../testing/fixtures';
 import { startStore, studioTestProviders, type StoreHarness } from '../../../testing/store-harness';
+import { ContextMenuService } from '../../core/ui/context-menu';
 import { ToastService } from '../../core/ui/toast.service';
 import { ProductionsPageComponent } from './productions-page.component';
 
@@ -91,6 +92,35 @@ describe('ProductionsPageComponent', () => {
     return Array.from(element.querySelectorAll<HTMLElement>('[data-testid="production-row"]'));
   }
 
+  function menuLabels(): string[] {
+    return (TestBed.inject(ContextMenuService).current()?.entries ?? []).map((entry) =>
+      entry === 'separator' ? '—' : entry.label,
+    );
+  }
+
+  async function openMenu(row: HTMLElement): Promise<void> {
+    row.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+    await render();
+  }
+
+  async function runMenu(label: string): Promise<void> {
+    const item = TestBed.inject(ContextMenuService)
+      .current()
+      ?.entries.find((entry) => entry !== 'separator' && entry.label === label);
+    if (!item || item === 'separator') {
+      throw new Error(`no menu item ${label}`);
+    }
+    TestBed.inject(ContextMenuService).run(item);
+    await render();
+  }
+
+  async function key(target: Element, init: KeyboardEventInit): Promise<KeyboardEvent> {
+    const event = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...init });
+    target.dispatchEvent(event);
+    await render();
+    return event;
+  }
+
   afterEach(() => harness?.http.verify());
 
   describe('list', () => {
@@ -171,7 +201,11 @@ describe('ProductionsPageComponent', () => {
       const request = harness.http.expectOne(
         (candidate) => candidate.url === '/api/productions' && candidate.method === 'POST',
       );
-      expect(request.request.body).toEqual({ name: 'Reel', format: 'portrait', resolution: 'p720' });
+      expect(request.request.body).toEqual({
+        name: 'Reel',
+        format: 'portrait',
+        resolution: 'p720',
+      });
       request.flush({ ...productionFixture({ id: 'prd_cccccccccccccccc', name: 'Reel' }) });
       await render();
       harness.http
@@ -194,7 +228,9 @@ describe('ProductionsPageComponent', () => {
       nameInput().dispatchEvent(new Event('input'));
       await click('Create production');
       harness.http
-        .expectOne((candidate) => candidate.url === '/api/productions' && candidate.method === 'POST')
+        .expectOne(
+          (candidate) => candidate.url === '/api/productions' && candidate.method === 'POST',
+        )
         .flush(productionFixture({ id: 'prd_cccccccccccccccc', name: 'Later' }));
       await render();
       flushList();
@@ -250,7 +286,10 @@ describe('ProductionsPageComponent', () => {
       const request = harness.http.expectOne(`/api/productions/${PRODUCTION_ID}/duplicate`);
       expect(request.request.body).toEqual({ name: 'Webinar (copy)' });
       request.flush(
-        { ...productionFixture({ id: 'prd_cccccccccccccccc', name: 'Webinar (copy)' }), isActive: false },
+        {
+          ...productionFixture({ id: 'prd_cccccccccccccccc', name: 'Webinar (copy)' }),
+          isActive: false,
+        },
         { status: 201, statusText: 'Created' },
       );
       await render();
@@ -298,6 +337,122 @@ describe('ProductionsPageComponent', () => {
       expect(TestBed.inject(ToastService).current()?.message).toBe(
         'Export of “Webinar” started. Your browser saves the file.',
       );
+    });
+  });
+
+  describe('row commands', () => {
+    it('offers switch, rename, duplicate and export in the right-click menu of a row', async () => {
+      await setup();
+      await openMenu(rows()[1]!);
+      expect(menuLabels()).toEqual(['Switch to', '—', 'Rename', 'Duplicate…', 'Export']);
+      const entries = TestBed.inject(ContextMenuService).current()!.entries;
+      expect(entries.map((entry) => (entry === 'separator' ? null : entry.shortcut))).toEqual([
+        undefined,
+        null,
+        'F2',
+        'Ctrl+D',
+        undefined,
+      ]);
+      // The active production cannot be switched to; it carries the check.
+      TestBed.inject(ContextMenuService).close();
+      await openMenu(rows()[0]!);
+      const first = TestBed.inject(ContextMenuService).current()!.entries[0]!;
+      expect(first !== 'separator' && first.disabled && first.checked).toBe(true);
+    });
+
+    it('opens the same menu with the "⋯" button of a row', async () => {
+      await setup();
+      await click('More actions for “Town hall”');
+      expect(menuLabels()[0]).toBe('Switch to');
+      expect(TestBed.inject(ContextMenuService).current()?.label).toBe('Town hall');
+    });
+
+    it('renames any production in place (F2 on its row) and lists the new name', async () => {
+      await setup();
+      const more = button('More actions for “Town hall”');
+      await key(more, { key: 'F2' });
+      const input = element.querySelector<HTMLInputElement>('[data-rename-input]')!;
+      expect(input.value).toBe('Town hall');
+      expect(element.querySelector('label[for="rename-' + OTHER_ID + '"]')?.textContent).toContain(
+        'New name of “Town hall”',
+      );
+      input.value = 'All hands';
+      input.dispatchEvent(new Event('input'));
+      await click('Save name');
+      const request = harness.http.expectOne(`/api/productions/${OTHER_ID}`);
+      expect(request.request.method).toBe('PATCH');
+      expect(request.request.body).toEqual({
+        name: 'All hands',
+        standbySlate: null,
+        endSlate: null,
+      });
+      request.flush(productionFixture({ id: OTHER_ID, name: 'All hands' }));
+      await render();
+      flushList([LIST[0]!, { ...LIST[1]!, name: 'All hands' }]);
+      await render();
+      expect(TestBed.inject(ToastService).current()?.message).toContain('All hands');
+      expect(element.querySelector('[data-rename-input]')).toBeNull();
+    });
+
+    it('cancels a rename with Escape and sends nothing', async () => {
+      await setup();
+      await openMenu(rows()[1]!);
+      await runMenu('Rename');
+      await render();
+      const input = element.querySelector<HTMLInputElement>('[data-rename-input]')!;
+      await key(input, { key: 'Escape' });
+      expect(element.querySelector('[data-rename-input]')).toBeNull();
+      expect(rows()).toHaveLength(2);
+    });
+
+    it('duplicates another production below its row (Ctrl+D) and copies that one', async () => {
+      await setup();
+      const event = await key(button('More actions for “Town hall”'), { key: 'd', ctrlKey: true });
+      expect(event.defaultPrevented).toBe(true);
+      const form = element.querySelector<HTMLElement>('[data-form="duplicate"]')!;
+      expect(form.previousElementSibling).toBe(rows()[1]!);
+      const name = form.querySelector<HTMLInputElement>('input')!;
+      expect(name.value).toBe('Town hall (copy)');
+      form.querySelector('form')?.dispatchEvent(new Event('submit', { cancelable: true }));
+      await flushMicrotasks();
+      const request = harness.http.expectOne(`/api/productions/${OTHER_ID}/duplicate`);
+      expect(request.request.body).toEqual({ name: 'Town hall (copy)' });
+      request.flush(
+        {
+          ...productionFixture({ id: 'prd_dddddddddddddddd', name: 'Town hall (copy)' }),
+          isActive: false,
+        },
+        { status: 201, statusText: 'Created' },
+      );
+      await render();
+      flushList();
+      await render();
+      expect(element.querySelector('sf-duplicate-production-form')).toBeNull();
+    });
+
+    it('exports any production from its menu', async () => {
+      await setup();
+      const clicked: string[] = [];
+      const original = HTMLAnchorElement.prototype.click;
+      HTMLAnchorElement.prototype.click = function (this: HTMLAnchorElement) {
+        clicked.push(this.getAttribute('href') ?? '');
+      };
+      try {
+        await openMenu(rows()[1]!);
+        await runMenu('Export');
+      } finally {
+        HTMLAnchorElement.prototype.click = original;
+      }
+      expect(clicked).toEqual([`/api/productions/${OTHER_ID}/export`]);
+      expect(TestBed.inject(ToastService).current()?.message).toContain('“Town hall”');
+    });
+
+    it('moves between the rows with ↑/↓', async () => {
+      await setup();
+      const first = button('More actions for “Webinar”');
+      first.focus();
+      await key(first, { key: 'ArrowDown' });
+      expect(document.activeElement).toBe(button('More actions for “Town hall”'));
     });
   });
 });

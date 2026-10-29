@@ -1,11 +1,14 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  Injector,
+  afterNextRender,
   computed,
   effect,
   inject,
   signal,
   untracked,
+  viewChildren,
 } from '@angular/core';
 import {
   FormControl,
@@ -20,7 +23,14 @@ import type { OutputLinkDto, OutputSettingsDto } from '@studioflow/scene-model';
 import { toUserMsg } from '../../core/api/api-error';
 import { StudioApiService } from '../../core/api/studio-api.service';
 import { ProductionStoreService } from '../../core/state/production-store.service';
+import { ClipboardService } from '../../core/ui/clipboard.service';
+import {
+  ContextMenuDirective,
+  ContextMenuService,
+  type ContextMenuEntry,
+} from '../../core/ui/context-menu';
 import { IconComponent } from '../../core/ui/icon.component';
+import { isTypingTarget } from '../../core/ui/keyboard.service';
 import { ToastService } from '../../core/ui/toast.service';
 import {
   LINK_NAME_MAX,
@@ -28,7 +38,12 @@ import {
   requiredName,
 } from '../../shell/header/output-link.component';
 import { linkStateText } from '../../shell/header/output-popover.component';
+import { DEFAULT_LINK_OPTIONS, maskOutputUrl, outputLinkUrl } from '../../shell/header/output-url';
 import { SettingsPageHeadComponent } from '../pages/settings-page-head.component';
+import { moveRowFocus } from './tab-keys';
+
+/** Width of the row menu, to right-align it to the "⋯" button. */
+const MENU_WIDTH = 220;
 
 /** One line of the link list: the link, its lamp and what its state is in words. */
 interface LinkRow {
@@ -43,10 +58,13 @@ interface LinkRow {
  * its state and when it was last seen; a row opens the link below it (`sf-output-link`: name, link and options, access,
  * use as camera, new link, revoke). The last row adds a link. The websites that may embed the output are shown read
  * only, with the way to the server setting. Reloads whenever a link changes its state, so "last seen" stays current.
+ * A row has a right-click menu and a "⋯" button with the same commands (copy, show, rename, new link, revoke); on a
+ * focused row F2 renames, Delete or Backspace asks to revoke, ↑/↓ move to the neighbouring link.
  */
 @Component({
   selector: 'sf-output-links-page',
   imports: [
+    ContextMenuDirective,
     IconComponent,
     OutputLinkComponent,
     ReactiveFormsModule,
@@ -61,6 +79,10 @@ export class OutputLinksPageComponent {
   private readonly api = inject(StudioApiService);
   protected readonly store = inject(ProductionStoreService);
   private readonly toasts = inject(ToastService);
+  private readonly clipboard = inject(ClipboardService);
+  private readonly menus = inject(ContextMenuService);
+  private readonly injector = inject(Injector);
+  private readonly details = viewChildren(OutputLinkComponent);
   private lastStateKey: string | null = null;
   private loadedFor: string | null = null;
 
@@ -214,6 +236,116 @@ export class OutputLinksPageComponent {
         : settings,
     );
     this.open.update((open) => new Set([...open].filter((id) => id !== linkId)));
+  }
+
+  /** The commands of a link, for its right-click menu and its "⋯" button. */
+  protected readonly menuOf = (link: OutputLinkDto) => (): readonly ContextMenuEntry[] => {
+    const online = this.store.canCommand();
+    const revealed = this.detailOf(link.id)?.revealed() ?? false;
+    return [
+      { label: t('regie.output.menu.copy'), icon: 'copy', run: () => void this.copy(link) },
+      {
+        label: t(revealed ? 'regie.output.detail.hide' : 'regie.output.detail.show'),
+        icon: revealed ? 'eye-off' : 'eye',
+        run: () =>
+          revealed
+            ? this.detailOf(link.id)?.revealed.set(false)
+            : this.withDetail(link.id, (detail) => detail.reveal()),
+      },
+      'separator',
+      {
+        label: t('regie.output.link.rename'),
+        icon: 'pencil',
+        shortcut: 'F2',
+        disabled: !online,
+        run: () => this.withDetail(link.id, (detail) => detail.startRename()),
+      },
+      {
+        label: t('regie.output.renew.button'),
+        icon: 'refresh',
+        disabled: !online,
+        run: () => this.withDetail(link.id, (detail) => detail.askRenew()),
+      },
+      'separator',
+      {
+        label: t('regie.output.revoke.button'),
+        icon: 'trash',
+        shortcut: t('regie.output.menu.deleteKey'),
+        danger: true,
+        disabled: !online,
+        run: () => this.withDetail(link.id, (detail) => detail.askRevoke()),
+      },
+    ];
+  };
+
+  /** "⋯": the same menu, below the button and right-aligned to it. */
+  protected openMenuAt(event: MouseEvent, link: OutputLinkDto): void {
+    const button = event.currentTarget as HTMLElement;
+    const rect = button.getBoundingClientRect();
+    this.menus.open(
+      this.menuOf(link)(),
+      { x: Math.max(8, rect.right - MENU_WIDTH), y: rect.bottom + 4 },
+      { label: t('regie.output.link.keyLabel', { name: link.name }), returnFocus: button },
+    );
+  }
+
+  /** F2 renames, Delete or Backspace asks to revoke, ↑/↓ move between the links (Enter and Space open the row). */
+  protected onRowKeyDown(event: KeyboardEvent, link: OutputLinkDto): void {
+    if (isTypingTarget(event.target as Element)) {
+      return;
+    }
+    if (moveRowFocus(event, '.c-links__item', '.c-links__row')) {
+      return;
+    }
+    if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) {
+      return;
+    }
+    if (!this.store.canCommand()) {
+      return;
+    }
+    if (event.key === 'F2') {
+      event.preventDefault();
+      this.withDetail(link.id, (detail) => detail.startRename());
+    } else if (event.key === 'Delete' || event.key === 'Backspace') {
+      event.preventDefault();
+      this.withDetail(link.id, (detail) => detail.askRevoke());
+    }
+  }
+
+  /** Copies the link (with the options chosen in its open detail); when the clipboard refuses, the detail shows it. */
+  protected async copy(link: OutputLinkDto): Promise<void> {
+    const detail = this.detailOf(link.id);
+    if (detail) {
+      await detail.copy();
+      return;
+    }
+    const url = outputLinkUrl(link.url, DEFAULT_LINK_OPTIONS);
+    if (!(await this.clipboard.copy(url, { label: maskOutputUrl(url) }))) {
+      this.withDetail(link.id, (open) => void open.copy());
+    }
+  }
+
+  private detailOf(linkId: string): OutputLinkComponent | undefined {
+    return this.details().find((detail) => detail.link().id === linkId);
+  }
+
+  /** Opens the detail of a link (if it is closed) and runs a command on it once it is there. */
+  private withDetail(linkId: string, command: (detail: OutputLinkComponent) => void): void {
+    const open = this.detailOf(linkId);
+    if (open) {
+      command(open);
+      return;
+    }
+    this.open.update((ids) => new Set([...ids, linkId]));
+    afterNextRender(
+      () => {
+        const detail = this.detailOf(linkId);
+        if (detail) {
+          command(detail);
+        }
+      },
+      { injector: this.injector },
+    );
   }
 
   private takenName(value: string): ValidationErrors | null {

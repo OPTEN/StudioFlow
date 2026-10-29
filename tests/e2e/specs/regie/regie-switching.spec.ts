@@ -889,7 +889,7 @@ test.describe('REGIE broadcast and slates', () => {
   );
 
   test(
-    'E2E-SWITCH-19 [regie] the slates are editable in the production menu: texts and an image reach the output without a reload; a used image cannot be deleted',
+    'E2E-SWITCH-19 [settings] the slates are editable on the settings page Slates: texts and an image reach the output without a reload; a used image cannot be deleted',
     t.p2,
     async ({ regie, openOutput, api, production }) => {
       await seedColoured(api, production);
@@ -897,18 +897,21 @@ test.describe('REGIE broadcast and slates', () => {
       const image = await uploadSolid(api, production, 'Background', COLOR.violet);
       const output = await openOutput(production);
       await output.stage();
-      await page.getByRole('button', { name: /^Production .*, menu$/ }).click();
-      await page.getByRole('button', { name: 'Edit slates', exact: true }).click();
-      const form = page.locator('.c-prod__form');
-      await expect(form).toContainText('Before the broadcast');
-      await form.getByLabel('Title', { exact: true }).first().fill('Starting soon, hello');
-      await form.getByLabel('Subtitle', { exact: true }).first().fill('with Lea and Jonas');
-      await form
+      await page.goto('/settings/slates');
+      await expect(page.getByRole('heading', { level: 1, name: 'Slates' })).toBeVisible();
+      // One slate per tab: "Before the broadcast" is in front, "After the broadcast" one tab further.
+      const before = page.getByRole('tabpanel', { name: /^Before the broadcast/ });
+      await before.getByLabel('Title', { exact: true }).fill('Starting soon, hello');
+      await before.getByLabel('Subtitle', { exact: true }).fill('with Lea and Jonas');
+      await before
         .getByLabel('Background')
-        .first()
         .selectOption({ label: `${image.code} · ${image.name}` });
-      await form.getByLabel('Title', { exact: true }).nth(1).fill('See you next time');
-      await form.getByRole('button', { name: 'Save' }).click();
+      await page.getByRole('tab', { name: /^After the broadcast/ }).click();
+      await page
+        .getByRole('tabpanel', { name: /^After the broadcast/ })
+        .getByLabel('Title', { exact: true })
+        .fill('See you next time');
+      await page.getByRole('button', { name: 'Save slates' }).click();
       await expect
         .poll(() => output.slateText(), {
           message: 'the output shows the new texts',

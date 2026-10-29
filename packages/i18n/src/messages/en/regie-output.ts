@@ -12,12 +12,9 @@ export const regieOutput = {
     'The camera carries video only. The sound stays on the mixing desk and goes into Teams from there.',
   'regie.output.camera.download': 'Download OBS scene collection',
   'regie.output.camera.downloaded': 'OBS scene collection “{file}” downloaded',
-  'regie.output.camera.hide': 'Hide steps',
   'regie.output.camera.intro': 'OBS turns the output page into the camera “OBS Virtual Camera”.',
-  'regie.output.camera.open': 'Use as camera in OBS',
   'regie.output.camera.separateMachine':
     'Run OBS and Teams on a separate computer, not on the Regie laptop: the output must not depend on it.',
-  'regie.output.camera.show': 'Show steps',
   'regie.output.camera.step1':
     'Install OBS Studio 31 or newer on the computer that runs Teams or Zoom.',
   'regie.output.camera.step2':
@@ -27,7 +24,6 @@ export const regieOutput = {
   'regie.output.camera.step4': 'In OBS click Start Virtual Camera.',
   'regie.output.camera.step5':
     'In Teams, Zoom or Webex pick the camera “OBS Virtual Camera” and switch background effects off.',
-  'regie.output.camera.sub': 'Show the output as a camera in Teams, Zoom or Webex.',
   'regie.output.camera.title': 'Use “{name}” as a camera',
 
   'regie.output.detail.hide': 'Hide link',
@@ -66,12 +62,18 @@ export const regieOutput = {
   'regie.output.link.revoked': 'Link “{name}” revoked',
   'regie.output.link.stale': 'no current picture',
 
+  'regie.output.menu.copy': 'Copy link',
+  'regie.output.menu.deleteKey': 'Del',
+  'regie.output.menu.more': 'More actions for “{name}”',
+
   'regie.output.links.empty':
     'Add a link below to let a proxy, OBS or a meeting camera show the output.',
   'regie.output.links.emptyTitle': 'No output link yet',
   'regie.output.links.hint':
     'One link per page or device that shows the output, such as the proxy or a meeting camera. Each one can be stopped on its own.',
   'regie.output.links.loading': 'Loading links…',
+  'regie.output.links.keys':
+    'Right-click a link for its commands. F2 renames it, Delete revokes it.',
   'regie.output.links.title': 'Links',
 
   'regie.output.options.language': 'Language of its messages',
@@ -98,4 +100,8 @@ export const regieOutput = {
 
   'regie.output.revoke.button': 'Revoke…',
   'regie.output.revoke.sub': 'Stop this link for good. The other links keep working.',
+
+  'regie.output.tabs.access': 'Access',
+  'regie.output.tabs.label': 'Parts of the link “{name}”',
+  'regie.output.tabs.obs': 'Use in OBS',
 } as const satisfies Namespace<'regie.output'>;

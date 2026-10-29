@@ -193,7 +193,7 @@ test('product video: pairing, sender tally, take, layout, output and OBS', async
   const detail = page.getByRole('region', { name: 'Link “OBS”' });
   await expect(detail).toBeVisible();
   await page.waitForTimeout(1000);
-  await obs.click(detail.getByRole('button', { name: 'Show steps' }));
+  await obs.click(detail.getByRole('tab', { name: 'Use in OBS' }));
   await expect(detail.getByRole('button', { name: 'Download OBS scene collection' })).toBeVisible();
   await page.waitForTimeout(3500);
   await done(obs);

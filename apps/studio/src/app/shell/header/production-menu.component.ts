@@ -7,12 +7,13 @@ import {
   signal,
   untracked,
 } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { formatDate, t } from '@studioflow/i18n';
 import type { ProductionSummaryDto } from '@studioflow/scene-model';
 import { StudioApiService } from '../../core/api/studio-api.service';
 import { ProductionStoreService } from '../../core/state/production-store.service';
 import { ConfirmBoxComponent } from '../../core/ui/confirm-box.component';
+import { ContextMenuDirective, type ContextMenuEntry } from '../../core/ui/context-menu';
 import { IconComponent } from '../../core/ui/icon.component';
 import {
   PopoverDirective,
@@ -29,12 +30,14 @@ export const PRODUCTION_POPOVER = 'production';
  * The production title in the toolbar and its switcher (spec 9.1, DESIGN.md "Toolbar"): the productions with a check
  * on the active one (switching while the broadcast is live asks first, because this control room then shows the other
  * production), "New production…" and "Import…" (both open the form on the settings page "All productions") and
- * "Production settings…". Everything that configures the production lives in the settings window.
+ * "Production settings…". Everything that configures the production lives in the settings window. A right click on a
+ * production offers "Switch to" and "Production settings…" (the active one) or "All productions…" (another one).
  */
 @Component({
   selector: 'sf-production-menu',
   imports: [
     ConfirmBoxComponent,
+    ContextMenuDirective,
     IconComponent,
     PopoverDirective,
     PopoverTriggerDirective,
@@ -49,6 +52,7 @@ export class ProductionMenuComponent {
   protected readonly popovers = inject(PopoverService);
   private readonly api = inject(StudioApiService);
   private readonly toasts = inject(ToastService);
+  private readonly router = inject(Router);
 
   protected readonly popoverId = PRODUCTION_POPOVER;
   /** Queries of the links that open a form on the page "All productions". */
@@ -60,6 +64,8 @@ export class ProductionMenuComponent {
   protected readonly listError = signal(false);
   /** The production the operator wants to switch to while the broadcast is live (asks first). */
   protected readonly confirming = signal<ProductionSummaryDto | null>(null);
+  /** A switch asked for in the right-click menu while live: the question shows when the menu opens again. */
+  private pendingConfirm: ProductionSummaryDto | null = null;
   protected readonly name = computed(() => this.store.production()?.name ?? 'StudioFlow');
   protected readonly live = computed(() => this.store.broadcast() === 'live');
 
@@ -68,7 +74,8 @@ export class ProductionMenuComponent {
     effect(() => {
       if (this.popovers.isOpen(this.popoverId)) {
         untracked(() => {
-          this.confirming.set(null);
+          this.confirming.set(this.pendingConfirm);
+          this.pendingConfirm = null;
           void this.loadProductions();
         });
       }
@@ -106,6 +113,45 @@ export class ProductionMenuComponent {
     } finally {
       this.busy.set(false);
     }
+  }
+
+  /** The right-click menu of a production in the list; every command is also a row or a link of the menu. */
+  protected readonly menuOf =
+    (production: ProductionSummaryDto) => (): readonly ContextMenuEntry[] => [
+      {
+        label: t('regie.production.switch.to'),
+        icon: 'play',
+        checked: production.isActive,
+        disabled: production.isActive || this.busy() || !this.store.canCommand(),
+        run: () => this.chooseFromMenu(production),
+      },
+      'separator',
+      production.isActive
+        ? {
+            label: t('regie.production.switcher.settings'),
+            icon: 'sliders',
+            run: () => this.openSettings('/settings/production'),
+          }
+        : {
+            label: t('regie.production.menu.all'),
+            icon: 'stack',
+            run: () => this.openSettings('/settings/productions'),
+          },
+    ];
+
+  /** The click on the right-click menu closed the switcher; a question while live opens it again. */
+  private chooseFromMenu(production: ProductionSummaryDto): void {
+    if (!production.isActive && this.live()) {
+      this.pendingConfirm = production;
+      this.popovers.open(this.popoverId);
+      return;
+    }
+    this.choose(production);
+  }
+
+  private openSettings(url: string): void {
+    this.close();
+    void this.router.navigateByUrl(url);
   }
 
   /** Closes the menu (also before a link leads to the settings window, so it is closed on the way back). */

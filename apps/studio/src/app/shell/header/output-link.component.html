@@ -1,7 +1,12 @@
-<section class="c-output-link" [attr.aria-label]="t('regie.output.link.keyLabel', { name: link().name })">
+<section
+  class="c-output-link"
+  [attr.aria-label]="t('regie.output.link.keyLabel', { name: link().name })"
+>
   @if (renaming()) {
     <form class="c-group__row c-group__row--stack" novalidate (submit)="rename($event)">
-      <label class="c-group__label" [for]="id + '-name'">{{ t('regie.header.production.name') }}</label>
+      <label class="c-group__label" [for]="id + '-name'">{{
+        t('regie.header.production.name')
+      }}</label>
       <div class="c-prod-page__inline">
         <input
           class="c-input"
@@ -40,195 +45,235 @@
     </div>
   }
 
-  <div class="c-group__row c-group__row--stack">
-    <span class="c-group__label">
-      {{ t('regie.output.detail.link') }}
-      <span class="c-group__sub">{{ t('regie.output.detail.secret') }}</span>
-    </span>
-    <div class="c-linkbox c-output-link__box">
-      <span class="c-linkbox__text c-output-link__url" #url>{{ displayUrl() }}</span>
-      <button
-        class="c-ibtn"
-        type="button"
-        [attr.aria-pressed]="revealed()"
-        [attr.aria-label]="revealed() ? t('regie.output.detail.hide') : t('regie.output.detail.show')"
-        [title]="revealed() ? t('regie.output.detail.hide') : t('regie.output.detail.show')"
-        (click)="revealed.set(!revealed())"
-      >
-        <svg [sfIcon]="revealed() ? 'eye-off' : 'eye'"></svg>
-      </button>
-      <button class="c-btn c-btn--sm" type="button" (click)="copy()">
-        <svg sfIcon="copy"></svg>{{ t('common.copy') }}
-      </button>
-    </div>
-    <button
-      class="c-btn c-btn--sm c-btn--plain c-output-link__toggle"
-      type="button"
-      [attr.aria-expanded]="optionsOpen()"
-      [attr.aria-controls]="id + '-options'"
-      (click)="optionsOpen.set(!optionsOpen())"
+  <div class="c-group__row c-output-link__tabbar">
+    <div
+      class="c-tabs c-output-link__tabs"
+      role="tablist"
+      [attr.aria-label]="t('regie.output.tabs.label', { name: link().name })"
+      (keydown)="onTabKeyDown($event)"
     >
-      <svg sfIcon="chev-right" class="c-output-link__chev"></svg>{{ t('regie.output.options.title') }}
-    </button>
-    @if (optionsOpen()) {
-      <div class="c-output-link__options" [id]="id + '-options'">
-        <label class="c-switch c-output-link__option">
-          <span class="c-group__label">
-            {{ t('regie.output.options.transparent') }}
-            <span class="c-group__sub">{{ t('regie.output.options.transparentSub') }}</span>
-          </span>
-          <input
-            type="checkbox"
-            role="switch"
-            [checked]="options().transparent"
-            (change)="setOption('transparent', $any($event.target).checked)"
-          />
-        </label>
-        <label class="c-switch c-output-link__option">
-          <span class="c-group__label">
-            {{ t('regie.output.options.sound') }}
-            <span class="c-group__sub">{{ t('regie.output.options.soundSub') }}</span>
-          </span>
-          <input
-            type="checkbox"
-            role="switch"
-            [checked]="options().sound"
-            (change)="setOption('sound', $any($event.target).checked)"
-          />
-        </label>
-        <div class="c-output-link__option">
-          <label class="c-group__label" [for]="id + '-lang'">
-            {{ t('regie.output.options.language') }}
-            <span class="c-group__sub">{{ t('regie.output.options.languageSub') }}</span>
+      @for (key of tabs; track key) {
+        <button
+          class="c-tab"
+          type="button"
+          role="tab"
+          [id]="id + '-tab-' + key"
+          [attr.aria-selected]="tab() === key"
+          [attr.aria-controls]="id + '-panel-' + key"
+          [tabIndex]="tab() === key ? 0 : -1"
+          (click)="selectTab(key)"
+        >
+          {{ t(tabLabel[key]) }}
+          @if (key === 'access' && ipsDirty()) {
+            <span class="c-output-link__dot" [title]="t('regie.production.form.unsaved')">
+              <span class="u-sr-only">{{ t('regie.production.form.unsaved') }}</span>
+            </span>
+          }
+        </button>
+      }
+    </div>
+  </div>
+
+  <div
+    class="c-output-link__panel"
+    role="tabpanel"
+    [id]="id + '-panel-link'"
+    [attr.aria-labelledby]="id + '-tab-link'"
+    [hidden]="tab() !== 'link'"
+  >
+    <div class="c-group__row c-group__row--stack">
+      <span class="c-group__label">
+        {{ t('regie.output.detail.link') }}
+        <span class="c-group__sub">{{ t('regie.output.detail.secret') }}</span>
+      </span>
+      <div class="c-linkbox c-output-link__box">
+        <span class="c-linkbox__text c-output-link__url" #url>{{ displayUrl() }}</span>
+        <button
+          class="c-ibtn"
+          type="button"
+          [attr.aria-pressed]="revealed()"
+          [attr.aria-label]="
+            revealed() ? t('regie.output.detail.hide') : t('regie.output.detail.show')
+          "
+          [title]="revealed() ? t('regie.output.detail.hide') : t('regie.output.detail.show')"
+          (click)="revealed.set(!revealed())"
+        >
+          <svg [sfIcon]="revealed() ? 'eye-off' : 'eye'"></svg>
+        </button>
+        <button class="c-btn c-btn--sm" type="button" (click)="copy()">
+          <svg sfIcon="copy"></svg>{{ t('common.copy') }}
+        </button>
+      </div>
+      <button
+        class="c-btn c-btn--sm c-btn--plain c-output-link__toggle"
+        type="button"
+        [attr.aria-expanded]="optionsOpen()"
+        [attr.aria-controls]="id + '-options'"
+        (click)="optionsOpen.set(!optionsOpen())"
+      >
+        <svg sfIcon="chev-right" class="c-output-link__chev"></svg
+        >{{ t('regie.output.options.title') }}
+      </button>
+      @if (optionsOpen()) {
+        <div class="c-output-link__options" [id]="id + '-options'">
+          <label class="c-switch c-output-link__option">
+            <span class="c-group__label">
+              {{ t('regie.output.options.transparent') }}
+              <span class="c-group__sub">{{ t('regie.output.options.transparentSub') }}</span>
+            </span>
+            <input
+              type="checkbox"
+              role="switch"
+              [checked]="options().transparent"
+              (change)="setOption('transparent', $any($event.target).checked)"
+            />
           </label>
-          <select
-            class="c-select c-output-link__lang"
-            [id]="id + '-lang'"
-            (change)="setOption('language', $any($event.target).value)"
-          >
-            <option value="auto" [selected]="options().language === 'auto'">
-              {{ t('locale.auto') }}
-            </option>
-            @for (language of languages; track language.tag) {
-              <option [value]="language.tag" [selected]="options().language === language.tag">
-                {{ language.name }}
+          <label class="c-switch c-output-link__option">
+            <span class="c-group__label">
+              {{ t('regie.output.options.sound') }}
+              <span class="c-group__sub">{{ t('regie.output.options.soundSub') }}</span>
+            </span>
+            <input
+              type="checkbox"
+              role="switch"
+              [checked]="options().sound"
+              (change)="setOption('sound', $any($event.target).checked)"
+            />
+          </label>
+          <div class="c-output-link__option">
+            <label class="c-group__label" [for]="id + '-lang'">
+              {{ t('regie.output.options.language') }}
+              <span class="c-group__sub">{{ t('regie.output.options.languageSub') }}</span>
+            </label>
+            <select
+              class="c-select c-output-link__lang"
+              [id]="id + '-lang'"
+              (change)="setOption('language', $any($event.target).value)"
+            >
+              <option value="auto" [selected]="options().language === 'auto'">
+                {{ t('locale.auto') }}
               </option>
-            }
-          </select>
+              @for (language of languages; track language.tag) {
+                <option [value]="language.tag" [selected]="options().language === language.tag">
+                  {{ language.name }}
+                </option>
+              }
+            </select>
+          </div>
+          <p class="c-hint">{{ t('regie.output.options.sub') }}</p>
         </div>
-        <p class="c-hint">{{ t('regie.output.options.sub') }}</p>
+      }
+    </div>
+
+    @if (confirming() === 'renew') {
+      <div class="c-group__row c-group__row--stack">
+        <sf-confirm-box
+          [flush]="true"
+          [label]="t('regie.output.renew.title')"
+          [message]="t('regie.output.renew.confirm', { name: link().name })"
+          [confirmLabel]="t('regie.output.renew.confirmButton')"
+          [busy]="busy()"
+          (confirm)="renew()"
+          (cancel)="cancelConfirm('[data-renew]')"
+        />
+      </div>
+    } @else {
+      <div class="c-group__row">
+        <span class="c-group__label">
+          {{ t('regie.output.renew.title') }}
+          <span class="c-group__sub">{{ t('regie.output.renew.sub') }}</span>
+        </span>
+        <button
+          class="c-btn c-btn--sm c-btn--danger"
+          type="button"
+          data-renew
+          [disabled]="busy()"
+          (click)="confirming.set('renew')"
+        >
+          {{ t('regie.output.renew.button') }}
+        </button>
       </div>
     }
   </div>
 
   <div
-    class="c-group__row c-group__row--stack"
-    role="group"
-    [attr.aria-labelledby]="id + '-access'"
+    class="c-output-link__panel"
+    role="tabpanel"
+    [id]="id + '-panel-access'"
+    [attr.aria-labelledby]="id + '-tab-access'"
+    [hidden]="tab() !== 'access'"
   >
-    <span class="c-group__label">
-      <span [id]="id + '-access'">{{ t('regie.header.output.access') }}</span>
-      <span class="c-group__sub">
-        @if (ips().length === 0) {
-          {{ t('regie.header.output.accessNoRestriction') }}
-        } @else {
-          {{ t('regie.header.output.accessRestricted') }}
-        }
-      </span>
-    </span>
-    @if (ips().length > 0) {
-      <ul class="c-output-link__ips" [attr.aria-labelledby]="id + '-access'">
-        @for (ip of ips(); track ip) {
-          <li class="c-output-link__ip">
-            <span class="c-output-link__address">{{ ip }}</span>
-            <button
-              class="c-ibtn"
-              type="button"
-              [attr.aria-label]="t('regie.header.output.removeIp', { ip })"
-              [title]="t('regie.header.output.removeIp', { ip })"
-              (click)="removeIp(ip)"
-            >
-              <svg sfIcon="close" [size]="13"></svg>
-            </button>
-          </li>
-        }
-      </ul>
-    }
-    <form class="c-prod-page__inline c-output-link__add" novalidate (submit)="addIp($event)">
-      <input
-        class="c-input"
-        type="text"
-        autocomplete="off"
-        spellcheck="false"
-        [placeholder]="t('regie.header.output.ipPlaceholder')"
-        [attr.aria-label]="t('regie.header.output.ipLabel')"
-        [class.is-invalid]="ipControl.invalid && ipControl.touched"
-        [attr.aria-invalid]="ipControl.invalid && ipControl.touched ? 'true' : null"
-        [formControl]="ipControl"
-      />
-      <button class="c-btn" type="submit">{{ t('common.add') }}</button>
-    </form>
-    @if (ipControl.invalid && ipControl.touched) {
-      <p class="c-field-error" role="alert">{{ t('regie.header.output.ipInvalid') }}</p>
-    }
-    <sf-form-actions
-      [dirty]="ipsDirty()"
-      [busy]="savingIps()"
-      [saveLabel]="t('regie.output.access.save')"
-      (save)="saveIps()"
-      (discard)="discardIps()"
-    />
-  </div>
-
-  <div class="c-group__row">
-    <span class="c-group__label">
-      {{ t('regie.output.camera.open') }}
-      <span class="c-group__sub">{{ t('regie.output.camera.sub') }}</span>
-    </span>
-    <button
-      class="c-btn c-btn--sm"
-      type="button"
-      [attr.aria-expanded]="cameraOpen()"
-      [attr.aria-controls]="id + '-camera'"
-      (click)="cameraOpen.set(!cameraOpen())"
+    <div
+      class="c-group__row c-group__row--stack"
+      role="group"
+      [attr.aria-labelledby]="id + '-access'"
     >
-      <svg sfIcon="camera"></svg>
-      {{ cameraOpen() ? t('regie.output.camera.hide') : t('regie.output.camera.show') }}
-    </button>
-    @if (cameraOpen()) {
-      <sf-output-camera class="c-output-link__camera" [id]="id + '-camera'" [link]="link()" />
-    }
-  </div>
-
-  @if (confirming() === 'renew') {
-    <div class="c-group__row c-group__row--stack">
-      <sf-confirm-box
-        [flush]="true"
-        [label]="t('regie.output.renew.title')"
-        [message]="t('regie.output.renew.confirm', { name: link().name })"
-        [confirmLabel]="t('regie.output.renew.confirmButton')"
-        [busy]="busy()"
-        (confirm)="renew()"
-        (cancel)="cancelConfirm('[data-renew]')"
+      <span class="c-group__label">
+        <span [id]="id + '-access'">{{ t('regie.header.output.access') }}</span>
+        <span class="c-group__sub">
+          @if (ips().length === 0) {
+            {{ t('regie.header.output.accessNoRestriction') }}
+          } @else {
+            {{ t('regie.header.output.accessRestricted') }}
+          }
+        </span>
+      </span>
+      @if (ips().length > 0) {
+        <ul class="c-output-link__ips" [attr.aria-labelledby]="id + '-access'">
+          @for (ip of ips(); track ip) {
+            <li class="c-output-link__ip">
+              <span class="c-output-link__address">{{ ip }}</span>
+              <button
+                class="c-ibtn"
+                type="button"
+                [attr.aria-label]="t('regie.header.output.removeIp', { ip })"
+                [title]="t('regie.header.output.removeIp', { ip })"
+                (click)="removeIp(ip)"
+              >
+                <svg sfIcon="close" [size]="13"></svg>
+              </button>
+            </li>
+          }
+        </ul>
+      }
+      <form class="c-prod-page__inline c-output-link__add" novalidate (submit)="addIp($event)">
+        <input
+          class="c-input"
+          type="text"
+          autocomplete="off"
+          spellcheck="false"
+          [placeholder]="t('regie.header.output.ipPlaceholder')"
+          [attr.aria-label]="t('regie.header.output.ipLabel')"
+          [class.is-invalid]="ipControl.invalid && ipControl.touched"
+          [attr.aria-invalid]="ipControl.invalid && ipControl.touched ? 'true' : null"
+          [formControl]="ipControl"
+        />
+        <button class="c-btn" type="submit">{{ t('common.add') }}</button>
+      </form>
+      @if (ipControl.invalid && ipControl.touched) {
+        <p class="c-field-error" role="alert">{{ t('regie.header.output.ipInvalid') }}</p>
+      }
+      <sf-form-actions
+        [dirty]="ipsDirty()"
+        [busy]="savingIps()"
+        [saveLabel]="t('regie.output.access.save')"
+        (save)="saveIps()"
+        (discard)="discardIps()"
       />
     </div>
-  } @else {
-    <div class="c-group__row">
-      <span class="c-group__label">
-        {{ t('regie.output.renew.title') }}
-        <span class="c-group__sub">{{ t('regie.output.renew.sub') }}</span>
-      </span>
-      <button
-        class="c-btn c-btn--sm c-btn--danger"
-        type="button"
-        data-renew
-        [disabled]="busy()"
-        (click)="confirming.set('renew')"
-      >
-        {{ t('regie.output.renew.button') }}
-      </button>
+  </div>
+
+  <div
+    class="c-output-link__panel"
+    role="tabpanel"
+    [id]="id + '-panel-obs'"
+    [attr.aria-labelledby]="id + '-tab-obs'"
+    [hidden]="tab() !== 'obs'"
+  >
+    <div class="c-group__row c-group__row--stack">
+      <sf-output-camera [link]="link()" />
     </div>
-  }
+  </div>
 
   @if (confirming() === 'revoke') {
     <div class="c-group__row c-group__row--stack">

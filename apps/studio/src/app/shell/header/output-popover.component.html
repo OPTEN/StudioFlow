@@ -56,7 +56,12 @@
     } @else {
       <ul class="c-output-pop__links">
         @for (row of rows(); track row.link.id) {
-          <li class="c-output-pop__link" [attr.title]="row.title">
+          <li
+            class="c-output-pop__link"
+            [attr.title]="row.title"
+            [sfContextMenu]="menuOf(row.link)"
+            [sfContextMenuLabel]="t('regie.output.link.keyLabel', { name: row.link.name })"
+          >
             <span class="c-lamp" aria-hidden="true" [class]="row.lamp"></span>
             <span class="c-output-pop__text">
               <span class="c-output-pop__line"

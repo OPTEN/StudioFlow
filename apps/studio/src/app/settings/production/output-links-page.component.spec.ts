@@ -3,6 +3,7 @@ import type { OutputLinkDto, OutputSettingsDto, OutputStatusDto } from '@studiof
 import { FakeStudioHub, flushMicrotasks } from '../../../testing/fake-studio-hub';
 import { PRODUCTION_ID, snapshotFixture } from '../../../testing/fixtures';
 import { startStore, studioTestProviders, type StoreHarness } from '../../../testing/store-harness';
+import { ContextMenuService } from '../../core/ui/context-menu';
 import { ClipboardService } from '../../core/ui/clipboard.service';
 import { DownloadService } from '../../core/ui/download.service';
 import { ToastService } from '../../core/ui/toast.service';
@@ -131,6 +132,48 @@ describe('OutputLinksPageComponent', () => {
     return found;
   }
 
+  /** Selects a tab of a link's detail by its visible label. */
+  async function selectTab(label: string, scope: Element): Promise<HTMLButtonElement> {
+    const tab = Array.from(scope.querySelectorAll<HTMLButtonElement>('[role="tab"]')).find(
+      (entry) => text(entry).startsWith(label),
+    );
+    if (!tab) {
+      throw new Error(`no tab ${label}`);
+    }
+    tab.click();
+    await render();
+    return tab;
+  }
+
+  /** The labels of the open context menu ('—' for a separator). */
+  function menuLabels(): string[] {
+    return (TestBed.inject(ContextMenuService).current()?.entries ?? []).map((entry) =>
+      entry === 'separator' ? '—' : entry.label,
+    );
+  }
+
+  async function runMenu(label: string): Promise<void> {
+    const item = TestBed.inject(ContextMenuService)
+      .current()
+      ?.entries.find((entry) => entry !== 'separator' && entry.label === label);
+    if (!item || item === 'separator') {
+      throw new Error(`no menu item ${label}`);
+    }
+    TestBed.inject(ContextMenuService).run(item);
+    await render();
+  }
+
+  function head(index: number): HTMLElement {
+    return element.querySelectorAll<HTMLElement>('.c-links__head')[index]!;
+  }
+
+  async function key(target: Element, init: KeyboardEventInit): Promise<KeyboardEvent> {
+    const event = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...init });
+    target.dispatchEvent(event);
+    await render();
+    return event;
+  }
+
   afterEach(() => harness?.http.verify());
 
   describe('list', () => {
@@ -138,9 +181,9 @@ describe('OutputLinksPageComponent', () => {
       await open();
       expect(rows()[0]).toBe('Proxy connected · 1 page');
       expect(rows()[1]).toContain('Teams camera not connected · last seen');
-      expect(element.querySelectorAll('.c-links__row .c-lamp')[1]?.classList.contains('is-idle')).toBe(
-        true,
-      );
+      expect(
+        element.querySelectorAll('.c-links__row .c-lamp')[1]?.classList.contains('is-idle'),
+      ).toBe(true);
       const first = element.querySelectorAll('.c-links__row')[0]!;
       expect(first.getAttribute('aria-expanded')).toBe('true');
       expect(detail('Proxy')).toBeTruthy();
@@ -182,7 +225,9 @@ describe('OutputLinksPageComponent', () => {
       fixture = TestBed.createComponent(OutputLinksPageComponent);
       element = fixture.nativeElement as HTMLElement;
       await render();
-      harness.http.expectOne(BASE).flush({ code: 'internal_error' }, { status: 500, statusText: 'x' });
+      harness.http
+        .expectOne(BASE)
+        .flush({ code: 'internal_error' }, { status: 500, statusText: 'x' });
       await render();
       await click('Try again');
       harness.http.expectOne(BASE).flush(settings([PROXY]));
@@ -294,7 +339,9 @@ describe('OutputLinksPageComponent', () => {
       const url = (): string => text(detail('Proxy').querySelector('.c-output-link__url'));
       expect(url()).toBe('studioflow.example/o/webinar?k=••••••');
       expect(text()).not.toContain(PROXY_KEY);
-      const eye = detail('Proxy').querySelector<HTMLButtonElement>('button[aria-label="Show link"]')!;
+      const eye = detail('Proxy').querySelector<HTMLButtonElement>(
+        'button[aria-label="Show link"]',
+      )!;
       eye.click();
       await render();
       expect(url()).toBe(PROXY.url);
@@ -315,6 +362,8 @@ describe('OutputLinksPageComponent', () => {
     it('edits the IP restriction as a draft and saves it with "Save access"', async () => {
       await open();
       const scope = detail('Proxy');
+      const access = await selectTab('Access', scope);
+      expect(access.getAttribute('aria-selected')).toBe('true');
       const input = (): HTMLInputElement =>
         scope.querySelector<HTMLInputElement>('.c-output-link__add input')!;
       expect(text(scope)).toContain('Any address may open the output.');
@@ -327,6 +376,10 @@ describe('OutputLinksPageComponent', () => {
       expect(text(scope)).toContain('Please enter an IP address like 10.0.0.42');
       expect(text(scope)).toContain('Only these addresses may open the output.');
       expect(text(scope.querySelector('.c-form-actions__state'))).toBe('Unsaved changes');
+      // The tab says so too, also when another tab is in front.
+      await selectTab('Link', scope);
+      expect(text(access)).toBe('Access Unsaved changes');
+      await selectTab('Access', scope);
 
       await click('Save access', scope);
       const request = harness.http.expectOne(`${BASE}/links/olk_proxy/access`);
@@ -405,14 +458,125 @@ describe('OutputLinksPageComponent', () => {
     });
   });
 
-  describe('use as camera in OBS', () => {
-    it('shows the numbered steps with the canvas size and the frame rate', async () => {
+  describe('tabs', () => {
+    it('splits a link into Link, Access and Use in OBS; the arrow keys move between them', async () => {
       await open();
       const scope = detail('Proxy');
-      const toggle = button('Show steps', scope);
-      toggle.click();
+      const tabs = Array.from(scope.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
+      expect(tabs.map((tab) => text(tab))).toEqual(['Link', 'Access', 'Use in OBS']);
+      expect(tabs.map((tab) => tab.tabIndex)).toEqual([0, -1, -1]);
+      const list = scope.querySelector('[role="tablist"]')!;
+      expect(list.getAttribute('aria-label')).toBe('Parts of the link “Proxy”');
+
+      tabs[0]!.focus();
+      await key(tabs[0]!, { key: 'ArrowRight' });
+      expect(tabs[1]!.getAttribute('aria-selected')).toBe('true');
+      expect(document.activeElement).toBe(tabs[1]);
+      await key(tabs[1]!, { key: 'End' });
+      expect(tabs[2]!.getAttribute('aria-selected')).toBe('true');
+      await key(tabs[2]!, { key: 'ArrowRight' });
+      expect(tabs[0]!.getAttribute('aria-selected')).toBe('true');
+      const panels = Array.from(scope.querySelectorAll<HTMLElement>('[role="tabpanel"]'));
+      expect(panels.map((panel) => panel.hidden)).toEqual([false, true, true]);
+      expect(text(scope)).toContain('Revoke…');
+    });
+  });
+
+  describe('row commands', () => {
+    it('offers the commands of a link in its right-click menu, with the shortcut hints', async () => {
+      await open();
+      head(1).dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
       await render();
-      expect(toggle.getAttribute('aria-expanded')).toBe('true');
+      expect(menuLabels()).toEqual([
+        'Copy link',
+        'Show link',
+        '—',
+        'Rename',
+        'New link…',
+        '—',
+        'Revoke…',
+      ]);
+      const entries = TestBed.inject(ContextMenuService).current()!.entries;
+      const hints = entries.map((entry) => (entry === 'separator' ? null : entry.shortcut));
+      expect(hints).toEqual([undefined, undefined, null, 'F2', undefined, null, 'Del']);
+      expect(TestBed.inject(ContextMenuService).current()?.label).toBe('Link “Teams camera”');
+    });
+
+    it('opens the same menu with the "⋯" button', async () => {
+      await open();
+      const more = head(0).querySelector<HTMLButtonElement>('.c-links__more')!;
+      expect(more.getAttribute('aria-label')).toBe('More actions for “Proxy”');
+      more.click();
+      await render();
+      expect(menuLabels()[0]).toBe('Copy link');
+    });
+
+    it('copies a closed link with the default options, without opening it', async () => {
+      await open();
+      const copy = vi.spyOn(TestBed.inject(ClipboardService), 'copy').mockResolvedValue(true);
+      head(1).dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+      await render();
+      await runMenu('Copy link');
+      await render();
+      expect(copy).toHaveBeenCalledWith(TEAMS.url, {
+        label: 'studioflow.example/o/webinar?k=••••••',
+      });
+      expect(element.querySelector('[aria-label="Link “Teams camera”"]')).toBeNull();
+    });
+
+    it('"Show link" opens the link with its real URL', async () => {
+      await open();
+      head(1).dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+      await render();
+      await runMenu('Show link');
+      await render();
+      expect(text(detail('Teams camera').querySelector('.c-output-link__url'))).toBe(TEAMS.url);
+    });
+
+    it('"New link…" opens the Link tab with the question', async () => {
+      await open();
+      const scope = detail('Proxy');
+      await selectTab('Access', scope);
+      head(0).dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+      await render();
+      await runMenu('New link…');
+      expect(scope.querySelector('[role="tab"][aria-selected="true"]')?.textContent?.trim()).toBe(
+        'Link',
+      );
+      expect(scope.querySelector('[role="group"][aria-label="New link"]')).not.toBeNull();
+    });
+
+    it('F2 renames the focused link and Delete asks to revoke it; ↑/↓ move between the links', async () => {
+      await open();
+      const row = head(1).querySelector<HTMLButtonElement>('.c-links__row')!;
+      expect(row.getAttribute('aria-keyshortcuts')).toBe('F2 Delete');
+      await key(row, { key: 'F2' });
+      await render();
+      const scope = detail('Teams camera');
+      expect(scope.querySelector('[data-name-input]')).not.toBeNull();
+
+      const first = head(0).querySelector<HTMLButtonElement>('.c-links__row')!;
+      await key(first, { key: 'Delete' });
+      expect(text(detail('Proxy'))).toContain('“Proxy” stops working at once');
+      harness.http.expectNone(`${BASE}/links/olk_proxy`);
+
+      first.focus();
+      const moved = await key(first, { key: 'ArrowDown' });
+      expect(moved.defaultPrevented).toBe(true);
+      expect(document.activeElement).toBe(row);
+    });
+  });
+
+  describe('use as camera in OBS', () => {
+    it('shows the numbered steps with the canvas size and the frame rate in the tab "Use in OBS"', async () => {
+      await open();
+      const scope = detail('Proxy');
+      const panel = (): HTMLElement =>
+        scope.querySelector<HTMLElement>('sf-output-camera')!.closest('[role="tabpanel"]')!;
+      expect(panel().hidden).toBe(true);
+      const tab = await selectTab('Use in OBS', scope);
+      expect(tab.getAttribute('aria-selected')).toBe('true');
+      expect(panel().hidden).toBe(false);
       const steps = Array.from(scope.querySelectorAll('.c-output-camera__steps > li')).map((li) =>
         text(li),
       );
@@ -423,8 +587,8 @@ describe('OutputLinksPageComponent', () => {
       expect(steps[4]).toContain('OBS Virtual Camera');
       expect(text(scope)).toContain('separate computer, not on the Regie laptop');
       expect(text(scope)).toContain('The sound stays on the mixing desk');
-      await click('Hide steps', scope);
-      expect(scope.querySelector('sf-output-camera')).toBeNull();
+      await selectTab('Link', scope);
+      expect(panel().hidden).toBe(true);
     });
 
     it('downloads the OBS scene collection of the link', async () => {
@@ -436,7 +600,7 @@ describe('OutputLinksPageComponent', () => {
       element.querySelectorAll<HTMLButtonElement>('.c-links__row')[1]!.click();
       await render();
       const scope = detail('Teams camera');
-      await click('Show steps', scope);
+      await selectTab('Use in OBS', scope);
       await click('Download OBS scene collection', scope);
       expect(saved).toHaveLength(1);
       expect(saved[0]?.file).toBe('StudioFlow-Teams-camera.json');

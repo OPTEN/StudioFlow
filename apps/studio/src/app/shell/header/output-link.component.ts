@@ -18,7 +18,7 @@ import {
   type AbstractControl,
   type ValidationErrors,
 } from '@angular/forms';
-import { LOCALES, SUPPORTED_LOCALES, t } from '@studioflow/i18n';
+import { LOCALES, SUPPORTED_LOCALES, t, type PlainMessageKey } from '@studioflow/i18n';
 import type { OutputLinkDto } from '@studioflow/scene-model';
 import { StudioApiService } from '../../core/api/studio-api.service';
 import { ProductionStoreService } from '../../core/state/production-store.service';
@@ -27,6 +27,7 @@ import { ConfirmBoxComponent } from '../../core/ui/confirm-box.component';
 import { IconComponent } from '../../core/ui/icon.component';
 import { ToastService } from '../../core/ui/toast.service';
 import { FormActionsComponent } from '../../settings/production/form-actions.component';
+import { tabFromKey } from '../../settings/production/tab-keys';
 import { isIpOrCidr, normalizeIp } from './ip-address';
 import { OutputCameraComponent } from './output-camera.component';
 import {
@@ -54,11 +55,23 @@ function ipValidator(control: AbstractControl<string>): ValidationErrors | null 
 
 let nextId = 0;
 
+/** The parts of a link's detail, one tab each. */
+export type OutputLinkTab = 'link' | 'access' | 'obs';
+
+const TABS: readonly OutputLinkTab[] = ['link', 'access', 'obs'];
+const TAB_LABEL: Readonly<Record<OutputLinkTab, PlainMessageKey>> = {
+  link: 'regie.output.detail.link',
+  access: 'regie.output.tabs.access',
+  obs: 'regie.output.tabs.obs',
+};
+
 /**
  * One output link on the settings page "Output links" (spec 9.1), shown below its row: the name (renamed in place),
- * the secret URL (masked, "Show link" reveals it; copy with selection fallback) with its display options, the IP
- * restriction (edited as a draft, saved with "Save access"), "Use as camera in OBS", "New link" and "Revoke link"
- * behind confirmations that name the consequence. Every change goes to the API; the page gets the changed link back.
+ * then three tabs: "Link" (the secret URL, masked, "Show link" reveals it; copy with selection fallback; its display
+ * options; "New link"), "Access" (the IP restriction, edited as a draft and saved with "Save access"; the tab marks
+ * unsaved changes) and "Use in OBS" (the numbered steps with the download). "Revoke link" stays below the tabs. New link
+ * and revoke ask first and name the consequence. Every change goes to the API; the page gets the changed link back.
+ * The page's row menu drives the public commands (copy, reveal, rename, new link, revoke).
  */
 @Component({
   selector: 'sf-output-link',
@@ -96,10 +109,14 @@ export class OutputLinkComponent {
     name: LOCALES[tag].nativeName,
   }));
   protected readonly id = `sf-output-link-${++nextId}`;
-  protected readonly revealed = signal(false);
+  /** The real URL is shown instead of the masked one. */
+  readonly revealed = signal(false);
   protected readonly confirming = signal<'renew' | 'revoke' | null>(null);
   protected readonly busy = signal(false);
-  protected readonly cameraOpen = signal(false);
+  protected readonly tabs = TABS;
+  protected readonly tabLabel = TAB_LABEL;
+  /** The open tab. */
+  readonly tab = signal<OutputLinkTab>('link');
   protected readonly optionsOpen = signal(false);
   protected readonly options = signal<OutputLinkOptions>(DEFAULT_LINK_OPTIONS);
   protected readonly renaming = signal(false);
@@ -119,7 +136,9 @@ export class OutputLinkComponent {
   protected readonly ipsDirty = computed(() => {
     const draft = this.draftIps();
     const saved = this.link().allowedIps;
-    return draft !== null && (draft.length !== saved.length || draft.some((ip, i) => ip !== saved[i]));
+    return (
+      draft !== null && (draft.length !== saved.length || draft.some((ip, i) => ip !== saved[i]))
+    );
   });
   /** The URL with the chosen display options (what "Copy" copies). */
   protected readonly url = computed(() => outputLinkUrl(this.link().url, this.options()));
@@ -127,11 +146,49 @@ export class OutputLinkComponent {
     this.revealed() ? this.url() : maskOutputUrl(this.url()),
   );
 
-  protected setOption<K extends keyof OutputLinkOptions>(key: K, value: OutputLinkOptions[K]): void {
+  /** Opens a tab (click, arrow keys, or a command of the row menu). */
+  selectTab(tab: OutputLinkTab): void {
+    this.tab.set(tab);
+  }
+
+  /** ←/→ (Home/End) move between the tabs and select them. */
+  protected onTabKeyDown(event: KeyboardEvent): void {
+    const next = tabFromKey(event, this.tabs, this.tab());
+    if (next === null) {
+      return;
+    }
+    event.preventDefault();
+    this.selectTab(next);
+    this.host.nativeElement.querySelector<HTMLElement>(`#${this.id}-tab-${next}`)?.focus();
+  }
+
+  /** "Show link" from the row menu: the Link tab with the real URL. */
+  reveal(): void {
+    this.selectTab('link');
+    this.revealed.set(true);
+  }
+
+  /** "New link…" from the row menu: the Link tab with the question. */
+  askRenew(): void {
+    this.selectTab('link');
+    this.confirming.set('renew');
+  }
+
+  /** "Revoke…" from the row menu or the Delete key on the row: the question below the tabs. */
+  askRevoke(): void {
+    this.confirming.set('revoke');
+  }
+
+  protected setOption<K extends keyof OutputLinkOptions>(
+    key: K,
+    value: OutputLinkOptions[K],
+  ): void {
     this.options.update((options) => ({ ...options, [key]: value }));
   }
 
-  protected async copy(): Promise<void> {
+  /** Copies the link with its display options; when the clipboard refuses, the real link is shown selected. */
+  async copy(): Promise<void> {
+    this.selectTab('link');
     const url = this.url();
     const copied = await this.clipboard.copy(url, { label: maskOutputUrl(url) });
     if (!copied) {
@@ -144,7 +201,8 @@ export class OutputLinkComponent {
     }
   }
 
-  protected startRename(): void {
+  /** Rename in place (button, F2 on the row, row menu). */
+  startRename(): void {
     this.nameControl.reset(this.link().name);
     this.renaming.set(true);
     this.focus('[data-name-input]');
@@ -246,10 +304,9 @@ export class OutputLinkComponent {
   }
 
   private focus(selector: string): void {
-    afterNextRender(
-      () => this.host.nativeElement.querySelector<HTMLElement>(selector)?.focus(),
-      { injector: this.injector },
-    );
+    afterNextRender(() => this.host.nativeElement.querySelector<HTMLElement>(selector)?.focus(), {
+      injector: this.injector,
+    });
   }
 
   /** Runs one request for the production; errors become a toast, `busy` blocks a second click. */

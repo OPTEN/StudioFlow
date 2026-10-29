@@ -138,17 +138,17 @@ test.describe('German text audit', () => {
       await page.keyboard.press('Escape');
       await expect(page.locator('.c-pop, .c-ctx')).toHaveCount(0);
     }
-    // the production menu in its three modes
+    // the production switcher with the right-click menu of the active production (its forms moved to the settings window)
     await page.getByRole('button', { name: /^Production .*, menu$/ }).click();
-    for (const [item, label, heading] of [['Rename', 'production: rename', 'Rename production'], ['Edit slates', 'production: slates', 'Before the broadcast'], ['New production…', 'production: new', 'New production']] as const) {
-      const menu = page.getByRole('dialog', { name: 'Production' });
-      // exact: the dialog also lists one button per production of the stack (“... renamed”)
-      await menu.getByRole('button', { name: item, exact: true }).click();
-      await expect(menu.locator('.c-pop-h', { hasText: heading })).toBeVisible();
-      await audit.state(label);
-      await menu.getByRole('button', { name: 'Cancel' }).click();
-    }
+    await page
+      .getByRole('dialog', { name: 'Production' })
+      .locator('.c-prod__item[aria-current="true"]')
+      .click({ button: 'right' });
+    await expect(page.locator('.c-ctx')).toBeVisible();
+    await audit.state('production switcher: right-click menu');
     await page.keyboard.press('Escape');
+    await page.keyboard.press('Escape');
+    await expect(page.locator('.c-pop, .c-ctx')).toHaveCount(0);
     // the add-source popover of a scene with elements, the layout popover with a hidden dock
     await regie.clickScene('Welcome');
     await page.getByRole('button', { name: 'Add source', exact: true }).click();

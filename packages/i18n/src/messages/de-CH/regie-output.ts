@@ -8,12 +8,9 @@ export const regieOutput: Translation<typeof en> = {
     'Die Kamera überträgt nur Bild. Der Ton bleibt am Mischpult und geht von dort in Teams.',
   'regie.output.camera.download': 'OBS-Szenensammlung herunterladen',
   'regie.output.camera.downloaded': 'OBS-Szenensammlung «{file}» heruntergeladen',
-  'regie.output.camera.hide': 'Schritte ausblenden',
   'regie.output.camera.intro': 'OBS macht aus der Output-Seite die Kamera «OBS Virtual Camera».',
-  'regie.output.camera.open': 'Als Kamera in OBS nutzen',
   'regie.output.camera.separateMachine':
     'OBS und Teams auf einem eigenen Rechner betreiben, nicht auf dem Regie-Laptop: Der Output darf nicht von ihm abhängen.',
-  'regie.output.camera.show': 'Schritte zeigen',
   'regie.output.camera.step1':
     'OBS Studio 31 oder neuer auf dem Rechner installieren, auf dem Teams oder Zoom läuft.',
   'regie.output.camera.step2':
@@ -23,7 +20,6 @@ export const regieOutput: Translation<typeof en> = {
   'regie.output.camera.step4': 'In OBS «Virtuelle Kamera starten» klicken.',
   'regie.output.camera.step5':
     'In Teams, Zoom oder Webex die Kamera «OBS Virtual Camera» wählen und Hintergrundeffekte ausschalten.',
-  'regie.output.camera.sub': 'Den Output in Teams, Zoom oder Webex als Kamera zeigen.',
   'regie.output.camera.title': '«{name}» als Kamera nutzen',
 
   'regie.output.detail.hide': 'Link verbergen',
@@ -62,12 +58,18 @@ export const regieOutput: Translation<typeof en> = {
   'regie.output.link.revoked': 'Link «{name}» widerrufen',
   'regie.output.link.stale': 'kein aktuelles Bild',
 
+  'regie.output.menu.copy': 'Link kopieren',
+  'regie.output.menu.deleteKey': 'Entf',
+  'regie.output.menu.more': 'Weitere Aktionen für «{name}»',
+
   'regie.output.links.empty':
     'Unten einen Link hinzufügen, damit ein Proxy, OBS oder eine Meeting-Kamera den Output zeigen kann.',
   'regie.output.links.emptyTitle': 'Noch kein Output-Link',
   'regie.output.links.hint':
     'Ein Link pro Seite oder Gerät, das den Output zeigt, etwa der Proxy oder eine Meeting-Kamera. Jeder lässt sich einzeln stoppen.',
   'regie.output.links.loading': 'Links werden geladen …',
+  'regie.output.links.keys':
+    'Rechtsklick auf einen Link zeigt seine Befehle. F2 benennt ihn um, Entf widerruft ihn.',
   'regie.output.links.title': 'Links',
 
   'regie.output.options.language': 'Sprache der Meldungen',
@@ -94,5 +96,10 @@ export const regieOutput: Translation<typeof en> = {
   'regie.output.renew.title': 'Neuer Link',
 
   'regie.output.revoke.button': 'Widerrufen …',
-  'regie.output.revoke.sub': 'Diesen Link endgültig stoppen. Die anderen Links funktionieren weiter.',
+  'regie.output.revoke.sub':
+    'Diesen Link endgültig stoppen. Die anderen Links funktionieren weiter.',
+
+  'regie.output.tabs.access': 'Zugriff',
+  'regie.output.tabs.label': 'Bereiche des Links «{name}»',
+  'regie.output.tabs.obs': 'In OBS verwenden',
 };

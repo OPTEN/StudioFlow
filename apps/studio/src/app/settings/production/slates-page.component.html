@@ -7,29 +7,51 @@
 
   @if (store.production()) {
     <form class="c-page__body" novalidate [formGroup]="form" (submit)="save($event)">
-      @for (slate of slates; track slate.key) {
-        <section
-          class="c-group"
-          role="group"
-          [formGroupName]="slate.key"
-          [attr.aria-labelledby]="'sf-slate-' + slate.key"
-        >
-          <h2 class="c-group__title c-slates__title">
-            <span [id]="'sf-slate-' + slate.key">{{ t(slate.title) }}</span>
+      <div
+        class="c-tabs c-slates__tabs"
+        role="tablist"
+        [attr.aria-label]="t('regie.production.slates.tabs')"
+        (keydown)="onTabKeyDown($event)"
+      >
+        @for (slate of slates; track slate.key) {
+          <button
+            class="c-tab"
+            type="button"
+            role="tab"
+            [id]="'sf-slate-tab-' + slate.key"
+            [attr.aria-selected]="tab() === slate.key"
+            [attr.aria-controls]="'sf-slate-panel-' + slate.key"
+            [tabIndex]="tab() === slate.key ? 0 : -1"
+            (click)="tab.set(slate.key)"
+          >
+            {{ t(slate.title) }}
             @if (showing() === slate.key) {
-              <span class="c-prod-page__tag">
-                <svg sfIcon="output" aria-hidden="true"></svg>
-                {{ t('regie.production.slates.showing') }}
+              <span class="c-prod-page__tag">{{ t('regie.production.slates.showing') }}</span>
+            }
+            @if (changed(slate.key)) {
+              <span class="c-slates__dot" [title]="t('regie.production.form.unsaved')">
+                <span class="u-sr-only">{{ t('regie.production.form.unsaved') }}</span>
               </span>
             }
-          </h2>
+          </button>
+        }
+      </div>
+      @for (slate of slates; track slate.key) {
+        <section
+          class="c-group c-slates__panel"
+          role="tabpanel"
+          [id]="'sf-slate-panel-' + slate.key"
+          [attr.aria-labelledby]="'sf-slate-tab-' + slate.key"
+          [hidden]="tab() !== slate.key"
+          [formGroupName]="slate.key"
+        >
           <div class="c-group__body">
             <div class="c-group__row c-slates__row">
               <sf-picture-preview
                 class="c-slates__preview"
                 [slate]="drafts()[slate.key]"
                 [label]="t('regie.production.slates.preview', { title: t(slate.title) })"
-                [box]="{ width: 240, height: 168 }"
+                [box]="{ width: 320, height: 200 }"
               />
               <div class="c-slates__fields">
                 <div class="c-prod-page__field">

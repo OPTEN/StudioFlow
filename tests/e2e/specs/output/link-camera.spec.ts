@@ -196,7 +196,7 @@ test.describe('LINK output links and the camera', () => {
       const pop = await openPopover(page);
       const settingsPage = await openLinkSettings(page);
       const detail = await addLink(settingsPage, 'Teams camera');
-      await detail.getByRole('button', { name: 'Show steps' }).click();
+      await detail.getByRole('tab', { name: 'Use in OBS' }).click();
       const steps = detail.locator('.c-output-camera__steps > li');
       await expect(steps).toHaveCount(5);
       await expect(steps.nth(2)).toContainText('1920 × 1080');

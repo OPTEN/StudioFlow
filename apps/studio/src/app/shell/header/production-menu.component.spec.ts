@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { FakeStudioHub, flushMicrotasks } from '../../../testing/fake-studio-hub';
 import { PRODUCTION_ID, productionFixture, snapshotFixture } from '../../../testing/fixtures';
 import { startStore, studioTestProviders, type StoreHarness } from '../../../testing/store-harness';
+import { ContextMenuService } from '../../core/ui/context-menu';
 import { PopoverService } from '../../core/ui/popover.directive';
 import { ToastService } from '../../core/ui/toast.service';
 import { PRODUCTION_POPOVER, ProductionMenuComponent } from './production-menu.component';
@@ -87,13 +88,9 @@ describe('ProductionMenuComponent: the production switcher', () => {
 
     const dialog = element.querySelector('[role="dialog"]');
     expect(dialog?.getAttribute('aria-label')).toBe('Production');
-    expect(items().map((entry) => entry.querySelector('.c-prod__item-name')?.textContent ?? text(entry))).toEqual([
-      'Webinar',
-      'Town hall',
-      'New production…',
-      'Import…',
-      'Production settings…',
-    ]);
+    expect(
+      items().map((entry) => entry.querySelector('.c-prod__item-name')?.textContent ?? text(entry)),
+    ).toEqual(['Webinar', 'Town hall', 'New production…', 'Import…', 'Production settings…']);
     expect(item('Webinar').getAttribute('aria-current')).toBe('true');
     expect(item('Webinar').querySelector('svg')).not.toBeNull();
     expect(item('Town hall').getAttribute('aria-current')).toBeNull();
@@ -196,5 +193,67 @@ describe('ProductionMenuComponent: the production switcher', () => {
     await render();
     await open();
     expect(item('Town hall')).toBeTruthy();
+  });
+
+  describe('right-click menu of a production', () => {
+    function labels(): string[] {
+      return (TestBed.inject(ContextMenuService).current()?.entries ?? []).map((entry) =>
+        entry === 'separator' ? '—' : entry.label,
+      );
+    }
+
+    async function rightClick(label: string): Promise<void> {
+      item(label).dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+      await render();
+    }
+
+    function run(label: string): void {
+      const menus = TestBed.inject(ContextMenuService);
+      const entry = menus.current()?.entries.find((e) => e !== 'separator' && e.label === label);
+      if (!entry || entry === 'separator') {
+        throw new Error(`no entry ${label}`);
+      }
+      menus.run(entry);
+    }
+
+    it('offers "Switch to" and the production settings for the active one', async () => {
+      await setup();
+      await open();
+      await rightClick('Webinar');
+      expect(labels()).toEqual(['Switch to', '—', 'Production settings…']);
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+      run('Production settings…');
+      expect(navigate).toHaveBeenCalledWith('/settings/production');
+      expect(TestBed.inject(PopoverService).isOpen(PRODUCTION_POPOVER)).toBe(false);
+    });
+
+    it('switches to another one, or leads to all productions', async () => {
+      await setup();
+      await open();
+      await rightClick('Town hall');
+      expect(labels()).toEqual(['Switch to', '—', 'All productions…']);
+      run('Switch to');
+      await render();
+      harness.http.expectOne(`/api/productions/${OTHER_ID}/activate`).flush(productionFixture());
+      await render();
+      harness.http.match(() => true).forEach((request) => request.flush(null));
+    });
+
+    it('asks first while live, in the switcher it opens again', async () => {
+      await setup('live');
+      await open();
+      await rightClick('Town hall');
+      TestBed.inject(PopoverService).close(PRODUCTION_POPOVER);
+      await render();
+      run('Switch to');
+      await render();
+      harness.http.match('/api/productions').forEach((request) => request.flush(LIST));
+      await render();
+      expect(TestBed.inject(PopoverService).isOpen(PRODUCTION_POPOVER)).toBe(true);
+      expect(
+        element.querySelector('[role="group"][aria-label="Switch production"]'),
+      ).not.toBeNull();
+      harness.http.expectNone(`/api/productions/${OTHER_ID}/activate`);
+    });
   });
 });

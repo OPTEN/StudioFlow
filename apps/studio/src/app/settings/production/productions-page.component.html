@@ -28,12 +28,52 @@
                   (cancel)="confirmSwitch.set(null)"
                 />
               </div>
+            } @else if (renamingId() === production.id) {
+              <form
+                class="c-group__row c-group__row--stack c-prods__rename"
+                novalidate
+                (submit)="rename($event, production)"
+              >
+                <label class="c-prod-page__label" [for]="'rename-' + production.id">{{
+                  t('regie.production.menu.renameLabel', { name: production.name })
+                }}</label>
+                <div class="c-prod-page__inline">
+                  <input
+                    class="c-input"
+                    type="text"
+                    autocomplete="off"
+                    data-rename-input
+                    [id]="'rename-' + production.id"
+                    [maxlength]="nameMax"
+                    [formControl]="renameControl"
+                    [class.is-invalid]="renameControl.invalid && renameControl.touched"
+                    [attr.aria-invalid]="
+                      renameControl.invalid && renameControl.touched ? 'true' : null
+                    "
+                    (keydown.escape)="cancelRename()"
+                  />
+                  <button class="c-btn" type="button" [disabled]="busy()" (click)="cancelRename()">
+                    {{ t('common.cancel') }}
+                  </button>
+                  <button class="c-btn c-btn--fill" type="submit" [disabled]="busy()">
+                    {{ t('regie.production.name.save') }}
+                  </button>
+                </div>
+                @if (renameControl.invalid && renameControl.touched) {
+                  <p class="c-field-error" role="alert">
+                    {{ t('regie.production.name.invalid', { max: nameMax }) }}
+                  </p>
+                }
+              </form>
             } @else {
               <div
                 class="c-group__row c-prods__row"
                 data-testid="production-row"
                 [class.is-active]="production.isActive"
                 [attr.aria-current]="production.isActive ? 'true' : null"
+                [sfContextMenu]="menuOf(production)"
+                [sfContextMenuLabel]="production.name"
+                (keydown)="onRowKeyDown($event, production)"
               >
                 <span class="c-prods__mark">
                   @if (production.isActive) {
@@ -55,14 +95,37 @@
                   <button
                     class="c-btn c-btn--sm"
                     type="button"
-                    [attr.aria-label]="t('regie.production.switch.toLabel', { name: production.name })"
+                    [attr.aria-label]="
+                      t('regie.production.switch.toLabel', { name: production.name })
+                    "
                     [disabled]="busy() || !store.canCommand()"
                     (click)="requestSwitch(production)"
                   >
                     {{ t('regie.production.switch.to') }}
                   </button>
                 }
+                <button
+                  class="c-ibtn c-prods__more"
+                  type="button"
+                  aria-haspopup="menu"
+                  aria-keyshortcuts="F2 Control+D Meta+D"
+                  [attr.data-more]="production.id"
+                  [attr.aria-label]="t('regie.production.menu.more', { name: production.name })"
+                  [title]="t('regie.production.menu.more', { name: production.name })"
+                  (click)="openMenuAt($event, production)"
+                >
+                  <svg sfIcon="more"></svg>
+                </button>
               </div>
+              @if (form() === 'duplicate' && duplicateSource()?.id === production.id) {
+                <div class="c-group__row c-group__row--stack c-prods__panel" data-form="duplicate">
+                  <sf-duplicate-production-form
+                    [source]="production"
+                    (done)="duplicated($event)"
+                    (cancelled)="closeForm()"
+                  />
+                </div>
+              }
             }
           }
         } @else if (listError()) {
@@ -76,6 +139,7 @@
           <p class="c-empty">{{ t('regie.production.list.loading') }}</p>
         }
       </div>
+      <p class="c-group__footer">{{ t('regie.production.menu.keys') }}</p>
     </section>
 
     <section class="c-group" aria-labelledby="sf-prods-add">
@@ -187,7 +251,7 @@
               {{ t('regie.transfer.duplicate.title') }}
               <span class="c-group__sub">{{ t('regie.transfer.duplicate.sub') }}</span>
             </span>
-            @if (form() !== 'duplicate') {
+            @if (form() !== 'duplicate' || duplicateSource()) {
               <button
                 class="c-btn c-btn--sm"
                 type="button"
@@ -199,7 +263,7 @@
               </button>
             }
           </div>
-          @if (form() === 'duplicate') {
+          @if (form() === 'duplicate' && !duplicateSource()) {
             <div class="c-group__row c-group__row--stack c-prods__panel" data-form="duplicate">
               <sf-duplicate-production-form (done)="duplicated($event)" (cancelled)="closeForm()" />
             </div>

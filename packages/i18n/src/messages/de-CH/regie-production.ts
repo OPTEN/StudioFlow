@@ -36,6 +36,7 @@ export const regieProduction: Translation<typeof en> = {
   'regie.production.slates.preview': 'Vorschau des Slates «{title}»',
   'regie.production.slates.save': 'Slates speichern',
   'regie.production.slates.showing': 'Jetzt im Output',
+  'regie.production.slates.tabs': 'Zu bearbeitender Slate',
   'regie.production.slates.standbyHint':
     'Erscheint, sobald der Output öffnet, bis du die Sendung startest.',
   'regie.production.slates.titleInvalid': 'Bitte einen Titel mit höchstens {max} Zeichen eingeben.',
@@ -60,6 +61,13 @@ export const regieProduction: Translation<typeof en> = {
   'regie.production.list.loading': 'Produktionen werden geladen …',
   'regie.production.list.offline':
     'Keine Verbindung zum Server. Wechseln und Erstellen gehen wieder, sobald sie zurück ist.',
+
+  'regie.production.menu.keys':
+    'Rechtsklick auf eine Produktion zeigt ihre Befehle. F2 benennt sie um, Ctrl+D (⌘D auf dem Mac) dupliziert sie.',
+  'regie.production.menu.more': 'Weitere Aktionen für «{name}»',
+  'regie.production.menu.rename': 'Umbenennen',
+  'regie.production.menu.renameLabel': 'Neuer Name von «{name}»',
+  'regie.production.menu.all': 'Alle Produktionen …',
 
   'regie.production.add.create': 'Produktion erstellen',
   'regie.production.add.liveHint':

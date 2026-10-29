@@ -41,6 +41,8 @@
                 type="button"
                 [attr.aria-current]="production.isActive ? 'true' : null"
                 [disabled]="busy() || (!production.isActive && !store.canCommand())"
+                [sfContextMenu]="menuOf(production)"
+                [sfContextMenuLabel]="production.name"
                 (click)="choose(production)"
               >
                 <span class="c-prod__check">
