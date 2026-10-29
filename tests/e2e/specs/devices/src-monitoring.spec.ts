@@ -111,12 +111,12 @@ test(
     const before = JSON.stringify((await monitoringRows(monitoring)).map((row) => [row.bitrate, row.rtt, row.fps]));
     await expect.poll(async () => JSON.stringify((await monitoringRows(monitoring)).map((row) => [row.bitrate, row.rtt, row.fps])), { message: 'values refresh', timeout: 6000, intervals: [500] }).not.toBe(before);
 
-    // Problem stations are sorted first, in the order of the Stations dock.
+    // Problem stations are sorted first on /monitoring; the Devices dock keeps its order by code (a row never moves
+    // while the operator works in it), the problem shows in place.
+    const dockBefore = (await readPlaces(regie.page)).stations.map((station) => station.name);
     await net.cut(normal.phone.context);
-    await expect.poll(async () => (await readPlaces(regie.page)).stations[0]?.name, { message: 'the problem station is first in the dock', timeout: 15_000 }).toBe('Phone Normal');
-    await expect.poll(async () => (await monitoringRows(monitoring))[0]?.name, { message: 'and first on /monitoring', timeout: 15_000 }).toBe('Phone Normal');
-    const dock = (await readPlaces(regie.page)).stations.map((station) => station.name);
-    expect((await monitoringRows(monitoring)).map((row) => row.name), 'same order as the Stations dock').toEqual(dock);
+    await expect.poll(async () => (await monitoringRows(monitoring))[0]?.name, { message: 'the problem station is first on /monitoring', timeout: 15_000 }).toBe('Phone Normal');
+    expect((await readPlaces(regie.page)).stations.map((station) => station.name), 'the Devices dock keeps its order').toEqual(dockBefore);
     await net.restore(normal.phone.context);
 
     // 5% packet loss on LiveKit: the loss column shows it for a live station.
