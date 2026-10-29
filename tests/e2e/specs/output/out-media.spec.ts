@@ -498,9 +498,11 @@ test.describe('OUT media and reports', () => {
       await expect(popover.locator('dd').first()).toHaveText('connected, 1 consumer', { timeout: 8000 });
       await recordMeasurement(test.info(), 'out-15-chip', { connectedMs: Date.now() - connectedAfter }, `output opened -> chip connected after ${Date.now() - connectedAfter} ms`);
       expect(Date.now() - connectedAfter, 'chip within 5 s').toBeLessThanOrEqual(5000 + 3000);
-      await expect(popover.locator('dd').nth(1), 'the address of the consumer').not.toHaveText('–');
-      await expect(popover.locator('dd').nth(2)).toHaveText('1920 × 1080 · 16:9 · 30 fps');
-      await expect(popover.locator('dd').nth(3)).toContainText('measured');
+      // The value next to its label (the popover lists state, latency, addresses and format in that order).
+      const value = (label: string) => popover.locator(`dt:text-is("${label}") + dd`);
+      await expect(value('Connected from'), 'the address of the consumer').not.toHaveText('–');
+      await expect(value('Format')).toHaveText('1920 × 1080 · 16:9 · 30 fps');
+      await expect(value('Latency')).toContainText('measured');
 
       const second = await openProbedOutput({ browser, onCleanup }, production, {}, { viewport: { width: 640, height: 360 } });
       await second.output.waitForPlayingVideos(1, { minFps: 5, timeout: 45_000 });
