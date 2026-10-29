@@ -171,7 +171,8 @@ describe('ServerWizardComponent', () => {
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
     section(MediaSectionComponent).saved.emit();
     await render();
-    section(AddressSectionComponent).saved.emit('https://localhost:8443');
+    // The address did not change: the server answers at the origin this page was opened at.
+    section(AddressSectionComponent).saved.emit(document.location.origin);
     await render();
     section(EmbeddingSectionComponent).saved.emit();
     await render();

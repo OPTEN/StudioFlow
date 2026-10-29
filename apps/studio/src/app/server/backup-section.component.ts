@@ -133,7 +133,11 @@ export class BackupSectionComponent {
     }
     // Recomputed once a minute with the shared clock, so "today" turns into "tomorrow" in time.
     const now = new Date(Math.floor(this.clock.now() / 60_000) * 60_000);
-    const next = nextRun(this.parts(this.typedTime(), Number(this.typedDay())), this.typedZone(), now);
+    const next = nextRun(
+      this.parts(this.typedTime(), Number(this.typedDay())),
+      this.typedZone(),
+      now,
+    );
     if (!next) {
       return null;
     }
@@ -216,7 +220,7 @@ export class BackupSectionComponent {
     try {
       await this.settings.saveBackup({
         schedule: scheduleCron(this.parts()),
-        timezone: this.preset() === 'off' ? this.current?.timezone ?? null : this.timezone.value,
+        timezone: this.preset() === 'off' ? (this.current?.timezone ?? null) : this.timezone.value,
         keepDaily: this.keepDaily.value ?? 0,
         keepWeekly: this.keepWeekly.value ?? 0,
         rcloneRemote: offsite ? this.remote.value.trim() || null : null,

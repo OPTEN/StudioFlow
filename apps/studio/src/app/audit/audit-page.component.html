@@ -71,15 +71,20 @@
         </div>
 
         <div class="c-audit__field c-audit__field--search">
-          <label class="c-audit__label" for="audit-search">{{ t('regie.audit.search.label') }}</label>
+          <label class="c-audit__label" for="audit-search">{{
+            t('regie.audit.search.label')
+          }}</label>
           <span class="c-audit__search">
             <svg sfIcon="search" [size]="14"></svg>
             <input
+              #searchInput
               id="audit-search"
               class="c-input"
               type="search"
               maxlength="100"
               autocomplete="off"
+              aria-keyshortcuts="Control+F Meta+F"
+              [title]="t('regie.audit.search.shortcut', { key: findKey })"
               [placeholder]="t('regie.audit.search.placeholder')"
               [value]="searchDraft()"
               (input)="search($any($event.target).value)"
@@ -139,7 +144,11 @@
           </button>
         }
         @if (filtered()) {
-          <button class="c-btn c-btn--sm c-btn--plain c-audit__clear" type="button" (click)="clearFilters()">
+          <button
+            class="c-btn c-btn--sm c-btn--plain c-audit__clear"
+            type="button"
+            (click)="clearFilters()"
+          >
             {{ t('regie.audit.clear') }}
           </button>
         }
@@ -204,11 +213,19 @@
                     <th scope="col" class="c-audit-table__production">
                       {{ t('regie.audit.column.production') }}
                     </th>
+                    <th scope="col" class="c-audit-table__actions">
+                      <span class="u-sr-only">{{ t('regie.audit.column.actions') }}</span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   @for (entry of log.entries(); track entry.id) {
-                    <tr [class.is-fresh]="log.isFresh(entry)" [class.is-open]="isExpanded(entry)">
+                    <tr
+                      [class.is-fresh]="log.isFresh(entry)"
+                      [class.is-open]="isExpanded(entry)"
+                      [sfContextMenu]="menuOf(entry)"
+                      [sfContextMenuLabel]="rowMenuLabel(entry)"
+                    >
                       <td class="c-audit-table__time u-mono">
                         <button
                           class="c-audit-table__toggle"
@@ -218,37 +235,84 @@
                           [attr.aria-label]="toggleLabel(entry)"
                           (click)="toggle(entry)"
                         >
-                          <svg sfIcon="chev-right" [size]="12" [class.is-open]="isExpanded(entry)"></svg>
+                          <svg
+                            sfIcon="chev-right"
+                            [size]="12"
+                            [class.is-open]="isExpanded(entry)"
+                          ></svg>
                         </button>
                         <time [attr.datetime]="entry.at" [title]="entry.at">{{ time(entry) }}</time>
                       </td>
                       <td>{{ actor(entry) }}</td>
                       <td class="c-audit-table__event">{{ entryText(entry) }}</td>
                       <td class="c-audit-table__production">{{ production(entry) }}</td>
+                      <td class="c-audit-table__actions">
+                        <button
+                          #menuButton
+                          class="c-ibtn c-audit-table__menu"
+                          type="button"
+                          aria-haspopup="menu"
+                          [attr.aria-label]="rowMenuLabel(entry)"
+                          [title]="rowMenuLabel(entry)"
+                          (click)="openRowMenu(entry, menuButton)"
+                        >
+                          <svg sfIcon="more"></svg>
+                        </button>
+                      </td>
                     </tr>
                     @if (isExpanded(entry)) {
                       <tr class="c-audit-table__details" [id]="'audit-details-' + entry.id">
-                        <td colspan="4">
-                          <dl class="c-audit-details">
-                            <dt>{{ t('regie.audit.details.when') }}</dt>
-                            <dd class="u-mono">{{ time(entry) }}</dd>
-                            <dt>{{ t('regie.audit.details.time') }}</dt>
-                            <dd class="u-mono">{{ utc(entry) }}</dd>
-                            <dt>{{ t('regie.audit.details.who') }}</dt>
-                            <dd>{{ actor(entry) }}</dd>
-                            <dt>{{ t('regie.audit.details.actor') }}</dt>
-                            <dd class="c-audit-details__code">{{ entry.actor }}</dd>
-                            <dt>{{ t('regie.audit.details.action') }}</dt>
-                            <dd class="c-audit-details__code">{{ entry.action }}</dd>
-                            <dt>{{ t('regie.audit.details.entry') }}</dt>
-                            <dd class="u-mono">#{{ entry.id }}</dd>
-                            @for (row of details(entry); track row.key; let first = $first) {
-                              <dt class="c-audit-details__code" [class.is-first-raw]="first">
-                                {{ row.key }}
-                              </dt>
-                              <dd class="c-audit-details__code" [class.is-first-raw]="first">
-                                {{ row.value }}
-                              </dd>
+                        <td colspan="5">
+                          <div
+                            class="c-tabs c-audit-details__tabs"
+                            role="tablist"
+                            [attr.aria-label]="t('regie.audit.details.tabs')"
+                          >
+                            @for (tab of detailTabs; track tab) {
+                              <button
+                                class="c-tab"
+                                type="button"
+                                role="tab"
+                                [attr.data-tab]="tab"
+                                [id]="'audit-tab-' + tab + '-' + entry.id"
+                                [attr.aria-selected]="tabOf(entry) === tab"
+                                [attr.aria-controls]="'audit-panel-' + entry.id"
+                                [tabIndex]="tabOf(entry) === tab ? 0 : -1"
+                                (click)="showTab(entry, tab)"
+                                (keydown)="tabKey(entry, $event)"
+                              >
+                                {{ t(tabKeys[tab]) }}
+                              </button>
+                            }
+                          </div>
+                          <dl
+                            class="c-audit-details"
+                            role="tabpanel"
+                            [id]="'audit-panel-' + entry.id"
+                            [attr.aria-labelledby]="'audit-tab-' + tabOf(entry) + '-' + entry.id"
+                          >
+                            @if (tabOf(entry) === 'summary') {
+                              <dt>{{ t('regie.audit.details.when') }}</dt>
+                              <dd class="u-mono">{{ time(entry) }}</dd>
+                              <dt>{{ t('regie.audit.details.time') }}</dt>
+                              <dd class="u-mono">{{ utc(entry) }}</dd>
+                              <dt>{{ t('regie.audit.details.who') }}</dt>
+                              <dd>{{ actor(entry) }}</dd>
+                              <dt>{{ t('regie.audit.details.what') }}</dt>
+                              <dd>{{ entryText(entry) }}</dd>
+                              <dt>{{ t('regie.audit.column.production') }}</dt>
+                              <dd>{{ production(entry) }}</dd>
+                            } @else {
+                              <dt>{{ t('regie.audit.details.actor') }}</dt>
+                              <dd class="c-audit-details__code">{{ entry.actor }}</dd>
+                              <dt>{{ t('regie.audit.details.action') }}</dt>
+                              <dd class="c-audit-details__code">{{ entry.action }}</dd>
+                              <dt>{{ t('regie.audit.details.entry') }}</dt>
+                              <dd class="u-mono">#{{ entry.id }}</dd>
+                              @for (row of details(entry); track row.key) {
+                                <dt class="c-audit-details__code">{{ row.key }}</dt>
+                                <dd class="c-audit-details__code">{{ row.value }}</dd>
+                              }
                             }
                           </dl>
                         </td>
@@ -267,7 +331,9 @@
               @if (log.hasMore()) {
                 <div class="c-audit__more" #loadMoreAnchor>
                   @if (log.moreStatus() === 'error') {
-                    <span class="c-field-error" role="alert">{{ t('regie.audit.error.more') }}</span>
+                    <span class="c-field-error" role="alert">{{
+                      t('regie.audit.error.more')
+                    }}</span>
                   }
                   <button
                     class="c-btn c-btn--sm"

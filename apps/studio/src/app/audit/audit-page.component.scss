@@ -265,8 +265,36 @@ td.c-audit-table__time {
   }
 }
 
+// The ⋯ button of a row: quiet until the row is hovered or the button has the focus.
+.c-audit-table__actions {
+  padding-block: 4px;
+  text-align: right;
+  width: 1%;
+}
+
+.c-audit-table__menu {
+  margin-block: -2px;
+  opacity: 0;
+
+  tr:hover &,
+  tr.is-open &,
+  &:focus-visible,
+  &[aria-expanded='true'] {
+    opacity: 1;
+  }
+
+  @media (hover: none) {
+    opacity: 1;
+  }
+}
+
 .c-audit-table__details td {
   padding: 4px 12px 14px 44px;
+}
+
+.c-audit-details__tabs {
+  margin-bottom: 10px;
+  max-width: 280px;
 }
 
 // The details of an entry: plain labels first, then the raw values the server recorded.
@@ -285,12 +313,6 @@ td.c-audit-table__time {
     color: var(--text);
     margin: 0;
     overflow-wrap: anywhere;
-  }
-
-  .is-first-raw {
-    border-top: 1px solid var(--seam);
-    margin-top: 4px;
-    padding-top: 8px;
   }
 }
 

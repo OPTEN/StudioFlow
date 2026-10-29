@@ -97,7 +97,8 @@ export const regieServer: Translation<typeof en> = {
     'Die Verbindung zu {address} kam nicht zustande. Prüfen, ob das die Adresse des Servers ist und ob seine Firewall die Medien-Ports durchlässt (7881/tcp und 7882/udp).',
   'regie.server.media.testData':
     'Verbunden, aber die Testnachricht kam nicht zurück. Firewall und allfälliges VPN auf diesem Computer prüfen, dann erneut testen.',
-  'regie.server.media.changeNote': 'Beim Speichern einer neuen Adresse startet der Medienserver neu.',
+  'regie.server.media.changeNote':
+    'Beim Speichern einer neuen Adresse startet der Medienserver neu.',
 
   // --- Adresse und Zertifikat
   'regie.server.address.intro':
@@ -114,7 +115,8 @@ export const regieServer: Translation<typeof en> = {
   'regie.server.address.modeDnsText':
     'Ein kostenloses Zertifikat für die eigene Domain, bestätigt über den DNS-Anbieter. Es muss nichts aus dem Internet erreichbar sein.',
   'regie.server.address.provider': 'DNS-Anbieter',
-  'regie.server.address.providerHint': 'Die Domain muss zum eigenen Konto bei diesem Anbieter gehören.',
+  'regie.server.address.providerHint':
+    'Die Domain muss zum eigenen Konto bei diesem Anbieter gehören.',
   'regie.server.address.nameHeading': 'Name',
   'regie.server.address.domainLabel': 'Domain',
   'regie.server.address.domainHintInternal':
@@ -220,7 +222,8 @@ export const regieServer: Translation<typeof en> = {
   'regie.server.backup.nextTomorrow': 'Nächste Sicherung morgen um {time} Uhr.',
   'regie.server.backup.nextDay': 'Nächste Sicherung am {day} um {time} Uhr.',
   'regie.server.backup.nextOff': 'Keine automatischen Sicherungen. «Jetzt sichern» geht trotzdem.',
-  'regie.server.backup.nextCustom': 'Der Server führt diesen Zeitplan in der gewählten Zeitzone aus.',
+  'regie.server.backup.nextCustom':
+    'Der Server führt diesen Zeitplan in der gewählten Zeitzone aus.',
   'regie.server.backup.keepHeading': 'Aufbewahren',
   'regie.server.backup.keepDailyLabel': 'Tägliche Sicherungen',
   'regie.server.backup.keepWeeklyLabel': 'Wöchentliche Sicherungen',
@@ -279,4 +282,7 @@ export const regieServer: Translation<typeof en> = {
   'regie.server.backup.listRestore':
     'Wiederherstellen ersetzt die Datenbank und braucht den gestoppten Stack, darum ist es ein Befehl auf dem Server. Ihn aus einer Zeile oben kopieren oder diesen mit dem Namen der Sicherung verwenden:',
   'regie.server.backup.listRestoreCopy': 'Befehl kopieren',
+  'regie.server.backup.listCopyCommand': 'Befehl zum Wiederherstellen kopieren',
+  'regie.server.backup.listCopyName': 'Ordnernamen kopieren',
+  'regie.server.backup.listMenu': 'Aktionen für die Sicherung {name}',
 };

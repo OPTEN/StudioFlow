@@ -4,7 +4,9 @@
     <div class="c-group__body">
       <div class="c-group__row c-group__row--stack">
         <div class="c-srv__field">
-          <label class="c-srv__label" for="media-address">{{ t('regie.server.media.label') }}</label>
+          <label class="c-srv__label" for="media-address">{{
+            t('regie.server.media.label')
+          }}</label>
           <input
             id="media-address"
             class="c-input c-srv__code"
@@ -27,7 +29,9 @@
       </div>
       @if (suggestions().length > 0) {
         <div class="c-group__row c-group__row--stack">
-          <span class="c-hint" id="media-suggestions">{{ t('regie.server.media.suggestions') }}</span>
+          <span class="c-hint" id="media-suggestions">{{
+            t('regie.server.media.suggestions')
+          }}</span>
           <div class="c-suggest" role="group" aria-labelledby="media-suggestions">
             @for (suggestion of suggestions(); track suggestion.address) {
               <button
@@ -48,12 +52,16 @@
   </section>
 
   <section class="c-group" aria-labelledby="media-test-heading">
-    <h2 class="c-group__title" id="media-test-heading">{{ t('regie.server.media.testHeading') }}</h2>
+    <h2 class="c-group__title" id="media-test-heading">
+      {{ t('regie.server.media.testHeading') }}
+    </h2>
     <div class="c-group__body">
       <div class="c-group__row">
         <span class="c-group__label">
           {{ t('regie.server.media.testLabel') }}
-          <span class="c-group__sub" id="media-test-note">{{ t('regie.server.media.testNote') }}</span>
+          <span class="c-group__sub" id="media-test-note">{{
+            t('regie.server.media.testNote')
+          }}</span>
         </span>
         <button
           class="c-btn"
@@ -72,7 +80,11 @@
               <span class="c-lamp is-idle" aria-hidden="true"></span>
               <span>{{ t('regie.server.media.testing') }}</span>
             } @else if (checkText(); as text) {
-              <span class="c-lamp" [class.is-bad]="check()?.kind !== 'ok'" aria-hidden="true"></span>
+              <span
+                class="c-lamp"
+                [class.is-bad]="check()?.kind !== 'ok'"
+                aria-hidden="true"
+              ></span>
               <span>{{ text }}</span>
             }
           </p>

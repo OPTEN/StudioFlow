@@ -81,7 +81,7 @@ describe('monitoring rows', () => {
         bitrate: '2.8',
         encoding: 'H.264',
         cpuLimited: false,
-        loss: '0.5%',
+        loss: '0.5',
       },
     ]);
     expect(second).toMatchObject({

@@ -61,10 +61,27 @@
                   [class.is-warn]="row.stateTone === 'warn'"
                   [class.is-bad]="row.stateTone === 'bad'"
                   [class.is-stale]="row.stale"
+                  [sfContextMenu]="menuOf(row)"
+                  [sfContextMenuLabel]="menuLabel(row)"
                 >
                   <th scope="row">
-                    <span class="c-mon-table__name">{{ row.name }}</span>
-                    <span class="c-mon-table__sub">{{ row.platform }}</span>
+                    <span class="c-mon-table__station">
+                      <span class="c-mon-table__who">
+                        <span class="c-mon-table__name">{{ row.name }}</span>
+                        <span class="c-mon-table__sub">{{ row.platform }}</span>
+                      </span>
+                      <button
+                        #menuButton
+                        class="c-ibtn c-mon-table__menu"
+                        type="button"
+                        aria-haspopup="menu"
+                        [attr.aria-label]="menuLabel(row)"
+                        [title]="menuLabel(row)"
+                        (click)="openMenu(row, menuButton)"
+                      >
+                        <svg sfIcon="more"></svg>
+                      </button>
+                    </span>
                   </th>
                   <td>
                     <span class="c-mon-table__state">
@@ -102,9 +119,11 @@
                       <span class="c-mon-table__line">
                         {{ slot.encoding }}
                         @if (slot.cpuLimited) {
-                          <span class="c-tag c-tag--warn" [attr.title]="t('regie.load.cpuLimitHint')">{{
-                            t('regie.load.cpuLimit')
-                          }}</span>
+                          <span
+                            class="c-tag c-tag--warn"
+                            [attr.title]="t('regie.load.cpuLimitHint')"
+                            >{{ t('regie.load.cpuLimit') }}</span
+                          >
                         }
                       </span>
                     }

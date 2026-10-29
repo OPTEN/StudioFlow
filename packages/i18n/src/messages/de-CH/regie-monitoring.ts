@@ -62,4 +62,7 @@ export const regieMonitoring: Translation<typeof en> = {
   'regie.monitoring.tech.warn': 'knapp',
 
   'regie.monitoring.title': 'Monitoring',
+  'regie.monitoring.row.copy': 'Details kopieren',
+  'regie.monitoring.row.menu': 'Aktionen für {name}',
+  'regie.monitoring.row.show': 'In der Regie zeigen',
 };

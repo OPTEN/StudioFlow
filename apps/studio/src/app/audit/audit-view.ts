@@ -30,6 +30,22 @@ export function productionLabel(
   return entry.productionName ?? entry.productionId ?? '–';
 }
 
+/** An entry as one line of text for the clipboard: "time · who · what · production (action)". */
+export function entryLine(entry: {
+  readonly time: string;
+  readonly actor: string;
+  readonly text: string;
+  readonly production: string;
+  readonly action: string;
+}): string {
+  return `${entry.time} · ${entry.actor} · ${entry.text} · ${entry.production} (${entry.action})`;
+}
+
+/** The command key in shortcut hints: "⌘" on Apple devices, "Ctrl+" elsewhere. */
+export function modifierKey(platform = globalThis.navigator?.platform ?? ''): string {
+  return /Mac|iPhone|iPad/.test(platform) ? '⌘' : 'Ctrl+';
+}
+
 /** The details of an entry as rows, in the order the server wrote them. */
 export function detailRows(
   entry: Pick<AuditEntryDto, 'details'>,

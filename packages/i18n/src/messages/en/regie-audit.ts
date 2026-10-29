@@ -83,4 +83,17 @@ export const regieAudit = {
   'regie.audit.search.placeholder': 'Device, scene, user…',
 
   'regie.audit.title': 'Activity log',
+  'regie.audit.column.actions': 'Actions',
+  'regie.audit.details.raw': 'Recorded values',
+  'regie.audit.details.summary': 'Summary',
+  'regie.audit.details.tabs': 'Details of the entry',
+  'regie.audit.details.what': 'What',
+  'regie.audit.row.byCategory': 'Show only “{category}”',
+  'regie.audit.row.byProduction': 'Show only “{name}”',
+  'regie.audit.row.copy': 'Copy entry',
+  'regie.audit.row.details': 'Show details',
+  'regie.audit.row.hideDetails': 'Hide details',
+  'regie.audit.row.menu': 'Actions for the entry from {time}',
+  'regie.audit.row.noProduction': 'No production to filter by',
+  'regie.audit.search.shortcut': 'Search the activity log ({key})',
 } as const satisfies Namespace<'regie.audit'>;

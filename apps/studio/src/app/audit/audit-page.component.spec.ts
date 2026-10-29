@@ -11,6 +11,8 @@ import type { AuditEntryDto, ProductionSummaryDto } from '@studioflow/scene-mode
 import { flushMicrotasks } from '../../testing/fake-studio-hub';
 import { auditEntryFixture } from '../../testing/fixtures';
 import { csrfInterceptor } from '../core/api/csrf.interceptor';
+import { ClipboardService } from '../core/ui/clipboard.service';
+import { ContextMenuService } from '../core/ui/context-menu';
 import { ToastService } from '../core/ui/toast.service';
 import { AUDIT_PAGE_SIZE } from './audit-log.store';
 import { AUDIT_REFRESH_MS, AuditPageComponent, SEARCH_DEBOUNCE_MS } from './audit-page.component';
@@ -142,7 +144,7 @@ describe('AuditPageComponent', () => {
     ];
     await open(entries, 'next');
 
-    const cells = rows().map((row) => Array.from(row.querySelectorAll('td')).map(text));
+    const cells = rows().map((row) => Array.from(row.querySelectorAll('td')).slice(0, 4).map(text));
     expect(cells).toEqual([
       [
         formatDateTime(new Date(entries[0].at), { seconds: true }),
@@ -163,7 +165,7 @@ describe('AuditPageComponent', () => {
         'Webinar',
       ],
     ]);
-    expect(text(control('.c-audit__count'))).toBe('3 entries loaded');
+    expect(text(control('.c-audit__count'))).toBe('Showing 3 entries');
     expect(control('time').getAttribute('datetime')).toBe(entries[0].at);
   });
 
@@ -183,13 +185,12 @@ describe('AuditPageComponent', () => {
     ]);
   });
 
-  it('shows the details of an entry on demand, with the raw values', async () => {
-    await open([
-      auditEntryFixture(7, {
-        action: 'login.succeeded',
-        details: { username: 'regie', ip: '203.0.113.5' },
-      }),
-    ]);
+  it('shows the details of an entry on demand: a summary first, the recorded values in a second tab', async () => {
+    const entry = auditEntryFixture(7, {
+      action: 'login.succeeded',
+      details: { username: 'regie', ip: '203.0.113.5' },
+    });
+    await open([entry]);
     const toggle = control<HTMLButtonElement>('.c-audit-table__toggle');
     expect(toggle.getAttribute('aria-expanded')).toBe('false');
     expect(element.querySelector('.c-audit-details')).toBeNull();
@@ -198,14 +199,26 @@ describe('AuditPageComponent', () => {
     await render();
 
     expect(toggle.getAttribute('aria-expanded')).toBe('true');
-    const details = control('.c-audit-details');
-    expect(text(details)).toContain('login.succeeded');
-    const pairs = Array.from(details.querySelectorAll('dt')).map((term) => [
-      text(term),
-      text(term.nextElementSibling),
-    ]);
-    expect(pairs).toContainEqual(['ip', '203.0.113.5']);
-    expect(pairs).toContainEqual(['username', 'regie']);
+    const pairs = (): string[][] =>
+      Array.from(control('.c-audit-details').querySelectorAll('dt')).map((term) => [
+        text(term),
+        text(term.nextElementSibling),
+      ]);
+    expect(pairs()).toContainEqual(['Who', 'Admin']);
+    expect(pairs()).toContainEqual(['Production', 'Webinar']);
+    const tabs = Array.from(element.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
+    expect(tabs.map(text)).toEqual(['Summary', 'Recorded values']);
+    expect(tabs.map((tab) => tab.getAttribute('aria-selected'))).toEqual(['true', 'false']);
+    expect(control('[role="tabpanel"]').getAttribute('aria-labelledby')).toBe(tabs[0].id);
+
+    tabs[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    await render();
+    expect(tabs[1].getAttribute('aria-selected')).toBe('true');
+    expect(tabs[1].tabIndex).toBe(0);
+    expect(tabs[0].tabIndex).toBe(-1);
+    expect(text(control('.c-audit-details'))).toContain('login.succeeded');
+    expect(pairs()).toContainEqual(['ip', '203.0.113.5']);
+    expect(pairs()).toContainEqual(['username', 'regie']);
     expect(toggle.getAttribute('aria-controls')).toBe(control('tr.c-audit-table__details').id);
 
     toggle.click();
@@ -248,7 +261,7 @@ describe('AuditPageComponent', () => {
     fixture.detectChanges();
     await flushMicrotasks();
     fixture.detectChanges();
-    expect(text(control('.c-empty'))).toContain('Loading the audit log…');
+    expect(text(control('.c-empty'))).toContain('Loading the activity log…');
     http.expectOne('/api/productions').flush([]);
     audit().flush(page([]));
     await render();
@@ -352,7 +365,7 @@ describe('AuditPageComponent', () => {
       ['', 'All productions'],
       ['prd_a', 'Webinar (active)'],
       ['prd_b', 'Podcast'],
-      ['none', 'No production (sign-ins and account)'],
+      ['none', 'Without production (sign-ins, account)'],
     ]);
 
     choose(control('#audit-production'), 'prd_b');
@@ -564,6 +577,19 @@ describe('AuditPageComponent', () => {
   });
 
   describe('export', () => {
+    /** Opens the Export menu and chooses an item. */
+    async function exportAs(item: 'Export as CSV' | 'Export as JSON'): Promise<void> {
+      button('Export').click();
+      await render();
+      const menu = control('[role="menu"]');
+      expect(menu.getAttribute('aria-label')).toBe('Export the filtered entries');
+      const choice = Array.from(menu.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')).find(
+        (candidate) => text(candidate).startsWith(item),
+      );
+      choice?.click();
+      await flushMicrotasks();
+    }
+
     it('exports the filtered entries as CSV and saves the file', async () => {
       await open([auditEntryFixture(1)]);
       button('Devices').click();
@@ -571,8 +597,7 @@ describe('AuditPageComponent', () => {
       audit().flush(page([auditEntryFixture(1)], 'cursor-1'));
       await render();
 
-      button('Export CSV').click();
-      await flushMicrotasks();
+      await exportAs('Export as CSV');
       const request = http.expectOne((r) => r.url === '/api/audit/export.csv');
       expect(params(request)).toEqual({ category: ['devices'] });
       request.flush('time,actor\r\n', {
@@ -598,8 +623,7 @@ describe('AuditPageComponent', () => {
       audit().flush(page([auditEntryFixture(1)]));
       await render();
 
-      button('Export JSON').click();
-      await flushMicrotasks();
+      await exportAs('Export as JSON');
       const request = http.expectOne((r) => r.url === '/api/audit/export.json');
       expect(params(request)).toEqual({ production: ['prd_b'] });
       request.flush('[]', {
@@ -617,19 +641,17 @@ describe('AuditPageComponent', () => {
       fixture.detectChanges();
       await flushMicrotasks();
       fixture.detectChanges();
-      expect(button('Export CSV').disabled).toBe(true);
+      expect(button('Export').disabled).toBe(true);
       http.expectOne('/api/productions').flush([]);
       audit().flush(null, { status: 500, statusText: 'Server Error' });
       await render();
-      expect(button('Export CSV').disabled).toBe(true);
-      expect(button('Export JSON').disabled).toBe(true);
+      expect(button('Export').disabled).toBe(true);
     });
 
     it('tells that an export is too large and saves nothing', async () => {
       await open([auditEntryFixture(1)]);
 
-      button('Export CSV').click();
-      await flushMicrotasks();
+      await exportAs('Export as CSV');
       http
         .expectOne((r) => r.url === '/api/audit/export.csv')
         .flush(JSON.stringify({ status: 409, code: 'limit_reached' }), {
@@ -642,15 +664,13 @@ describe('AuditPageComponent', () => {
       expect(TestBed.inject(ToastService).current()?.message).toBe(
         'The export would be too large. Narrow the time range or the filters.',
       );
-      expect(button('Export CSV').disabled).toBe(false);
+      expect(button('Export').disabled).toBe(false);
     });
 
     it('does not start a second export while one runs', async () => {
       await open([auditEntryFixture(1)]);
 
-      const first = button('Export CSV');
-      first.click();
-      await flushMicrotasks();
+      await exportAs('Export as CSV');
       fixture.detectChanges();
       expect(button('Exporting…').disabled).toBe(true);
       button('Exporting…').click();
@@ -714,5 +734,126 @@ describe('AuditPageComponent', () => {
         (th) => th.getAttribute('scope') === 'col',
       ),
     ).toBe(true);
+  });
+
+  describe('menu of an entry', () => {
+    /** The labels of the open context menu, with "—" for a separator. */
+    function menuLabels(): string[] {
+      return (TestBed.inject(ContextMenuService).current()?.entries ?? []).map((entry) =>
+        entry === 'separator' ? '—' : entry.label,
+      );
+    }
+
+    function run(label: string): void {
+      const item = TestBed.inject(ContextMenuService)
+        .current()
+        ?.entries.find((entry) => entry !== 'separator' && entry.label === label);
+      if (!item || item === 'separator') {
+        throw new Error(`no menu item "${label}"`);
+      }
+      TestBed.inject(ContextMenuService).run(item);
+    }
+
+    it('opens on a right click with the details, copy and the two filters', async () => {
+      await open([auditEntryFixture(1, { productionId: 'prd_b', productionName: 'Podcast' })]);
+
+      rows()[0].dispatchEvent(
+        new MouseEvent('contextmenu', {
+          bubbles: true,
+          cancelable: true,
+          clientX: 40,
+          clientY: 50,
+        }),
+      );
+
+      expect(menuLabels()).toEqual([
+        'Show details',
+        'Copy entry',
+        '—',
+        'Show only “Podcast”',
+        'Show only “Production”',
+      ]);
+      expect(TestBed.inject(ContextMenuService).current()?.label).toBe(
+        `Actions for the entry from ${formatDateTime(new Date(auditEntryFixture(1).at), { seconds: true })}`,
+      );
+
+      run('Show only “Podcast”');
+      await flushMicrotasks();
+      const byProduction = audit();
+      expect(params(byProduction)['production']).toEqual(['prd_b']);
+      byProduction.flush(
+        page([auditEntryFixture(1, { productionId: 'prd_b', productionName: 'Podcast' })]),
+      );
+      await render();
+
+      rows()[0].dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+      expect(menuLabels()[3]).toBe('Show only “Podcast”');
+      run('Show only “Production”');
+      await flushMicrotasks();
+      const byCategory = audit();
+      expect(params(byCategory)['category']).toEqual(['production']);
+      byCategory.flush(page([]));
+      await render();
+    });
+
+    it('opens the same menu under the ⋯ button and shows the details from it', async () => {
+      await open([auditEntryFixture(1)]);
+      const more = control<HTMLButtonElement>('.c-audit-table__menu');
+      expect(more.getAttribute('aria-haspopup')).toBe('menu');
+
+      more.click();
+      expect(menuLabels()[0]).toBe('Show details');
+      run('Show details');
+      await render();
+      expect(control('.c-audit-table__toggle').getAttribute('aria-expanded')).toBe('true');
+
+      more.click();
+      expect(menuLabels()[0]).toBe('Hide details');
+    });
+
+    it('cannot filter by the production of a sign-in, which has none', async () => {
+      await open([auditEntryFixture(1, { productionId: null, productionName: null })]);
+      rows()[0].dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+      const item = TestBed.inject(ContextMenuService)
+        .current()
+        ?.entries.find(
+          (entry) => entry !== 'separator' && entry.label === 'No production to filter by',
+        );
+      expect(item !== 'separator' && item?.disabled).toBe(true);
+    });
+
+    it('copies the entry as one line', async () => {
+      const copy = vi.spyOn(TestBed.inject(ClipboardService), 'copy').mockResolvedValue(true);
+      const entry = auditEntryFixture(1);
+      await open([entry]);
+
+      rows()[0].dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+      run('Copy entry');
+
+      expect(copy).toHaveBeenCalledWith(
+        `${formatDateTime(new Date(entry.at), { seconds: true })} · Admin · Scene “Break” is live · Webinar (scene.live)`,
+        { label: 'Scene “Break” is live' },
+      );
+    });
+  });
+
+  it('puts the focus in the search box on Ctrl+F or ⌘F', async () => {
+    await open([]);
+    const input = control<HTMLInputElement>('#audit-search');
+    expect(input.title).toMatch(/^Search the activity log \((Ctrl\+|⌘)F\)$/);
+
+    for (const init of [{ ctrlKey: true }, { metaKey: true }]) {
+      (document.activeElement as HTMLElement | null)?.blur();
+      const event = new KeyboardEvent('keydown', { key: 'f', cancelable: true, ...init });
+      document.dispatchEvent(event);
+      expect(event.defaultPrevented).toBe(true);
+      expect(document.activeElement).toBe(input);
+    }
+
+    (document.activeElement as HTMLElement | null)?.blur();
+    const plain = new KeyboardEvent('keydown', { key: 'f', cancelable: true });
+    document.dispatchEvent(plain);
+    expect(plain.defaultPrevented).toBe(false);
+    expect(document.activeElement).not.toBe(input);
   });
 });

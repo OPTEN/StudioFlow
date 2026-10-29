@@ -24,16 +24,15 @@ import { MediaSectionComponent } from './media-section.component';
 export type WizardStep = 'media' | 'address' | 'embedding' | 'done';
 
 /** The title and the sentence below it, per step. */
-const STEP_TEXT: Readonly<Record<WizardStep, { title: PlainMessageKey; lead: PlainMessageKey }>> =
-  {
-    media: { title: 'regie.server.wizard.mediaTitle', lead: 'regie.server.wizard.mediaLead' },
-    address: { title: 'regie.server.wizard.addressTitle', lead: 'regie.server.wizard.addressLead' },
-    embedding: {
-      title: 'regie.server.wizard.embeddingTitle',
-      lead: 'regie.server.wizard.embeddingLead',
-    },
-    done: { title: 'regie.server.wizard.doneTitle', lead: 'regie.server.wizard.doneText' },
-  };
+const STEP_TEXT: Readonly<Record<WizardStep, { title: PlainMessageKey; lead: PlainMessageKey }>> = {
+  media: { title: 'regie.server.wizard.mediaTitle', lead: 'regie.server.wizard.mediaLead' },
+  address: { title: 'regie.server.wizard.addressTitle', lead: 'regie.server.wizard.addressLead' },
+  embedding: {
+    title: 'regie.server.wizard.embeddingTitle',
+    lead: 'regie.server.wizard.embeddingLead',
+  },
+  done: { title: 'regie.server.wizard.doneTitle', lead: 'regie.server.wizard.doneText' },
+};
 
 /**
  * The first-run wizard after the account (`/setup/server`, issue #27), in the setup-assistant card of the login page with

@@ -11,6 +11,11 @@ import { formatBytes, type BackupsDto } from '@studioflow/scene-model';
 import { ApiError, toUserMessage } from '../core/api/api-error';
 import { ServerSettingsService } from '../core/state/server-settings.service';
 import { ClipboardService } from '../core/ui/clipboard.service';
+import {
+  ContextMenuDirective,
+  ContextMenuService,
+  type ContextMenuEntry,
+} from '../core/ui/context-menu';
 import { IconComponent } from '../core/ui/icon.component';
 import { ToastService } from '../core/ui/toast.service';
 import type { LampTone } from '../docks/shared/source-view';
@@ -39,11 +44,12 @@ interface StatusLine {
  * The latest backups of the backup service and "Back up now" (issue #27): a status line with the button next to it, a
  * table with column headers (backup, kind, size, finished) and, per row, a button that copies its restore command.
  * Restoring is a command on the server (it replaces the database and needs the stack stopped), so the page offers the
- * command instead of a button. Polled every {@link BACKUPS_REFRESH_MS}.
+ * command instead of a button. A row's menu (right click, the context-menu key or its ⋯ button) copies its restore
+ * command or its folder name. Polled every {@link BACKUPS_REFRESH_MS}.
  */
 @Component({
   selector: 'sf-backups-list',
-  imports: [IconComponent, ServerProblemComponent, TechnicalDetailsComponent],
+  imports: [ContextMenuDirective, IconComponent, ServerProblemComponent, TechnicalDetailsComponent],
   templateUrl: './backups-list.component.html',
   styleUrls: ['./server-section.scss', './backups-list.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -52,6 +58,7 @@ export class BackupsListComponent {
   private readonly settings = inject(ServerSettingsService);
   private readonly toasts = inject(ToastService);
   private readonly clipboard = inject(ClipboardService);
+  private readonly menus = inject(ContextMenuService);
 
   protected readonly t = t;
   protected readonly restoreTemplate = RESTORE_TEMPLATE;
@@ -130,6 +137,41 @@ export class BackupsListComponent {
 
   protected copyRestore(name: string): void {
     void this.clipboard.copy(restoreCommand(name));
+  }
+
+  protected copyName(name: string): void {
+    void this.clipboard.copy(name);
+  }
+
+  protected menuLabel(name: string): string {
+    return t('regie.server.backup.listMenu', { name });
+  }
+
+  /** The builder `[sfContextMenu]` calls when the menu of a row opens. */
+  protected menuOf(name: string): () => readonly ContextMenuEntry[] {
+    return () => this.rowMenu(name);
+  }
+
+  /** The commands of a backup: copy its restore command or its folder name. */
+  protected rowMenu(name: string): readonly ContextMenuEntry[] {
+    return [
+      {
+        label: t('regie.server.backup.listCopyCommand'),
+        icon: 'copy',
+        run: () => this.copyRestore(name),
+      },
+      { label: t('regie.server.backup.listCopyName'), run: () => this.copyName(name) },
+    ];
+  }
+
+  /** Opens the menu of a row under its ⋯ button. */
+  protected openMenu(name: string, button: HTMLElement): void {
+    const rect = button.getBoundingClientRect();
+    this.menus.open(
+      this.rowMenu(name),
+      { x: rect.right - 220, y: rect.bottom + 4 },
+      { label: this.menuLabel(name), returnFocus: button },
+    );
   }
 
   protected copyTemplate(element: HTMLElement): void {

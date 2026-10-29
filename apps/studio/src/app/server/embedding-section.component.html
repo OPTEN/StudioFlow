@@ -16,7 +16,9 @@
             [id]="'embedding-origin-' + row.id"
             [value]="row.value"
             [attr.aria-label]="t('regie.server.embedding.row', { index: index + 1 })"
-            [attr.aria-describedby]="rowError(row.id) ? 'embedding-origin-' + row.id + '-error' : null"
+            [attr.aria-describedby]="
+              rowError(row.id) ? 'embedding-origin-' + row.id + '-error' : null
+            "
             [attr.aria-invalid]="rowError(row.id) ? 'true' : null"
             [class.is-invalid]="rowError(row.id)"
             (input)="edit(row.id, $any($event.target).value)"
@@ -43,7 +45,9 @@
         </div>
       } @empty {
         <div class="c-group__row">
-          <span class="c-group__label c-origin__empty">{{ t('regie.server.embedding.empty') }}</span>
+          <span class="c-group__label c-origin__empty">{{
+            t('regie.server.embedding.empty')
+          }}</span>
         </div>
       }
       <div class="c-group__row c-origin__add">

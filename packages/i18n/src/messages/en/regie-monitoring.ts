@@ -62,4 +62,7 @@ export const regieMonitoring = {
   'regie.monitoring.tech.warn': 'marginal',
 
   'regie.monitoring.title': 'Monitoring',
+  'regie.monitoring.row.copy': 'Copy details',
+  'regie.monitoring.row.menu': 'Actions for {name}',
+  'regie.monitoring.row.show': 'Show in control room',
 } as const satisfies Namespace<'regie.monitoring'>;

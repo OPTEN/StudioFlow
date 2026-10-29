@@ -171,7 +171,10 @@ export function monitoringRows(
         cpuLimited: slot?.qualityLimitation === 'cpu',
         loss:
           slot && finite(slot.packetLossPct)
-            ? formatNumber(slot.packetLossPct, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+            ? formatNumber(slot.packetLossPct, {
+                minimumFractionDigits: 1,
+                maximumFractionDigits: 1,
+              })
             : MISSING_VALUE,
       };
     });

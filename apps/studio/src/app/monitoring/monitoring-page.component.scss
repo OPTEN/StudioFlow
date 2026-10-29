@@ -172,6 +172,32 @@
   }
 }
 
+// The device cell: name and platform, and the ⋯ button of the row (quiet until the row is hovered or focused).
+.c-mon-table__station {
+  align-items: flex-start;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.c-mon-table__who {
+  min-width: 0;
+}
+
+.c-mon-table__menu {
+  margin-block: -4px;
+  opacity: 0;
+
+  tr:hover &,
+  &:focus-visible {
+    opacity: 1;
+  }
+
+  @media (hover: none) {
+    opacity: 1;
+  }
+}
+
 .c-mon-table__name {
   display: block;
   font-size: 13.5px;

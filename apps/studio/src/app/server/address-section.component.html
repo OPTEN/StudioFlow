@@ -16,7 +16,10 @@
             [value]="card.id"
             [checked]="kind() === card.id"
             [attr.aria-describedby]="
-              'address-kind-' + card.id + '-text' + (fieldError('mode') ? ' address-mode-error' : '')
+              'address-kind-' +
+              card.id +
+              '-text' +
+              (fieldError('mode') ? ' address-mode-error' : '')
             "
             [attr.aria-invalid]="fieldError('mode') && kind() === card.id ? 'true' : null"
             (change)="chooseKind(card.id)"
@@ -49,7 +52,11 @@
             {{ t('regie.server.address.provider') }}
             <span class="c-group__sub">{{ t('regie.server.address.providerHint') }}</span>
           </label>
-          <select id="address-provider" class="c-select c-address__provider" [formControl]="modeControl">
+          <select
+            id="address-provider"
+            class="c-select c-address__provider"
+            [formControl]="modeControl"
+          >
             @for (candidate of providers(); track candidate.id) {
               <option [value]="candidate.id">{{ providerOption(candidate) }}</option>
             }

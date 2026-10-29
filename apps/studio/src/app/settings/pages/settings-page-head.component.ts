@@ -7,19 +7,24 @@ export type SettingsScope = 'production' | 'browser' | 'server' | 'none';
 
 /**
  * The head of a settings page: the large title and one line that says where its choices apply ("Applies to the
- * production “Demo webinar”.", "Saved in this browser only.", "Applies to the whole server …"), then an optional
- * sentence about the page. Content projected into it (a live status line) follows below the lead.
+ * production “Demo webinar”.", "Saved in this browser only.", "Applies to the whole server …") followed by an optional
+ * sentence about the page, in one paragraph. Content projected into it (a live status line) follows below the lead.
  */
 @Component({
   selector: 'sf-settings-page-head',
   template: `
     <header class="c-page__head">
       <h1 class="c-page__title">{{ title() }}</h1>
-      @if (scopeLine(); as text) {
-        <p class="c-page__lead">{{ text }}</p>
-      }
-      @if (note(); as text) {
-        <p class="c-page__lead">{{ text }}</p>
+      @if (scopeLine() || note()) {
+        <p class="c-page__lead">
+          @if (scopeLine(); as text) {
+            <span class="c-page__scope">{{ text }}</span>
+          }
+          @if (scopeLine() && note()) {
+            {{ ' ' }}
+          }
+          {{ note() }}
+        </p>
       }
       <ng-content />
     </header>
@@ -27,6 +32,11 @@ export type SettingsScope = 'production' | 'browser' | 'server' | 'none';
   styles: `
     :host {
       display: block;
+    }
+
+    .c-page__scope {
+      color: var(--text-2);
+      font-weight: 500;
     }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,

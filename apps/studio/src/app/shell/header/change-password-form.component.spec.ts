@@ -96,8 +96,24 @@ describe('ChangePasswordFormComponent', () => {
     expect(input('change-current').autocomplete).toBe('current-password');
     expect(input('change-password').autocomplete).toBe('new-password');
     expect(element.textContent).toContain('At least 12 characters');
-    expect(element.textContent).toContain('All other sessions are signed out.');
-    expect(buttons()).toEqual(['Change password', 'Cancel']);
+    expect(element.querySelector('#change-consequence')?.textContent?.trim()).toBe(
+      'Every other browser signed in with this account is signed out. This one stays signed in.',
+    );
+    expect(buttons()).toEqual(['Update password', 'Cancel']);
+    expect(element.querySelector('button[type="submit"]')?.getAttribute('aria-describedby')).toBe(
+      'change-consequence',
+    );
+  });
+
+  it('shows on the account page without a heading of its own, and offers Cancel once something is typed', async () => {
+    await setup();
+    fixture.componentRef.setInput('layout', 'page');
+    await render();
+    expect(element.querySelector('.c-pop-h')).toBeNull();
+    expect(buttons()).toEqual(['Update password']);
+    type('change-current', 'x');
+    await render();
+    expect(buttons()).toEqual(['Cancel', 'Update password']);
   });
 
   it('shows no error before a field was left, then explains the empty current password', async () => {

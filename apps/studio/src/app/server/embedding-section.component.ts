@@ -103,9 +103,10 @@ export class EmbeddingSectionComponent {
     // The focus stays in the list: on the row that took the place, else on "Add website".
     afterNextRender(
       () =>
-        (next ? this.inputOf(next.id) : this.host.nativeElement.querySelector<HTMLElement>(
-          '[data-add]',
-        ))?.focus(),
+        (next
+          ? this.inputOf(next.id)
+          : this.host.nativeElement.querySelector<HTMLElement>('[data-add]')
+        )?.focus(),
       { injector: this.injector },
     );
   }

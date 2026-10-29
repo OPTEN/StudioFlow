@@ -1,16 +1,19 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { t, tm, type PlainMessageKey } from '@studioflow/i18n';
-import {
-  MISSING_VALUE,
-  formatClock,
-  formatPercent,
-} from '@studioflow/scene-model';
+import { MISSING_VALUE, formatClock, formatPercent } from '@studioflow/scene-model';
 import { ProductionStoreService } from '../core/state/production-store.service';
+import { ClipboardService } from '../core/ui/clipboard.service';
 import { ClockService } from '../core/ui/clock.service';
+import {
+  ContextMenuDirective,
+  ContextMenuService,
+  type ContextMenuEntry,
+} from '../core/ui/context-menu';
 import { IconComponent } from '../core/ui/icon.component';
 import { toneClass, type LampTone, type StateTone } from '../docks/shared/source-view';
 import { SettingsPageHeadComponent } from '../settings/pages/settings-page-head.component';
+import { StationFocusService } from '../shell/station-focus.service';
 import {
   monitoringRows,
   nextSort,
@@ -80,11 +83,12 @@ export const MONITORING_COLUMNS: readonly ColumnDefinition[] = [
  * dock); a device with several sources shows one aligned line per source, so a value always sits next to its code.
  * Headings carry the units and sort on click (ascending, descending, back to the order of the devices) with a quiet
  * arrow on every column. It follows the store's telemetry stream (every 2 s per device) and the shared clock; stale
- * values are dimmed.
+ * values are dimmed. Each row has a menu (right click, the context-menu key or its ⋯ button): show the device in the
+ * control room (the Devices dock opens and flashes it) or copy its values as text.
  */
 @Component({
   selector: 'sf-monitoring-page',
-  imports: [IconComponent, RouterLink, SettingsPageHeadComponent],
+  imports: [ContextMenuDirective, IconComponent, RouterLink, SettingsPageHeadComponent],
   templateUrl: './monitoring-page.component.html',
   styleUrl: './monitoring-page.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -93,6 +97,10 @@ export class MonitoringPageComponent {
   protected readonly t = t;
   protected readonly store = inject(ProductionStoreService);
   private readonly clock = inject(ClockService);
+  private readonly router = inject(Router);
+  private readonly focus = inject(StationFocusService);
+  private readonly menus = inject(ContextMenuService);
+  private readonly clipboard = inject(ClipboardService);
 
   protected readonly columns = MONITORING_COLUMNS;
   protected readonly sort = signal<MonitoringSort>({ column: null, direction: 'asc' });
@@ -146,6 +154,63 @@ export class MonitoringPageComponent {
 
   constructor() {
     this.store.start();
+  }
+
+  protected menuLabel(row: MonitoringRow): string {
+    return t('regie.monitoring.row.menu', { name: row.name });
+  }
+
+  /** The builder `[sfContextMenu]` calls when the menu of a row opens. */
+  protected menuOf(row: MonitoringRow): () => readonly ContextMenuEntry[] {
+    return () => this.rowMenu(row);
+  }
+
+  /** The commands of a device: show it in the control room, copy its values. */
+  protected rowMenu(row: MonitoringRow): readonly ContextMenuEntry[] {
+    return [
+      {
+        label: t('regie.monitoring.row.show'),
+        icon: 'eye',
+        run: () => this.showInControlRoom(row),
+      },
+      { label: t('regie.monitoring.row.copy'), icon: 'copy', run: () => this.copyRow(row) },
+    ];
+  }
+
+  /** Opens the menu of a row under its ⋯ button. */
+  protected openMenu(row: MonitoringRow, button: HTMLElement): void {
+    const rect = button.getBoundingClientRect();
+    this.menus.open(
+      this.rowMenu(row),
+      { x: rect.left, y: rect.bottom + 4 },
+      { label: this.menuLabel(row), returnFocus: button },
+    );
+  }
+
+  /** Goes to the control room, where the Devices dock opens the device, scrolls it into view and flashes it. */
+  protected showInControlRoom(row: MonitoringRow): void {
+    this.focus.showDevice(row.id);
+    void this.router.navigateByUrl('/');
+  }
+
+  /** Copies the values of a device as text, one line per value and one per source. */
+  protected copyRow(row: MonitoringRow): void {
+    const label = (id: MonitoringColumn): string =>
+      this.heading(MONITORING_COLUMNS.find((column) => column.id === id) ?? MONITORING_COLUMNS[0]);
+    const lines = [
+      `${row.name} · ${row.platform}`,
+      `${label('state')}: ${row.stateWord}`,
+      ...row.slots.map(
+        (slot) =>
+          `${slot.code} (${slot.state}): ${slot.resolution} · ${slot.fps} fps · ${slot.bitrate} Mbit/s · ${slot.encoding} · ${slot.loss} %`,
+      ),
+      `${label('rtt')}: ${this.rtt(row)}`,
+      `${label('battery')}: ${this.battery(row)}`,
+      `${label('network')}: ${row.network ?? MISSING_VALUE}`,
+      `${label('tech')}: ${row.techText}`,
+      `${label('seen')}: ${this.seen(row)}`,
+    ];
+    void this.clipboard.copy(lines.join('\n'), { label: row.name });
   }
 
   protected heading(column: ColumnDefinition): string {

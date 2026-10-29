@@ -275,4 +275,7 @@ export const regieServer = {
   'regie.server.backup.listRestore':
     'Restoring replaces the database and needs the stack stopped, so it is a command on the server. Copy it from a row above, or use this one with the name of the backup:',
   'regie.server.backup.listRestoreCopy': 'Copy command',
+  'regie.server.backup.listCopyCommand': 'Copy restore command',
+  'regie.server.backup.listCopyName': 'Copy folder name',
+  'regie.server.backup.listMenu': 'Actions for the backup {name}',
 } as const satisfies Namespace<'regie.server'>;

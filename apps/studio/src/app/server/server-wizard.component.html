@@ -16,7 +16,12 @@
         @case ('address') {
           <sf-address-section mode="next" (saved)="addressSaved($event)">
             <p sfSectionNote class="c-wizard__keep">{{ t('regie.server.wizard.keepAddress') }}</p>
-            <button sfSectionStart class="c-btn c-btn--plain c-wizard__back" type="button" (click)="back()">
+            <button
+              sfSectionStart
+              class="c-btn c-btn--plain c-wizard__back"
+              type="button"
+              (click)="back()"
+            >
               <svg sfIcon="chev-left" [size]="14"></svg>{{ t('regie.server.wizard.back') }}
             </button>
             <button class="c-btn" type="button" (click)="skip()">
@@ -27,7 +32,12 @@
         @case ('embedding') {
           <sf-embedding-section mode="next" (saved)="embeddingSaved()">
             <p sfSectionNote class="c-wizard__keep">{{ t('regie.server.wizard.keepEmbedding') }}</p>
-            <button sfSectionStart class="c-btn c-btn--plain c-wizard__back" type="button" (click)="back()">
+            <button
+              sfSectionStart
+              class="c-btn c-btn--plain c-wizard__back"
+              type="button"
+              (click)="back()"
+            >
               <svg sfIcon="chev-left" [size]="14"></svg>{{ t('regie.server.wizard.back') }}
             </button>
             <button class="c-btn" type="button" (click)="skip()">
@@ -51,7 +61,11 @@
             </div>
           } @else {
             <div class="c-login__actions">
-              <button class="c-btn c-btn--lg c-btn--fill c-login__submit" type="button" (click)="open()">
+              <button
+                class="c-btn c-btn--lg c-btn--fill c-login__submit"
+                type="button"
+                (click)="open()"
+              >
                 {{ t('regie.server.wizard.doneOpen') }}
               </button>
             </div>
@@ -61,7 +75,8 @@
     } @else if (loadFailed()) {
       <div class="c-wizard__state">
         <p class="c-login__error" role="alert">
-          <svg sfIcon="alert" [size]="14"></svg><span>{{ t('regie.server.wizard.loadError') }}</span>
+          <svg sfIcon="alert" [size]="14"></svg
+          ><span>{{ t('regie.server.wizard.loadError') }}</span>
         </p>
         <div class="c-login__actions">
           <button class="c-btn c-btn--lg c-btn--fill" type="button" (click)="load()">

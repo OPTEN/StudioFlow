@@ -3,6 +3,10 @@ import { HUB } from '@studioflow/scene-model';
 import { FakeStudioHub, flushMicrotasks } from '../../testing/fake-studio-hub';
 import { snapshotFixture } from '../../testing/fixtures';
 import { startStore, studioTestProviders, type StoreHarness } from '../../testing/store-harness';
+import { Router } from '@angular/router';
+import { ClipboardService } from '../core/ui/clipboard.service';
+import { ContextMenuService } from '../core/ui/context-menu';
+import { StationFocusService } from '../shell/station-focus.service';
 import { MonitoringPageComponent } from './monitoring-page.component';
 import { networkLabel } from '../docks/stations/station-view';
 
@@ -37,10 +41,28 @@ describe('MonitoringPageComponent', () => {
 
   afterEach(() => harness.http.verify());
 
+  it('names the units in the column headings, so the cells hold plain figures', () => {
+    expect(Array.from(element.querySelectorAll('thead th')).map(text)).toEqual([
+      'Device',
+      'State',
+      'Source',
+      'Resolution',
+      'Frame rate (fps)',
+      'Bit rate (Mbit/s)',
+      'Encoding',
+      'Packet loss (%)',
+      'Round trip (ms)',
+      'Battery',
+      'Network',
+      'Tech check',
+      'Last seen',
+    ]);
+  });
+
   it('shows every station with live telemetry from the store', async () => {
     expect(text(element.querySelector('.c-mon__conn'))).toBe('Live');
     expect(text(element.querySelector('.c-mon__summary'))).toBe(
-      '2 stations · 2 sending · no incidents',
+      '2 devices · 2 sending · no issues',
     );
     expect(names()).toEqual(['Phone stage left', 'Laptop Lea']);
     hub.emit(HUB.telemetry, {
@@ -76,8 +98,8 @@ describe('MonitoringPageComponent', () => {
       '15',
       '1.9',
       'VP9',
-      '0.2%',
-      '12 ms',
+      '0.2',
+      '12',
       '–',
       networkLabel('ethernet'),
       'not run',
@@ -124,7 +146,7 @@ describe('MonitoringPageComponent', () => {
 
   it('sorts by a column header and marks it with aria-sort', async () => {
     const station = Array.from(element.querySelectorAll<HTMLButtonElement>('thead button')).find(
-      (button) => text(button) === 'Station',
+      (button) => text(button) === 'Device',
     ) as HTMLButtonElement;
     station.click();
     await render();
@@ -137,6 +159,66 @@ describe('MonitoringPageComponent', () => {
     station.click();
     await render();
     expect(station.closest('th')?.hasAttribute('aria-sort')).toBe(false);
+  });
+
+  describe('menu of a device', () => {
+    function labels(): string[] {
+      return (TestBed.inject(ContextMenuService).current()?.entries ?? []).map((entry) =>
+        entry === 'separator' ? '—' : entry.label,
+      );
+    }
+
+    function run(label: string): void {
+      const menus = TestBed.inject(ContextMenuService);
+      const item = menus
+        .current()
+        ?.entries.find((entry) => entry !== 'separator' && entry.label === label);
+      if (!item || item === 'separator') {
+        throw new Error(`no menu item "${label}"`);
+      }
+      menus.run(item);
+    }
+
+    it('opens on a right click and under the ⋯ button of the row', () => {
+      const row = element.querySelectorAll('tbody tr')[0];
+      row.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+      expect(labels()).toEqual(['Show in control room', 'Copy details']);
+      expect(TestBed.inject(ContextMenuService).current()?.label).toBe(
+        'Actions for Phone stage left',
+      );
+      TestBed.inject(ContextMenuService).close();
+
+      const more = row.querySelector<HTMLButtonElement>('.c-mon-table__menu');
+      expect(more?.getAttribute('aria-label')).toBe('Actions for Phone stage left');
+      more?.click();
+      expect(labels()).toEqual(['Show in control room', 'Copy details']);
+    });
+
+    it('shows the device in the control room', () => {
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+      element
+        .querySelectorAll('tbody tr')[1]
+        .dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+      run('Show in control room');
+
+      expect(TestBed.inject(StationFocusService).request()?.deviceId).toBe('dev_bbbbbbbbbbbbbbbb');
+      expect(navigate).toHaveBeenCalledWith('/');
+    });
+
+    it('copies the values of the device, one line each', () => {
+      const copy = vi.spyOn(TestBed.inject(ClipboardService), 'copy').mockResolvedValue(true);
+      element
+        .querySelectorAll('tbody tr')[0]
+        .dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+      run('Copy details');
+
+      const [copied, options] = copy.mock.calls[0];
+      expect(options).toEqual({ label: 'Phone stage left' });
+      const lines = copied.split('\n');
+      expect(lines[0]).toMatch(/^Phone stage left · /);
+      expect(lines[1]).toBe('State: sending');
+      expect(lines).toContain('Round trip (ms): –');
+    });
   });
 
   it('reports a lost server connection calmly', async () => {

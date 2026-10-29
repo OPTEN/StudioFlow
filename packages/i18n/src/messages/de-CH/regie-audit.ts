@@ -82,4 +82,17 @@ export const regieAudit: Translation<typeof en> = {
   'regie.audit.search.placeholder': 'Gerät, Szene, Benutzer …',
 
   'regie.audit.title': 'Protokoll',
+  'regie.audit.column.actions': 'Aktionen',
+  'regie.audit.details.raw': 'Erfasste Werte',
+  'regie.audit.details.summary': 'Übersicht',
+  'regie.audit.details.tabs': 'Details des Eintrags',
+  'regie.audit.details.what': 'Was',
+  'regie.audit.row.byCategory': 'Nur «{category}» zeigen',
+  'regie.audit.row.byProduction': 'Nur «{name}» zeigen',
+  'regie.audit.row.copy': 'Eintrag kopieren',
+  'regie.audit.row.details': 'Details einblenden',
+  'regie.audit.row.hideDetails': 'Details ausblenden',
+  'regie.audit.row.menu': 'Aktionen für den Eintrag von {time}',
+  'regie.audit.row.noProduction': 'Keine Produktion zum Filtern',
+  'regie.audit.search.shortcut': 'Im Protokoll suchen ({key})',
 };

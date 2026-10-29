@@ -23,7 +23,9 @@
 
       @if (preset() === 'weekly') {
         <div class="c-group__row">
-          <label class="c-group__label" for="backup-day">{{ t('regie.server.backup.dayLabel') }}</label>
+          <label class="c-group__label" for="backup-day">{{
+            t('regie.server.backup.dayLabel')
+          }}</label>
           <select id="backup-day" class="c-select c-srv__compact" [formControl]="day">
             @for (weekday of weekdays; track weekday) {
               <option [ngValue]="weekday">{{ dayName(weekday) }}</option>
@@ -33,7 +35,9 @@
       }
       @if (preset() === 'daily' || preset() === 'weekly') {
         <div class="c-group__row">
-          <label class="c-group__label" for="backup-time">{{ t('regie.server.backup.timeLabel') }}</label>
+          <label class="c-group__label" for="backup-time">{{
+            t('regie.server.backup.timeLabel')
+          }}</label>
           <input
             id="backup-time"
             class="c-input c-srv__compact u-mono"
@@ -65,7 +69,9 @@
               [class.is-invalid]="fieldError('schedule')"
               [attr.aria-invalid]="fieldError('schedule') ? 'true' : null"
             />
-            <p class="c-hint" id="backup-schedule-hint">{{ t('regie.server.backup.scheduleHint') }}</p>
+            <p class="c-hint" id="backup-schedule-hint">
+              {{ t('regie.server.backup.scheduleHint') }}
+            </p>
           </div>
         </div>
       }
@@ -105,7 +111,9 @@
   </section>
 
   <section class="c-group" aria-labelledby="backup-keep-heading">
-    <h2 class="c-group__title" id="backup-keep-heading">{{ t('regie.server.backup.keepHeading') }}</h2>
+    <h2 class="c-group__title" id="backup-keep-heading">
+      {{ t('regie.server.backup.keepHeading') }}
+    </h2>
     <div class="c-group__body">
       <div class="c-group__row">
         <label class="c-group__label" for="backup-keep-daily">{{
