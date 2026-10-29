@@ -207,27 +207,27 @@ test('screenshots of every screen', async ({ api, production, pairContext, openP
 
   // --- the settings window ---
   const pages: Array<[string, string, string]> = [
-    ['/settings/production', '30-settings-general', 'Settings › General (name, format and resolution)'],
-    ['/settings/slates', '31-settings-slates', 'Settings › Slates'],
-    ['/settings/text-style', '32-settings-text-style', 'Settings › Text style'],
-    ['/settings/output', '33-settings-output', 'Settings › Output links'],
-    ['/settings/productions', '34-settings-productions', 'Settings › All productions'],
-    ['/settings/appearance', '35-settings-appearance', 'Settings › Appearance and language'],
-    ['/settings/media', '36-settings-media', 'Settings › Media server'],
-    ['/settings/network', '37-settings-network', 'Settings › Address and certificate'],
-    ['/settings/embedding', '38-settings-embedding', 'Settings › Embedding'],
-    ['/settings/backups', '39-settings-backups', 'Settings › Backups'],
-    ['/monitoring', '40-monitoring', 'Diagnostics › Monitoring'],
-    ['/audit', '41-activity-log', 'Diagnostics › Activity log'],
-    ['/settings/account', '42-settings-account', 'Settings › Account'],
-    ['/settings/about', '43-settings-about', 'Settings › About StudioFlow'],
+    ['/settings/production', '30-settings-general', 'Settings > General (name, format and resolution)'],
+    ['/settings/slates', '31-settings-slates', 'Settings > Slates'],
+    ['/settings/text-style', '32-settings-text-style', 'Settings > Text style'],
+    ['/settings/output', '33-settings-output', 'Settings > Output links'],
+    ['/settings/productions', '34-settings-productions', 'Settings > All productions'],
+    ['/settings/appearance', '35-settings-appearance', 'Settings > Appearance and language'],
+    ['/settings/media', '36-settings-media', 'Settings > Media server'],
+    ['/settings/network', '37-settings-network', 'Settings > Address and certificate'],
+    ['/settings/embedding', '38-settings-embedding', 'Settings > Embedding'],
+    ['/settings/backups', '39-settings-backups', 'Settings > Backups'],
+    ['/monitoring', '40-monitoring', 'Diagnostics > Monitoring'],
+    ['/audit', '41-activity-log', 'Diagnostics > Activity log'],
+    ['/settings/account', '42-settings-account', 'Settings > Account'],
+    ['/settings/about', '43-settings-about', 'Settings > About StudioFlow'],
   ];
   for (const [url, file, title] of pages) {
     await page.goto(url);
     await shoot(page, file, title, () => page.waitForTimeout(1500), { fullPage: true });
   }
   await page.goto('/settings/slates');
-  await shoot(page, '31b-settings-slates-end', 'Settings › Slates, the end slate tab', () => page.getByRole('tab', { name: /After/ }).click(), { fullPage: true });
+  await shoot(page, '31b-settings-slates-end', 'Settings > Slates, the end slate tab', () => page.getByRole('tab', { name: /After/ }).click(), { fullPage: true });
   await page.goto('/settings/output');
   await page.waitForTimeout(1200);
   await shoot(page, '33b-output-link-open', 'Output links: a link opened (tab Link)', () => page.locator('.c-links__row').first().click(), { fullPage: true });
