@@ -62,7 +62,7 @@ export interface Target {
   viaLabel: boolean;
   /** Fully inside the viewport horizontally. */
   inViewport: boolean;
-  /** Index of the enclosing fieldset (a segmented control), -1 outside one. */
+  /** Index of the enclosing fieldset or tablist (a segmented control), -1 outside one. */
   group: number;
   /** Another element is on top of its centre (a sheet over the page): a finger cannot hit it. */
   covered: boolean;
@@ -109,7 +109,7 @@ export async function readTargets(page: Page): Promise<Target[]> {
           const hit = document.elementFromPoint(cx, cy);
           return Boolean(hit && hit !== target && !target.contains(hit) && !hit.contains(target));
         })(),
-        group: [...document.querySelectorAll('fieldset')].indexOf(element.closest('fieldset') as HTMLFieldSetElement),
+        group: [...document.querySelectorAll('fieldset, [role=tablist]')].indexOf(element.closest('fieldset, [role=tablist]') as HTMLElement),
       });
     }
     return result;
@@ -133,7 +133,7 @@ export function crowdedTargets(targets: Target[], gap = 8): Array<[Target, Targe
       const dy = Math.max(0, Math.max(a.y, b.y) - Math.min(a.y + a.height, b.y + b.height));
       const overlapping = Math.max(a.x, b.x) < Math.min(a.x + a.width, b.x + b.width) - 0.5 && Math.max(a.y, b.y) < Math.min(a.y + a.height, b.y + b.height) - 0.5;
       const distance = Math.hypot(dx, dy);
-      // Options of one segmented control (a fieldset) are joined by design; the rule is about separate controls.
+      // Options of one segmented control (a fieldset, or the segmented tabs of a tablist) are joined by design; the rule is about separate controls.
       const sameGroup = a.group >= 0 && a.group === b.group;
       if (!overlapping && !sameGroup && distance < gap) pairs.push([a, b, Math.round(distance * 10) / 10]);
     }

@@ -40,11 +40,15 @@ async function tallyChanges(page: Page): Promise<Array<{ at: number; value: stri
   return page.evaluate(() => (window as unknown as { __tallyLog: Array<{ at: number; value: string }> }).__tallyLog.slice());
 }
 
-/** What the sender shows for its tally: attribute, the Live/Preview capsule of the station, frame colour of the whole viewport. */
+/**
+ * What the sender shows for its tally: attribute, the Live/Preview capsule of the station, frame colour of the whole
+ * viewport. The frame changes with a short transition, so the colours are read once it has finished.
+ */
 async function appearance(page: Page) {
-  return page.evaluate(() => {
+  return page.evaluate(async () => {
     const element = document.querySelector('[data-testid=tally]') as HTMLElement | null;
     if (!element) return null;
+    await Promise.all(element.getAnimations().map((animation) => animation.finished.catch(() => undefined)));
     const style = getComputedStyle(element);
     const box = element.getBoundingClientRect();
     return {
