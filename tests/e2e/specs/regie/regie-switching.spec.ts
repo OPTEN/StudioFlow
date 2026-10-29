@@ -28,6 +28,7 @@ import {
   recordRequests,
   renderedItems,
   replaceItems,
+  rowToggle,
   sceneHit,
   startBroadcast,
   toastLog,
@@ -728,11 +729,11 @@ test.describe('REGIE tally', () => {
       // Hiding an element: after an even number of takes A is on air and B is in the preview, which is the scene the Regie edits.
       expect(await programId(api, production)).toBe(a);
       expect(await previewId(api, production)).toBe(b);
-      await page.getByRole('button', { name: 'Hide: Phone Two' }).click();
+      await (await rowToggle(page, 'Hide: Phone Two')).click();
       await expect
         .poll(() => two.overall(), { message: 'a hidden element gives no tally', timeout: 3000 })
         .toBe('off');
-      await page.getByRole('button', { name: 'Show: Phone Two' }).click();
+      await (await rowToggle(page, 'Show: Phone Two')).click();
       await expect.poll(() => two.overall(), { timeout: 3000 }).toBe('preview');
 
       // Ending the broadcast: off for everybody, also K1 and S1 in the program scene; starting again brings the tally back.
@@ -923,7 +924,8 @@ test.describe('REGIE broadcast and slates', () => {
         .poll(
           async () => {
             const stage = await output.stagePixels();
-            return stage.image.shareOfColor(
+            // Under the scrim that keeps the slate text readable: the violet, darkened.
+            return stage.image.shareOfShade(
               hex(COLOR.violet),
               { x: 0, y: 0, width: stage.image.width, height: stage.image.height },
               30,

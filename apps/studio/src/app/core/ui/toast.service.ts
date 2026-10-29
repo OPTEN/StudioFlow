@@ -43,9 +43,9 @@ interface Entry {
  * "Undo" of the first. Each toast has its own timer; while the pointer or the focus is on the stack the timers wait
  * ({@link hold}), so nobody loses a toast while reaching for its button. Use {@link error} for failed API calls.
  *
- * The same message (without action) while it is still shown keeps that toast and only restarts its timer: requests
- * that fail again and again during a short outage (a drag sends many) give one calm message, not a storm of identical
- * announcements.
+ * The same message (without action) while it is still shown keeps that toast, moves it to the end (it is the newest
+ * feedback again) and restarts its timer: requests that fail again and again during a short outage (a drag sends many)
+ * give one calm message, not a storm of identical announcements.
  */
 @Injectable({ providedIn: 'root' })
 export class ToastService {
@@ -74,6 +74,10 @@ export class ToastService {
             entry.toast.kind === kind,
         );
     if (repeated) {
+      // Still the latest feedback: a repeat behind a newer toast moves to the end, where the eye looks.
+      if (entries.at(-1) !== repeated) {
+        this.entries.set([...entries.filter((entry) => entry !== repeated), repeated]);
+      }
       this.start(repeated);
       return;
     }

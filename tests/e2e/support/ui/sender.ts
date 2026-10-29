@@ -189,7 +189,12 @@ export abstract class SenderPage {
   protected async clickAndConfirm(control: Locator): Promise<void> {
     await control.click();
     const sheet = this.confirmSheet();
-    if (await sheet.isVisible({ timeout: 1_000 }).catch(() => false)) await this.confirm();
+    // isVisible() answers at once (its timeout is ignored), so wait for the sheet itself.
+    const asked = await sheet
+      .waitFor({ state: 'visible', timeout: 1_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (asked) await this.confirm();
   }
 
   /** `window.__sfSender` (needs the test hooks), or null. */

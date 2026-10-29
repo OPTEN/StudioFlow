@@ -126,6 +126,30 @@ export class PixelImage {
     return count === 0 ? 0 : match / count;
   }
 
+  /**
+   * Share (0..1) of the pixels of a region that are the colour seen through a dark scrim: `k × colour` for one `k` in
+   * 0.4..1, within `tolerance` per channel. Used for slate images, which lie under a scrim so the text reads.
+   */
+  shareOfShade(
+    color: string | readonly [number, number, number],
+    rect: Rect = { x: 0, y: 0, width: this.width, height: this.height },
+    tolerance = 24,
+  ): number {
+    const x1 = Math.min(this.width, Math.round(rect.x + rect.width));
+    const y1 = Math.min(this.height, Math.round(rect.y + rect.height));
+    let match = 0;
+    let count = 0;
+    for (let y = Math.max(0, Math.round(rect.y)); y < y1; y++) {
+      for (let x = Math.max(0, Math.round(rect.x)); x < x1; x++) {
+        const offset = (y * this.width + x) * 4;
+        count += 1;
+        if (isShadeOf([this.data[offset]!, this.data[offset + 1]!, this.data[offset + 2]!], color, tolerance))
+          match += 1;
+      }
+    }
+    return count === 0 ? 0 : match / count;
+  }
+
   /** The sub-image of a region. */
   crop(rect: Rect): PixelImage {
     const x0 = Math.max(0, Math.round(rect.x));
@@ -163,6 +187,22 @@ export function colorsClose(
     Math.abs(actual[1]! - g) <= tolerance &&
     Math.abs(actual[2]! - b) <= tolerance
   );
+}
+
+/**
+ * True when `actual` is `expected` darkened by a scrim: `k × expected` for the best-fitting `k` in 0.4..1, within
+ * `tolerance` per channel (see {@link PixelImage.shareOfShade}).
+ */
+export function isShadeOf(
+  actual: Rgba | readonly number[],
+  expected: string | readonly [number, number, number],
+  tolerance = 24,
+): boolean {
+  const target = typeof expected === 'string' ? parseHex(expected) : expected;
+  const dot = target.reduce((sum, channel, index) => sum + channel * actual[index]!, 0);
+  const norm = target.reduce((sum, channel) => sum + channel * channel, 0);
+  const k = norm === 0 ? 0 : Math.min(1, Math.max(0.4, dot / norm));
+  return target.every((channel, index) => Math.abs(actual[index]! - k * channel) <= tolerance);
 }
 
 /** Scales a region of an image up by an integer factor (nearest neighbour), so a small QR code decodes reliably. */

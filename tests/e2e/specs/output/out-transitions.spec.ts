@@ -3,7 +3,7 @@ import { TEXT } from '../../support/text';
 import { makePng } from '../../support/media-samples';
 import { expect, test } from '../../support/ui/fixtures';
 import { SCREEN_COLORS } from '../../support/ui/init';
-import { colorsClose } from '../../support/ui/pixels';
+import { colorsClose, isShadeOf } from '../../support/ui/pixels';
 import { GROUND, firstEvent, itemsOfLayer, sleep, toneOf } from '../../support/output/analysis';
 import { outBug } from '../../support/output/bugs';
 import { openProbedOutput } from '../../support/output/open';
@@ -338,7 +338,8 @@ test.describe('OUT transitions', () => {
       const image = await frame.evaluate(() => document.querySelector<HTMLImageElement>('.sf-r-slate-image')!.src);
       expect(image, 'the image is requested with the output key').toContain('?k=');
       const withImage = await output.stagePixels();
-      expect(colorsClose(withImage.at(100, 100), '#c82828', 30), 'the slate image covers the stage').toBe(true);
+      // The image lies under the dark scrim that keeps the slate text readable: its colour, darkened.
+      expect(isShadeOf(withImage.at(100, 100), '#c82828', 30), `the slate image covers the stage, got ${withImage.at(100, 100)}`).toBe(true);
       // Back to the plain slate.
       await api.updateProduction(production.id, { standbySlate: { title: TEXT.slate.standby, subtitle: production.name, backgroundAssetId: null } });
       await expect.poll(() => frame.evaluate(() => getComputedStyle(document.querySelector('.sf-r-slate-image')!).display), { timeout: 5000 }).toBe('none');

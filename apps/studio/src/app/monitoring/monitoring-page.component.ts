@@ -79,8 +79,9 @@ export const MONITORING_COLUMNS: readonly ColumnDefinition[] = [
 /**
  * Monitoring (`/monitoring`, spec 9.1) in the settings window: a table of every device with its live telemetry (state,
  * sources, resolution, frame rate, bit rate, encoding with the "CPU at limit" tag of issue #12, packet loss, round trip,
- * battery, network, technical check and last contact). Devices with a problem come first (the order of the Devices
- * dock); a device with several sources shows one aligned line per source, so a value always sits next to its code.
+ * battery, network, technical check and last contact). Devices with a problem come first (the Devices dock keeps its
+ * order by code instead); a device with several sources shows one aligned line per source, so a value always sits next
+ * to its code.
  * Headings carry the units and sort on click (ascending, descending, back to the order of the devices) with a quiet
  * arrow on every column. It follows the store's telemetry stream (every 2 s per device) and the shared clock; stale
  * values are dimmed. Each row has a menu (right click, the context-menu key or its ⋯ button): show the device in the

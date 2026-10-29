@@ -88,7 +88,8 @@ test.describe('LINK output links and the camera', () => {
       await expect(linkRow(pop, 'Teams camera')).toHaveText(/^Teams camera · connected$/, {
         timeout: 15_000,
       });
-      await expect(chip(page)).toContainText('Proxy + Teams camera');
+      // The capsule says one word (state or latency); its tooltip names every link with its state.
+      await expect(chip(page)).toHaveAttribute('title', /Proxy · connected[\s\S]*Teams camera · connected/);
 
       // Revoke "Teams camera" on the settings page: only its page is denied, within the key hard limit.
       await teamsDetail.getByRole('button', { name: 'Revoke…' }).click();
@@ -116,8 +117,8 @@ test.describe('LINK output links and the camera', () => {
       // The other link keeps playing: its page is not denied, still connected, and survives a few report ticks.
       expect(await proxyPage.slateText()).not.toContain('No access');
       await expect(linkRow(pop, 'Proxy')).toHaveText('Proxy · connected', { timeout: 10_000 });
-      await expect(chip(page)).toContainText('Proxy');
-      await expect(chip(page)).not.toContainText('Teams camera');
+      await expect(chip(page)).toHaveAttribute('title', /Proxy · connected/);
+      await expect(chip(page)).not.toHaveAttribute('title', /Teams camera/);
       await proxyPage.page.waitForTimeout(3000);
       expect(await proxyPage.slateText()).not.toContain('No access');
 

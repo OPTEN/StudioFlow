@@ -280,11 +280,11 @@ test.describe('REGIE scenes', () => {
       await expect(inspector(page).getByRole('button', { name: 'Delete scene' })).toBeDisabled();
       await expect(inspector(page)).toContainText('The live scene cannot be deleted.');
       await expect(inspector(page)).not.toContainText('Edit other scenes in Studio Mode');
-      // Studio Mode off: the inspector shows the program scene, the hint says how to edit another one.
+      // Studio Mode off: the inspector shows the program scene, the hint says where the other scenes are deleted.
       await regie.setStudioMode(false);
       await expect(inspector(page).getByRole('button', { name: 'Delete scene' })).toBeDisabled();
       await expect(inspector(page)).toContainText(
-        'The live scene cannot be deleted. Edit other scenes in Studio Mode.',
+        'The live scene cannot be deleted. Other scenes can be deleted from their menu in Scenes.',
       );
       const refused = await api.deleteScene(production.id, sceneA);
       expect(refused.status).toBe(409);
@@ -359,11 +359,11 @@ test.describe('REGIE scenes', () => {
       await expect(inspectorTitle(page)).toHaveAttribute('data-view', 'item');
       await expect(inspectorSub(page)).toHaveText('Phone One');
 
-      // The menu no longer lists K1; the screen gets “contain”.
+      // K1 can no longer be added: it stays listed with the “In scene” check, disabled; the screen gets “contain”.
       const menu2 = await add('S1');
-      expect(
-        (await menu2.getByRole('menuitem').allTextContents()).some((text) => /K1/.test(text)),
-      ).toBe(false);
+      const inScene = menu2.getByRole('menuitem', { name: /K1/ });
+      await expect(inScene, 'K1 is in the scene and cannot be added again').toBeDisabled();
+      await expect(inScene).toContainText('In scene');
       await menu2.getByRole('menuitem', { name: /S1/ }).click();
       await expect(toastOf(page)).toContainText('S1 added to “Scene A”');
       scene = await expectScene(

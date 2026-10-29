@@ -532,7 +532,8 @@ test.describe('REGIE monitoring page', () => {
         const text = await names(regie.page.locator('.c-st[data-device] .c-st__name'));
         return text.map((entry) => entry.trim());
       };
-      expect((await monitoringOrder())[0], 'the problem station comes first').toBe('Phone Two');
+      const defaultOrder = await monitoringOrder();
+      expect(defaultOrder[0], 'the problem station comes first').toBe('Phone Two');
       expect(await dockOrder(), 'the Devices dock lists by code: K1, K2, then S1').toEqual([
         'Phone One',
         'Phone Two',
@@ -560,7 +561,7 @@ test.describe('REGIE monitoring page', () => {
       await mon.getByRole('button', { name: 'Device', exact: true }).click();
       await mon.getByRole('button', { name: 'Device', exact: true }).click();
       await expect(header('Device')).not.toHaveAttribute('aria-sort', /.+/);
-      expect(await monitoringOrder(), 'back to the Regie order').toEqual(await dockOrder());
+      expect(await monitoringOrder(), 'back to the default order, problems first').toEqual(defaultOrder);
 
       // Live values: a new report reaches the table within a few seconds (telemetry is relayed once per 2 s).
       await report(

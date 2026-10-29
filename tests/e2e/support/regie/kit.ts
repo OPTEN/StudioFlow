@@ -577,6 +577,17 @@ export async function selectViaRow(page: Page, codeAndName: string | RegExp): Pr
   await expect(inspectorTitle(page)).toHaveAttribute('data-view', 'item');
 }
 
+/**
+ * The eye or lock of a Sources row by its accessible name (`Hide: Phone One`, `Lock: Phone Two`). In a narrow dock the
+ * quiet toggles come in only on hover, focus or selection, so the row is hovered first, like an operator does.
+ */
+export async function rowToggle(page: Page, name: string): Promise<Locator> {
+  // By attribute: a toggle with `display: none` is not in the accessibility tree yet, so getByRole cannot find its row.
+  const quiet = page.locator(`button[aria-label=${JSON.stringify(name)}]`);
+  await sourcesDock(page).locator('.c-src').filter({ has: quiet }).hover();
+  return sourcesDock(page).getByRole('button', { name, exact: true });
+}
+
 // --- animations, toasts and probes (installed into a page at run time) ---------------------------------------------
 
 /** One call of `Element.prototype.animate` seen by {@link installAnimationHook}. */
