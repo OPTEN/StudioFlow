@@ -211,6 +211,11 @@ export class SceneCommandsService {
     return updated !== undefined;
   }
 
+  /** Says why the live scene cannot be deleted (Delete key on its row). */
+  explainLiveDelete(): void {
+    this.toasts.show(t('regie.scenes.toast.liveDelete'));
+  }
+
   /**
    * Deletes a scene with all its items. The live scene cannot be deleted. In Studio Mode a deleted preview scene is
    * replaced by its neighbour first (prototype), so the preview never jumps elsewhere.
@@ -221,7 +226,7 @@ export class SceneCommandsService {
       return false;
     }
     if (sceneId === this.store.programSceneId()) {
-      this.toasts.show(t('regie.scenes.toast.liveDelete'));
+      this.explainLiveDelete();
       return false;
     }
     const done = await this.commands.run(`scene:${sceneId}:delete`, async (productionId) => {

@@ -154,43 +154,12 @@
   }
 }
 
-.c-scene__menu {
+// The delete confirmation, anchored to the row (the commands themselves are in the shared context menu).
+.c-scene__confirm {
   min-width: 0;
   position: fixed;
   right: auto;
   transform-origin: top left;
-  width: 232px;
+  width: 260px;
   z-index: 50;
-}
-
-.c-scene__item-text {
-  display: grid;
-  gap: 1px;
-  min-width: 0;
-}
-
-.c-scene__shortcut {
-  @include code;
-  color: var(--muted);
-  font-size: var(--fs-caption);
-  margin-left: auto;
-}
-
-.c-menu-item:hover .c-scene__shortcut,
-.c-menu-item:focus-visible .c-scene__shortcut {
-  color: var(--on-fill);
-}
-
-// The destructive item keeps the red text until the highlight takes it over.
-.c-scene__delete:not(:disabled) {
-  color: var(--red);
-
-  .c-icon {
-    color: inherit;
-  }
-
-  &:hover,
-  &:focus-visible {
-    color: var(--on-fill);
-  }
 }

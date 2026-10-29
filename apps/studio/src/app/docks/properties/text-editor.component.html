@@ -48,7 +48,11 @@
         [attr.maxlength]="lineMax * 2"
         [attr.aria-invalid]="line1Empty() ? 'true' : null"
         [attr.aria-describedby]="
-          line1Empty() ? 'sf-text-line1-error' : showCount(line1Count()) ? 'sf-text-line1-count' : null
+          line1Empty()
+            ? 'sf-text-line1-error'
+            : showCount(line1Count())
+              ? 'sf-text-line1-count'
+              : null
         "
         [class.is-invalid]="line1Empty() || line1Count() > lineMax"
         [placeholder]="t('regie.text.editor.line1Placeholder')"

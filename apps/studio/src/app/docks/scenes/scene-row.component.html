@@ -25,8 +25,9 @@
     [attr.aria-label]="view().ariaLabel"
     [attr.title]="rowTitle()"
     (click)="choose.emit(view().id)"
+    [sfContextMenu]="menu"
+    [sfContextMenuLabel]="t('regie.scenes.row.menuLabel', { name: displayName() })"
     (keydown)="onRowKeyDown($event)"
-    (contextmenu)="openAtPointer($event)"
   >
     <span class="c-scene__thumb" aria-hidden="true" [style.aspect-ratio]="store.canvasAspect()">
       <sf-scene-thumb [scene]="scene()" />
@@ -64,112 +65,30 @@
     type="button"
     aria-haspopup="menu"
     [attr.aria-label]="t('regie.scenes.row.menuTriggerLabel', { name: displayName() })"
-    [sfPopoverTrigger]="menuId()"
-    (click)="openBelow($event)"
+    [title]="t('regie.scenes.row.menuTitle')"
+    (click)="openMenuAt($event)"
   >
     <svg sfIcon="more"></svg>
   </button>
-  @if (menuOpen()) {
+  @if (confirmOpen()) {
     <div
-      #menu
-      class="c-pop c-scene__menu"
-      [attr.role]="confirming() ? 'dialog' : 'menu'"
-      [attr.aria-label]="
-        confirming()
-          ? t('regie.scenes.row.deleteLabel')
-          : t('regie.scenes.row.menuLabel', { name: displayName() })
-      "
-      [sfPopover]="menuId()"
-      [style.top.px]="menuPosition().top"
-      [style.left.px]="menuPosition().left"
-      (keydown)="onMenuKeyDown($event)"
+      #confirm
+      class="c-pop c-scene__confirm"
+      role="dialog"
+      [attr.aria-label]="t('regie.scenes.row.deleteLabel')"
+      [sfPopover]="confirmId()"
+      [style.top.px]="confirmPosition().top"
+      [style.left.px]="confirmPosition().left"
     >
-      @if (confirming()) {
-        <sf-confirm-box
-          [label]="t('regie.scenes.row.deleteLabel')"
-          [confirmLabel]="t('regie.scenes.row.deleteLabel')"
-          [flush]="true"
-          [message]="t('regie.scenes.row.deleteMessage', { name: displayName() })"
-          [busy]="deleting()"
-          (confirm)="remove()"
-          (cancel)="cancelDelete()"
-        />
-      } @else {
-        <button
-          class="c-menu-item"
-          type="button"
-          role="menuitem"
-          aria-keyshortcuts="F2"
-          [disabled]="!commands.online()"
-          (click)="startRename()"
-        >
-          <svg sfIcon="pencil"></svg>{{ t('common.rename')
-          }}<kbd class="c-scene__shortcut">F2</kbd>
-        </button>
-        <button
-          class="c-menu-item"
-          type="button"
-          role="menuitem"
-          [disabled]="!commands.canCreate() || commands.blocked('scene:' + view().id + ':duplicate')"
-          (click)="duplicate()"
-        >
-          <svg sfIcon="copy"></svg>{{ t('regie.scenes.row.duplicate') }}
-        </button>
-        <button
-          class="c-menu-item"
-          type="button"
-          role="menuitem"
-          [disabled]="!commands.online() || inPreview()"
-          (click)="sendToPreview()"
-        >
-          <svg sfIcon="send"></svg>
-          <span class="c-scene__item-text">
-            {{ t('regie.scenes.row.sendToPreview') }}
-            @if (!switcher.studioMode()) {
-              <span class="c-hint">{{ t('regie.scenes.row.sendToPreviewHint') }}</span>
-            }
-          </span>
-        </button>
-        <div class="c-menu-sep" role="separator"></div>
-        <button
-          class="c-menu-item"
-          type="button"
-          role="menuitem"
-          aria-keyshortcuts="Alt+ArrowUp"
-          [disabled]="!canMoveUp() || commands.blocked('scene:order')"
-          (click)="move(-1)"
-        >
-          <svg sfIcon="up"></svg>{{ t('regie.scenes.row.moveUp')
-          }}<kbd class="c-scene__shortcut">Alt+↑</kbd>
-        </button>
-        <button
-          class="c-menu-item"
-          type="button"
-          role="menuitem"
-          aria-keyshortcuts="Alt+ArrowDown"
-          [disabled]="!canMoveDown() || commands.blocked('scene:order')"
-          (click)="move(1)"
-        >
-          <svg sfIcon="down"></svg>{{ t('regie.scenes.row.moveDown')
-          }}<kbd class="c-scene__shortcut">Alt+↓</kbd>
-        </button>
-        <div class="c-menu-sep" role="separator"></div>
-        <button
-          class="c-menu-item c-scene__delete"
-          type="button"
-          role="menuitem"
-          [disabled]="view().isProgram || !commands.online() || deleting()"
-          (click)="askDelete()"
-        >
-          <svg sfIcon="trash"></svg>
-          <span class="c-scene__item-text">
-            {{ t('regie.scenes.row.delete') }}
-            @if (view().isProgram) {
-              <span class="c-hint">{{ t('regie.scenes.row.deleteBlocked') }}</span>
-            }
-          </span>
-        </button>
-      }
+      <sf-confirm-box
+        [label]="t('regie.scenes.row.deleteLabel')"
+        [confirmLabel]="t('regie.scenes.row.deleteLabel')"
+        [flush]="true"
+        [message]="t('regie.scenes.row.deleteMessage', { name: displayName() })"
+        [busy]="deleting()"
+        (confirm)="remove()"
+        (cancel)="cancelDelete()"
+      />
     </div>
   }
 }

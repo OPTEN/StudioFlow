@@ -10,7 +10,9 @@ import {
   viewChild,
 } from '@angular/core';
 import { t, tm } from '@studioflow/i18n';
+import type { ItemFit } from '@studioflow/scene-model';
 import { ProductionStoreService } from '../../core/state/production-store.service';
+import { ContextMenuDirective, type ContextMenuEntry } from '../../core/ui/context-menu';
 import { IconComponent } from '../../core/ui/icon.component';
 import { PopoverService, PopoverTriggerDirective } from '../../core/ui/popover.directive';
 import { ToastService } from '../../core/ui/toast.service';
@@ -39,13 +41,17 @@ import { dragHasFiles } from './upload-validation';
  * holds undo, redo and "+ Source" (add a source, new text, upload, media library); an empty scene offers the same as
  * buttons. Files dropped on the dock are uploaded. The rows are reordered by drag and drop or from the keyboard
  * ({@link SortableListComponent}); the top row is the front layer, and `EditorService.reorderItems` sends the new
- * order. In a copied production the section "Missing sources" below the rows lists the placeholders of the original
+ * order. A right click on a row (or the context-menu key) offers the commands of the item: show or hide, lock, the
+ * layer order, fit or fill, Properties… and Remove from scene; each also has a button here or in Properties. Keyboard
+ * on a row: Enter or Space selects it, ↑/↓ select the neighbour, Delete or Backspace removes it from the scene (the toast
+ * and Ctrl+Z bring it back). In a copied production the section "Missing sources" below the rows lists the placeholders of the original
  * devices with "Assign…" ({@link PlaceholderListComponent}).
  */
 @Component({
   selector: 'sf-sources-dock',
   imports: [
     AddSourcePopoverComponent,
+    ContextMenuDirective,
     DockFrameComponent,
     EditStatusComponent,
     ElapsedComponent,
@@ -142,11 +148,119 @@ export class SourcesDockComponent {
     this.editor.reorderItems(flipOrder(rowIds));
   }
 
+  /** The commands of a row's right-click menu. */
+  protected rowMenu(row: SourceRowView): () => readonly ContextMenuEntry[] {
+    return () => {
+      const item = this.editor.itemById(row.itemId);
+      const items = this.scene()?.items ?? [];
+      const index = items.findIndex((entry) => entry.id === row.itemId);
+      const canEdit = this.editor.canEdit();
+      const atFront = index < 0 || index === items.length - 1;
+      const atBack = index <= 0;
+      const entries: ContextMenuEntry[] = [
+        {
+          label: t(row.hidden ? 'regie.sources.menu.show' : 'regie.sources.menu.hide'),
+          icon: row.hidden ? 'eye' : 'eye-off',
+          run: () => this.editor.toggleHidden(row.itemId),
+        },
+        {
+          label: t(row.locked ? 'regie.sources.menu.unlock' : 'regie.sources.menu.lock'),
+          icon: row.locked ? 'unlock' : 'lock',
+          run: () => this.editor.toggleLocked(row.itemId),
+        },
+        'separator',
+        {
+          label: t('regie.properties.element.layerToFront'),
+          disabled: !canEdit || atFront,
+          run: () => this.editor.moveLayer(row.itemId, 'front'),
+        },
+        {
+          label: t('regie.properties.element.layerForward'),
+          icon: 'up',
+          disabled: !canEdit || atFront,
+          run: () => this.editor.moveLayer(row.itemId, 'up'),
+        },
+        {
+          label: t('regie.properties.element.layerBackward'),
+          icon: 'down',
+          disabled: !canEdit || atBack,
+          run: () => this.editor.moveLayer(row.itemId, 'down'),
+        },
+        {
+          label: t('regie.properties.element.layerToBack'),
+          disabled: !canEdit || atBack,
+          run: () => this.editor.moveLayer(row.itemId, 'back'),
+        },
+      ];
+      if (item && !row.isText) {
+        entries.push(
+          'separator',
+          {
+            label: t('regie.properties.element.fitCover'),
+            checked: item.fit === 'cover',
+            disabled: !canEdit,
+            run: () => this.setFit(row.itemId, 'cover'),
+          },
+          {
+            label: t('regie.properties.element.fitContain'),
+            checked: item.fit === 'contain',
+            disabled: !canEdit,
+            run: () => this.setFit(row.itemId, 'contain'),
+          },
+        );
+      }
+      entries.push(
+        'separator',
+        {
+          label: t('regie.sources.menu.properties'),
+          icon: 'sliders',
+          disabled: row.hidden && !row.isText,
+          run: () => this.editor.select(row.itemId),
+        },
+        {
+          label: t('regie.properties.element.remove'),
+          icon: 'trash',
+          shortcut: t('regie.sources.menu.deleteKey'),
+          danger: true,
+          disabled: !canEdit,
+          run: () => this.editor.removeItem(row.itemId),
+        },
+      );
+      return entries;
+    };
+  }
+
+  /** Delete or Backspace on a row removes the item from the scene (the toast offers Undo, Ctrl+Z works too). */
+  protected onRowKeyDown(row: SourceRowView, event: KeyboardEvent): void {
+    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) {
+      return;
+    }
+    if (event.key === 'Delete' || event.key === 'Backspace') {
+      event.preventDefault();
+      this.editor.removeItem(row.itemId);
+    }
+  }
+
+  /** ↑/↓ moved the focus to another row: select it (a hidden camera, screen or medium cannot be selected). */
+  protected onFocusStep(itemId: string): void {
+    const row = this.rowsById().get(itemId);
+    if (row && (!row.hidden || row.isText)) {
+      this.editor.select(itemId);
+    }
+  }
+
   /** Selects the row's item; a second click on the selected row clears the selection (back to the scene). */
   protected select(row: SourceRowView, event?: Event): void {
     event?.stopPropagation();
     if (!row.hidden || row.isText) {
       this.editor.select(row.selected ? null : row.itemId);
+    }
+  }
+
+  private setFit(itemId: string, fit: ItemFit): void {
+    const item = this.editor.itemById(itemId);
+    if (item && item.fit !== fit) {
+      this.editor.updateItem({ ...item, fit });
     }
   }
 

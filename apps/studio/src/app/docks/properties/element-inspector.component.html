@@ -1,158 +1,240 @@
 <div class="c-insp">
+  <div
+    class="c-tabs c-insp__tabs"
+    role="tablist"
+    [attr.aria-label]="t('regie.properties.tabs.label')"
+    (keydown)="onTabKeyDown($event)"
+  >
+    @for (tab of tabs(); track tab) {
+      <button
+        class="c-tab"
+        type="button"
+        role="tab"
+        [id]="'sf-insp-tab-' + tab"
+        [attr.aria-selected]="activeTab() === tab"
+        [attr.aria-controls]="'sf-insp-panel-' + tab"
+        [tabIndex]="activeTab() === tab ? 0 : -1"
+        (click)="selectTab(tab)"
+      >
+        {{ t(tabLabel[tab]) }}
+      </button>
+    }
+  </div>
+
   @if (text(); as text) {
-    <sf-inspector-section section="text" [title]="t('regie.properties.section.text')">
+    <div
+      class="c-insp__panel"
+      id="sf-insp-panel-text"
+      role="tabpanel"
+      aria-labelledby="sf-insp-tab-text"
+      [hidden]="activeTab() !== 'text'"
+    >
       <sf-text-editor [item]="item()" [text]="text" />
-    </sf-inspector-section>
+    </div>
   }
 
-  <sf-inspector-section
-    section="geometry"
-    [title]="t('regie.properties.section.geometry')"
-    [note]="canvasNote()"
+  <div
+    class="c-insp__panel"
+    id="sf-insp-panel-layout"
+    role="tabpanel"
+    aria-labelledby="sf-insp-tab-layout"
+    [hidden]="activeTab() !== 'layout'"
   >
-    <div class="c-insp__pair">
-      <div class="c-num">
-        <label class="c-num__label" for="sf-insp-x">X</label>
-        <input
-          class="c-num__input"
-          id="sf-insp-x"
-          type="number"
-          step="1"
-          [min]="bounds.minX"
-          [max]="bounds.maxX"
-          [disabled]="disabled()"
-          [sfNumberField]="item().x"
-          (numberChange)="setNumber('x', $event)"
-          (editStart)="beginEdit()"
-          (editEnd)="endEdit()"
-        />
-        <span class="c-num__unit">px</span>
-      </div>
-      <div class="c-num">
-        <label class="c-num__label" for="sf-insp-y">Y</label>
-        <input
-          class="c-num__input"
-          id="sf-insp-y"
-          type="number"
-          step="1"
-          [min]="bounds.minY"
-          [max]="bounds.maxY"
-          [disabled]="disabled()"
-          [sfNumberField]="item().y"
-          (numberChange)="setNumber('y', $event)"
-          (editStart)="beginEdit()"
-          (editEnd)="endEdit()"
-        />
-        <span class="c-num__unit">px</span>
-      </div>
-      <div class="c-num">
-        <label class="c-num__label" for="sf-insp-w">{{
-          t('regie.properties.element.widthShort')
-        }}</label>
-        <input
-          class="c-num__input"
-          id="sf-insp-w"
-          type="number"
-          step="1"
-          [min]="bounds.minW"
-          [max]="bounds.maxW"
-          [disabled]="disabled()"
-          [sfNumberField]="item().w"
-          (numberChange)="setNumber('w', $event)"
-          (editStart)="beginEdit()"
-          (editEnd)="endEdit()"
-        />
-        <span class="c-num__unit">px</span>
-      </div>
-      <div class="c-num">
-        <label class="c-num__label" for="sf-insp-h">{{
-          t('regie.properties.element.heightShort')
-        }}</label>
-        <input
-          class="c-num__input"
-          id="sf-insp-h"
-          type="number"
-          step="1"
-          [min]="bounds.minH"
-          [max]="bounds.maxH"
-          [disabled]="disabled()"
-          [sfNumberField]="item().h"
-          (numberChange)="setNumber('h', $event)"
-          (editStart)="beginEdit()"
-          (editEnd)="endEdit()"
-        />
-        <span class="c-num__unit">px</span>
-      </div>
-    </div>
-    <p class="c-hint c-insp__note">{{ t('regie.properties.element.note') }}</p>
-  </sf-inspector-section>
-
-  @if (!text()) {
-    <sf-inspector-section section="fit" [title]="t('regie.properties.section.fit')">
-      <div class="c-insp__row">
-        <span class="c-insp__label" id="sf-insp-fit">{{ t('regie.properties.element.fit') }}</span>
-        <div class="c-seg c-insp__seg" role="group" aria-labelledby="sf-insp-fit">
-          <button
-            type="button"
-            [attr.aria-pressed]="item().fit === 'cover'"
+    <sf-inspector-section
+      section="geometry"
+      [title]="t('regie.properties.section.geometry')"
+      [note]="canvasNote()"
+    >
+      <div class="c-insp__pair">
+        <div class="c-num">
+          <label class="c-num__label" for="sf-insp-x">X</label>
+          <input
+            class="c-num__input"
+            id="sf-insp-x"
+            type="number"
+            step="1"
+            [min]="bounds.minX"
+            [max]="bounds.maxX"
             [disabled]="disabled()"
-            (click)="setFit('cover')"
-          >
-            {{ t('regie.properties.element.fitCover') }}
-          </button>
-          <button
-            type="button"
-            [attr.aria-pressed]="item().fit === 'contain'"
+            [sfNumberField]="item().x"
+            (numberChange)="setNumber('x', $event)"
+            (editStart)="beginEdit()"
+            (editEnd)="endEdit()"
+          />
+          <span class="c-num__unit">px</span>
+        </div>
+        <div class="c-num">
+          <label class="c-num__label" for="sf-insp-y">Y</label>
+          <input
+            class="c-num__input"
+            id="sf-insp-y"
+            type="number"
+            step="1"
+            [min]="bounds.minY"
+            [max]="bounds.maxY"
             [disabled]="disabled()"
-            (click)="setFit('contain')"
-          >
-            {{ t('regie.properties.element.fitContain') }}
-          </button>
+            [sfNumberField]="item().y"
+            (numberChange)="setNumber('y', $event)"
+            (editStart)="beginEdit()"
+            (editEnd)="endEdit()"
+          />
+          <span class="c-num__unit">px</span>
+        </div>
+        <div class="c-num">
+          <label class="c-num__label" for="sf-insp-w">{{
+            t('regie.properties.element.widthShort')
+          }}</label>
+          <input
+            class="c-num__input"
+            id="sf-insp-w"
+            type="number"
+            step="1"
+            [min]="bounds.minW"
+            [max]="bounds.maxW"
+            [disabled]="disabled()"
+            [sfNumberField]="item().w"
+            (numberChange)="setNumber('w', $event)"
+            (editStart)="beginEdit()"
+            (editEnd)="endEdit()"
+          />
+          <span class="c-num__unit">px</span>
+        </div>
+        <div class="c-num">
+          <label class="c-num__label" for="sf-insp-h">{{
+            t('regie.properties.element.heightShort')
+          }}</label>
+          <input
+            class="c-num__input"
+            id="sf-insp-h"
+            type="number"
+            step="1"
+            [min]="bounds.minH"
+            [max]="bounds.maxH"
+            [disabled]="disabled()"
+            [sfNumberField]="item().h"
+            (numberChange)="setNumber('h', $event)"
+            (editStart)="beginEdit()"
+            (editEnd)="endEdit()"
+          />
+          <span class="c-num__unit">px</span>
         </div>
       </div>
-
-      <div class="c-insp__row c-insp__row--top">
-        <span class="c-insp__label" id="sf-insp-crop">{{
-          t('regie.properties.element.crop')
-        }}</span>
-        <div class="c-insp__crop" role="group" aria-labelledby="sf-insp-crop">
-          <div class="c-insp__pair">
-            @for (entry of cropSides; track entry.side) {
-              <div class="c-num">
-                <label class="c-num__label" [for]="'sf-insp-crop-' + entry.side">{{
-                  t(entry.labelKey)
-                }}</label>
-                <input
-                  class="c-num__input"
-                  type="number"
-                  step="1"
-                  min="0"
-                  [id]="'sf-insp-crop-' + entry.side"
-                  [max]="maxCrop"
-                  [disabled]="disabled()"
-                  [fractionDigits]="1"
-                  [sfNumberField]="cropPercent(entry.side)"
-                  (numberChange)="setCrop(entry.side, $event)"
-                  (editStart)="beginEdit()"
-                  (editEnd)="endEdit()"
-                />
-                <span class="c-num__unit">%</span>
-              </div>
-            }
+      <p class="c-hint c-insp__note">{{ t('regie.properties.element.note') }}</p>
+    </sf-inspector-section>
+    @if (!text()) {
+      <sf-inspector-section section="fit" [title]="t('regie.properties.section.fit')">
+        <div class="c-insp__row">
+          <span class="c-insp__label" id="sf-insp-fit">{{
+            t('regie.properties.element.fit')
+          }}</span>
+          <div class="c-seg c-insp__seg" role="group" aria-labelledby="sf-insp-fit">
+            <button
+              type="button"
+              [attr.aria-pressed]="item().fit === 'cover'"
+              [disabled]="disabled()"
+              (click)="setFit('cover')"
+            >
+              {{ t('regie.properties.element.fitCover') }}
+            </button>
+            <button
+              type="button"
+              [attr.aria-pressed]="item().fit === 'contain'"
+              [disabled]="disabled()"
+              (click)="setFit('contain')"
+            >
+              {{ t('regie.properties.element.fitContain') }}
+            </button>
           </div>
-          <button
-            class="c-btn c-btn--sm c-btn--plain"
-            type="button"
-            [disabled]="disabled() || !cropped()"
-            (click)="resetCrop()"
-          >
-            {{ t('common.reset') }}
-          </button>
         </div>
+
+        <div class="c-insp__row c-insp__row--top">
+          <span class="c-insp__label" id="sf-insp-crop">{{
+            t('regie.properties.element.crop')
+          }}</span>
+          <div class="c-insp__crop" role="group" aria-labelledby="sf-insp-crop">
+            <div class="c-insp__pair">
+              @for (entry of cropSides; track entry.side) {
+                <div class="c-num">
+                  <label class="c-num__label" [for]="'sf-insp-crop-' + entry.side">{{
+                    t(entry.labelKey)
+                  }}</label>
+                  <input
+                    class="c-num__input"
+                    type="number"
+                    step="1"
+                    min="0"
+                    [id]="'sf-insp-crop-' + entry.side"
+                    [max]="maxCrop"
+                    [disabled]="disabled()"
+                    [fractionDigits]="1"
+                    [sfNumberField]="cropPercent(entry.side)"
+                    (numberChange)="setCrop(entry.side, $event)"
+                    (editStart)="beginEdit()"
+                    (editEnd)="endEdit()"
+                  />
+                  <span class="c-num__unit">%</span>
+                </div>
+              }
+            </div>
+            <button
+              class="c-btn c-btn--sm c-btn--plain"
+              type="button"
+              [disabled]="disabled() || !cropped()"
+              (click)="resetCrop()"
+            >
+              {{ t('common.reset') }}
+            </button>
+          </div>
+        </div>
+      </sf-inspector-section>
+    }
+
+    <sf-inspector-section section="layer" [title]="t('regie.properties.section.layer')">
+      <div class="c-insp__buttons">
+        <button
+          class="c-btn c-btn--sm"
+          type="button"
+          [disabled]="disabled() || !canFront()"
+          (click)="moveLayer('front')"
+        >
+          {{ t('regie.properties.element.layerToFront') }}
+        </button>
+        <button
+          class="c-btn c-btn--sm"
+          type="button"
+          [disabled]="disabled() || !canFront()"
+          (click)="moveLayer('up')"
+        >
+          {{ t('regie.properties.element.layerForward') }}
+        </button>
+        <button
+          class="c-btn c-btn--sm"
+          type="button"
+          [disabled]="disabled() || !canBack()"
+          (click)="moveLayer('back')"
+        >
+          {{ t('regie.properties.element.layerToBack') }}
+        </button>
+        <button
+          class="c-btn c-btn--sm"
+          type="button"
+          [disabled]="disabled() || !canBack()"
+          (click)="moveLayer('down')"
+        >
+          {{ t('regie.properties.element.layerBackward') }}
+        </button>
       </div>
     </sf-inspector-section>
+  </div>
 
-    <sf-inspector-section section="style" [title]="t('regie.properties.section.style')">
+  @if (!text()) {
+    <div
+      class="c-insp__panel"
+      id="sf-insp-panel-style"
+      role="tabpanel"
+      aria-labelledby="sf-insp-tab-style"
+      [hidden]="activeTab() !== 'style'"
+    >
       <div class="c-insp__row">
         <span class="c-insp__label">{{ t('regie.properties.element.corners') }}</span>
         <div class="c-num c-insp__short">
@@ -251,9 +333,15 @@
           }
         </div>
       </div>
-    </sf-inspector-section>
+    </div>
 
-    <sf-inspector-section section="failure" [title]="t('regie.properties.section.failure')">
+    <div
+      class="c-insp__panel"
+      id="sf-insp-panel-failure"
+      role="tabpanel"
+      aria-labelledby="sf-insp-tab-failure"
+      [hidden]="activeTab() !== 'failure'"
+    >
       <div class="c-insp__row">
         <label class="c-insp__label" for="sf-insp-hold">{{
           t('regie.properties.element.onFailure')
@@ -312,45 +400,8 @@
           }
         </div>
       </div>
-    </sf-inspector-section>
-  }
-
-  <sf-inspector-section section="layer" [title]="t('regie.properties.section.layer')">
-    <div class="c-insp__buttons">
-      <button
-        class="c-btn c-btn--sm"
-        type="button"
-        [disabled]="disabled() || !canFront()"
-        (click)="moveLayer('front')"
-      >
-        {{ t('regie.properties.element.layerToFront') }}
-      </button>
-      <button
-        class="c-btn c-btn--sm"
-        type="button"
-        [disabled]="disabled() || !canFront()"
-        (click)="moveLayer('up')"
-      >
-        {{ t('regie.properties.element.layerForward') }}
-      </button>
-      <button
-        class="c-btn c-btn--sm"
-        type="button"
-        [disabled]="disabled() || !canBack()"
-        (click)="moveLayer('back')"
-      >
-        {{ t('regie.properties.element.layerToBack') }}
-      </button>
-      <button
-        class="c-btn c-btn--sm"
-        type="button"
-        [disabled]="disabled() || !canBack()"
-        (click)="moveLayer('down')"
-      >
-        {{ t('regie.properties.element.layerBackward') }}
-      </button>
     </div>
-  </sf-inspector-section>
+  }
 
   <div class="c-insp__danger">
     @if (textEditor()?.confirming()) {

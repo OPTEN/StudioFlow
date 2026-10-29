@@ -9,7 +9,7 @@
     <ul class="c-ph__list">
       @for (row of rows(); track row.id) {
         <li class="c-ph__item" [class.is-open]="picking() === row.id" [attr.data-code]="row.code">
-          <div class="c-ph__row">
+          <div class="c-ph__row" [sfContextMenu]="rowMenu(row)" [sfContextMenuLabel]="row.name">
             <span class="c-ph__kind"><svg [sfIcon]="icon(row.kind)"></svg></span>
             <span class="c-code">{{ row.code }}</span>
             <span class="c-ph__main">

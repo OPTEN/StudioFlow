@@ -52,6 +52,7 @@ export const regieProperties: Translation<typeof en> = {
   'regie.properties.hold.forever': 'Letztes Bild, bis die Quelle zurück ist',
   'regie.properties.hold.timed': 'Letztes Bild für {seconds} s',
 
+  'regie.properties.scene.applyTo': 'Auf «{scene}» anwenden',
   'regie.properties.scene.autoGridActive':
     'Auto-Grid aktiv: Die Quellen füllen das Raster in der Reihenfolge der Liste.',
   'regie.properties.scene.background': 'Hintergrund',
@@ -68,7 +69,8 @@ export const regieProperties: Translation<typeof en> = {
   'regie.properties.scene.imageMissing': 'Bild fehlt',
   'regie.properties.scene.imageNone': 'Kein Bild',
   'regie.properties.scene.name': 'Name',
-  'regie.properties.scene.templatesHint': 'Eine Vorlage ordnet die sichtbaren Quellen der Szene an.',
+  'regie.properties.scene.templatesHint':
+    'Eine Vorlage ordnet die sichtbaren Quellen der Szene an.',
 
   'regie.properties.section.background': 'Hintergrund',
   'regie.properties.section.failure': 'Wenn die Quelle ausfällt',
@@ -78,4 +80,10 @@ export const regieProperties: Translation<typeof en> = {
   'regie.properties.section.layout': 'Layout-Vorlagen',
   'regie.properties.section.style': 'Stil',
   'regie.properties.section.text': 'Text',
+
+  'regie.properties.tabs.failure': 'Bei Ausfall',
+  'regie.properties.tabs.label': 'Eigenschaften der Quelle',
+  'regie.properties.tabs.layout': 'Layout',
+  'regie.properties.tabs.style': 'Stil',
+  'regie.properties.tabs.text': 'Text',
 };

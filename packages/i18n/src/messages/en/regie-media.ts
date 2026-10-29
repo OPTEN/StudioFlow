@@ -19,6 +19,10 @@ export const regieMedia = {
   'regie.media.library.rename': 'Rename: {name}',
   'regie.media.library.title': 'In this production',
 
+  'regie.media.menu.addTo': 'Add to “{scene}”',
+  'regie.media.menu.delete': 'Delete…',
+  'regie.media.menu.rename': 'Rename',
+
   'regie.media.toast.addToScene': 'Add to scene',
   'regie.media.toast.cancelled': 'Upload of “{name}” cancelled',
   'regie.media.toast.deleted': '“{name}” deleted',

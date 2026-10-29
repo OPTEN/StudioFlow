@@ -82,9 +82,7 @@ export function sceneRowView(
 /** What a click on a row does: into the Preview in Studio Mode, else live; with the number key when it has one. */
 function rowHint(studioMode: boolean, key: string | null): string {
   if (studioMode) {
-    return key
-      ? t('regie.scenes.row.hintPreviewKey', { key })
-      : t('regie.scenes.row.hintPreview');
+    return key ? t('regie.scenes.row.hintPreviewKey', { key }) : t('regie.scenes.row.hintPreview');
   }
   return key ? t('regie.scenes.row.hintLiveKey', { key }) : t('regie.scenes.row.hintLive');
 }

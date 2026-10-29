@@ -100,7 +100,12 @@
   <div class="c-media-pop__head">{{ t('regie.media.library.title') }}</div>
   <div class="c-media-pop__list">
     @for (asset of assets(); track asset.id) {
-      <div class="c-media-pop__asset" [class.is-new]="justUploaded().has(asset.id)">
+      <div
+        class="c-media-pop__asset"
+        [class.is-new]="justUploaded().has(asset.id)"
+        [sfContextMenu]="assetMenu(asset)"
+        [sfContextMenuLabel]="asset.name"
+      >
         <div class="c-media-pop__row">
           <span class="c-media-pop__thumb" aria-hidden="true">
             @if (asset.kind === 'image') {
@@ -141,7 +146,9 @@
                 [attr.aria-label]="
                   t('regie.media.library.addLabel', { name: asset.name, scene: sceneName() })
                 "
-                [title]="t('regie.media.library.addLabel', { name: asset.name, scene: sceneName() })"
+                [title]="
+                  t('regie.media.library.addLabel', { name: asset.name, scene: sceneName() })
+                "
                 (click)="addToScene(asset)"
               >
                 {{ t('regie.media.library.add') }}

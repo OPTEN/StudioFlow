@@ -2,6 +2,7 @@ import { TestBed, type ComponentFixture } from '@angular/core/testing';
 import { FakeStudioHub, flushMicrotasks } from '../../../testing/fake-studio-hub';
 import { PRODUCTION_ID, productionFixture, sourceFixture } from '../../../testing/fixtures';
 import { startStore, studioTestProviders, type StoreHarness } from '../../../testing/store-harness';
+import { ContextMenuService, type ContextMenuItem } from '../../core/ui/context-menu';
 import { EditorService } from '../../stage/editor.service';
 import { dockSnapshot } from '../testing/dock-fixtures';
 import { SourcesDockComponent } from './sources-dock.component';
@@ -94,6 +95,58 @@ describe('SourcesDockComponent', () => {
     expect(TestBed.inject(EditorService).selectedItemId()).toBe('itm_b1');
     expect(rows()[1].className).toContain('is-sel');
     expect(element.querySelector('.c-src-dock__hint')).toBeNull();
+  });
+
+  it('offers the item commands on a right click; Properties… selects the item', async () => {
+    await setup();
+    rows()[1].dispatchEvent(
+      new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 5, clientY: 5 }),
+    );
+    const menus = TestBed.inject(ContextMenuService);
+    const items = (menus.current()?.entries ?? []).filter(
+      (entry): entry is ContextMenuItem => entry !== 'separator',
+    );
+    expect(menus.current()?.label).toBe('Source Laptop Lea · Slides');
+    expect(items.map((entry) => entry.label)).toEqual([
+      'Hide on the output',
+      'Lock position and size',
+      'Bring to front',
+      'Bring forward',
+      'Send backward',
+      'Send to back',
+      'Fill',
+      'Show all',
+      'Properties…',
+      'Remove from scene',
+    ]);
+    // The back row cannot go further back.
+    expect(items.filter((entry) => entry.disabled).map((entry) => entry.label)).toEqual([
+      'Send backward',
+      'Send to back',
+    ]);
+    menus.run(items[8]);
+    await render();
+    expect(TestBed.inject(EditorService).selectedItemId()).toBe('itm_b1');
+  });
+
+  it('selects the neighbour with the arrow keys and removes with Delete', async () => {
+    await setup();
+    const editor = TestBed.inject(EditorService);
+    const selectButton = (index: number): HTMLButtonElement =>
+      rows()[index].querySelector<HTMLButtonElement>('.c-src__select') as HTMLButtonElement;
+    selectButton(0).focus();
+    selectButton(0).dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }),
+    );
+    await render();
+    expect(editor.selectedItemId()).toBe('itm_b1');
+    expect(document.activeElement).toBe(selectButton(1));
+    selectButton(1).dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete', bubbles: true }));
+    const request = harness.http.expectOne(`${SCENE_B}/items/itm_b1`);
+    expect(request.request.method).toBe('DELETE');
+    request.flush({ ...harness.store.sceneById('scn_b'), version: 2 });
+    await render();
+    expect(editor.selectedItemId()).toBeNull();
   });
 
   it('a second click on the selected row clears the selection (toggle)', async () => {

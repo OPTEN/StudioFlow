@@ -54,6 +54,7 @@ export const regieProperties = {
   'regie.properties.hold.forever': 'Last picture until the source is back',
   'regie.properties.hold.timed': 'Last picture for {seconds} s',
 
+  'regie.properties.scene.applyTo': 'Apply to “{scene}”',
   'regie.properties.scene.autoGridActive':
     'Auto grid active: the sources fill the grid in the order of the list.',
   'regie.properties.scene.background': 'Background',
@@ -79,4 +80,10 @@ export const regieProperties = {
   'regie.properties.section.layout': 'Layout templates',
   'regie.properties.section.style': 'Style',
   'regie.properties.section.text': 'Text',
+
+  'regie.properties.tabs.failure': 'When it fails',
+  'regie.properties.tabs.label': 'Properties of the source',
+  'regie.properties.tabs.layout': 'Layout',
+  'regie.properties.tabs.style': 'Style',
+  'regie.properties.tabs.text': 'Text',
 } as const satisfies Namespace<'regie.properties'>;

@@ -48,12 +48,21 @@ export const regieSources = {
   'regie.sources.hint.program':
     'The top row is in front. Click a source in the Program monitor to move it or to resize it at the corners.',
 
+  'regie.sources.menu.deleteKey': 'Del',
+  'regie.sources.menu.hide': 'Hide on the output',
+  'regie.sources.menu.label': 'Source {name}',
+  'regie.sources.menu.lock': 'Lock position and size',
+  'regie.sources.menu.properties': 'Properties…',
+  'regie.sources.menu.show': 'Show on the output',
+  'regie.sources.menu.unlock': 'Unlock',
+
   'regie.sources.row.hiddenHint': 'Hidden on the output. Show it to edit it.',
   'regie.sources.row.hide': 'Hide: {name}',
   'regie.sources.row.hideTitle': 'Hide on the output',
   'regie.sources.row.lock': 'Lock: {name}',
   'regie.sources.row.lockTitle': 'Lock: keep its place and size on the monitor',
   'regie.sources.row.select': 'Select: {code} {name}',
+  'regie.sources.row.selectTitle': 'Edit in Properties. Del removes it from the scene.',
   'regie.sources.row.show': 'Show: {name}',
   'regie.sources.row.showTitle': 'Show on the output',
   'regie.sources.row.unlock': 'Unlock: {name}',

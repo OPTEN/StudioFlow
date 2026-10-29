@@ -7,6 +7,7 @@ import {
   studioTestProviders,
   type StoreHarness,
 } from '../../../testing/store-harness';
+import { ContextMenuService, type ContextMenuItem } from '../../core/ui/context-menu';
 import { PREFERENCE_KEYS } from '../../core/ui/preferences.service';
 import { EditorService } from '../../stage/editor.service';
 import { dockSnapshot } from '../testing/dock-fixtures';
@@ -207,36 +208,81 @@ describe('ScenesDockComponent', () => {
     await render();
   });
 
-  /** Opens the row menu of a scene and returns its items. */
-  async function openMenu(index: number): Promise<HTMLButtonElement[]> {
+  it('moves the focus with the arrow keys, without switching', async () => {
+    await setup();
+    rows()[0].focus();
+    rows()[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    expect(document.activeElement).toBe(rows()[1]);
+    rows()[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }));
+    expect(document.activeElement).toBe(rows()[2]);
+    harness.http.expectNone(() => true);
+  });
+
+  it('duplicates with Ctrl+D and asks before deleting with the Delete key', async () => {
+    await setup();
+    const duplicate = new KeyboardEvent('keydown', {
+      key: 'd',
+      ctrlKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    rows()[2].dispatchEvent(duplicate);
+    expect(duplicate.defaultPrevented).toBe(true);
+    const request = harness.http.expectOne(`${BASE}/scenes`);
+    expect(request.request.body).toEqual({ name: 'Break (copy)', cloneFromSceneId: 'scn_c' });
+    request.flush(sceneFixture('scn_d', 'Break (copy)', 3), {
+      status: 201,
+      statusText: 'Created',
+    });
+    await harness.settle();
+    rows()[2].dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete', bubbles: true }));
+    await render();
+    expect(element.querySelector('[role="dialog"]')?.getAttribute('aria-label')).toBe(
+      'Delete scene',
+    );
+    harness.http.expectNone(() => true);
+  });
+
+  /** Opens the menu of a scene with its "⋯" button and returns its items (the shared context menu). */
+  async function openMenu(index: number): Promise<readonly ContextMenuItem[]> {
     element.querySelectorAll<HTMLButtonElement>('.c-scene__more')[index]?.click();
     await render();
-    return Array.from(element.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'));
+    const open = TestBed.inject(ContextMenuService).current();
+    return (open?.entries ?? []).filter((entry): entry is ContextMenuItem => entry !== 'separator');
   }
 
-  function item(items: HTMLButtonElement[], label: string): HTMLButtonElement {
-    return items.find((entry) => text(entry).startsWith(label)) as HTMLButtonElement;
+  function item(items: readonly ContextMenuItem[], label: string): ContextMenuItem {
+    return items.find((entry) => entry.label.startsWith(label)) as ContextMenuItem;
+  }
+
+  /** Runs a menu command like a click on it. */
+  async function run(entry: ContextMenuItem): Promise<void> {
+    TestBed.inject(ContextMenuService).run(entry);
+    await render();
   }
 
   it('offers the scene actions in the row menu; the live scene cannot be deleted and says why', async () => {
     await setup();
     const items = await openMenu(0);
-    expect(items.map((entry) => text(entry))).toEqual([
-      'RenameF2',
-      'Duplicate',
-      'Send to Preview Turns on Studio Mode',
-      'Move upAlt+↑',
-      'Move downAlt+↓',
-      'Delete… The live scene cannot be deleted.',
+    expect(items.map((entry) => [entry.label, entry.shortcut ?? ''])).toEqual([
+      ['Go live', 'Enter'],
+      ['Send to Preview (turns on Studio Mode)', ''],
+      ['Rename', 'F2'],
+      ['Duplicate', 'Ctrl+D'],
+      ['Move up', 'Alt+↑'],
+      ['Move down', 'Alt+↓'],
+      ['Delete… (not while live)', 'Del'],
     ]);
+    expect(TestBed.inject(ContextMenuService).current()?.label).toBe('Scene Welcome');
+    expect(item(items, 'Go live').disabled).toBe(true);
     expect(item(items, 'Delete').disabled).toBe(true);
     expect(item(items, 'Move up').disabled).toBe(true);
+    expect(item(items, 'Move down').disabled).toBe(false);
   });
 
   it('deletes another scene from its menu only after the confirmation', async () => {
     await setup();
-    item(await openMenu(2), 'Delete').click();
-    await render();
+    await run(item(await openMenu(2), 'Delete'));
     const dialog = element.querySelector('[role="dialog"]');
     expect(dialog?.getAttribute('aria-label')).toBe('Delete scene');
     expect(text(dialog?.querySelector('.c-confirm span'))).toBe(
@@ -254,7 +300,7 @@ describe('ScenesDockComponent', () => {
 
   it('"Send to Preview" turns Studio Mode on and loads the scene into the Preview', async () => {
     await setup();
-    item(await openMenu(2), 'Send to Preview').click();
+    await run(item(await openMenu(2), 'Send to Preview'));
     // Studio Mode on: the switcher puts the scene after the Program into the Preview first.
     const auto = harness.http.expectOne(`${BASE}/preview`);
     expect(auto.request.body).toEqual({ sceneId: 'scn_b' });

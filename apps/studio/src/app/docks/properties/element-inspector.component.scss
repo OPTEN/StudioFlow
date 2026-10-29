@@ -39,3 +39,19 @@
   flex-wrap: wrap;
   gap: 6px;
 }
+
+// The tab bar sits on top of the inspector; the panels below keep the section rhythm.
+.c-insp__tabs {
+  margin-bottom: 4px;
+}
+
+.c-insp__panel {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 8px 0 16px;
+
+  &[hidden] {
+    display: none;
+  }
+}

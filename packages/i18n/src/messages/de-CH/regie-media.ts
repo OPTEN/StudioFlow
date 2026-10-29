@@ -20,6 +20,10 @@ export const regieMedia: Translation<typeof en> = {
   'regie.media.library.rename': 'Umbenennen: {name}',
   'regie.media.library.title': 'In dieser Produktion',
 
+  'regie.media.menu.addTo': 'Zu «{scene}» hinzufügen',
+  'regie.media.menu.delete': 'Löschen …',
+  'regie.media.menu.rename': 'Umbenennen',
+
   'regie.media.toast.addToScene': 'Zur Szene hinzufügen',
   'regie.media.toast.cancelled': 'Hochladen von «{name}» abgebrochen',
   'regie.media.toast.deleted': '«{name}» gelöscht',

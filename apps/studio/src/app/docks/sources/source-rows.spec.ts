@@ -129,9 +129,9 @@ describe('source rows', () => {
       itemFixture('itm_3', S1.id),
       itemFixture('itm_4', M1.id),
     ]);
-    expect(
-      sourceMenuGroups(full, sources).every((group) => !group.entries.some(canAddEntry)),
-    ).toBe(true);
+    expect(sourceMenuGroups(full, sources).every((group) => !group.entries.some(canAddEntry))).toBe(
+      true,
+    );
   });
 
   it('finds every use of a medium and turns it into a sentence', () => {

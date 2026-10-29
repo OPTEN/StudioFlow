@@ -110,7 +110,9 @@ describe('text editor in the Properties dock', () => {
     expect(element.querySelector('#sf-insp-crop')).toBeNull();
     expect(element.querySelector('#sf-insp-fallback')).toBeNull();
     // The output switch comes first; the text is hidden, so it is off and not on air.
-    const toggle = element.querySelector<HTMLInputElement>('[data-text-toggle]') as HTMLInputElement;
+    const toggle = element.querySelector<HTMLInputElement>(
+      '[data-text-toggle]',
+    ) as HTMLInputElement;
     expect(element.querySelector('.c-text input')).toBe(toggle);
     expect(toggle.checked).toBe(false);
     expect(toggle.getAttribute('role')).toBe('switch');
@@ -278,7 +280,9 @@ describe('text editor in the Properties dock', () => {
 
   it('shows and hides the text with the switch, also while it is live', async () => {
     await setup();
-    const toggle = element.querySelector<HTMLInputElement>('[data-text-toggle]') as HTMLInputElement;
+    const toggle = element.querySelector<HTMLInputElement>(
+      '[data-text-toggle]',
+    ) as HTMLInputElement;
     expect(text(toggle.closest('label'))).toContain('Show on the output');
     expect(toggle.checked).toBe(false);
 

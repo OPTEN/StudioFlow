@@ -27,6 +27,7 @@
     <sf-template-picker
       [autoGridActive]="autoGrid()"
       [disabled]="disabled()"
+      [sceneName]="scene().name"
       (pick)="applyTemplate($event)"
     />
   </sf-inspector-section>

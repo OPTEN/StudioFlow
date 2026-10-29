@@ -3,6 +3,7 @@ import { t } from '@studioflow/i18n';
 import type { SourceDto, SourceKind } from '@studioflow/scene-model';
 import { ProductionStoreService } from '../../core/state/production-store.service';
 import { ConfirmBoxComponent } from '../../core/ui/confirm-box.component';
+import { ContextMenuDirective, type ContextMenuEntry } from '../../core/ui/context-menu';
 import { IconComponent } from '../../core/ui/icon.component';
 import { KIND_ICON, sourceStateView, toneClass } from '../shared/source-view';
 import { PlaceholderCommandsService } from './placeholder-commands.service';
@@ -18,7 +19,7 @@ import { assignableGroups, placeholderRows, type PlaceholderRowView } from './pl
  */
 @Component({
   selector: 'sf-placeholder-list',
-  imports: [ConfirmBoxComponent, IconComponent],
+  imports: [ConfirmBoxComponent, ContextMenuDirective, IconComponent],
   templateUrl: './placeholder-list.component.html',
   styleUrl: './placeholder-list.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -45,6 +46,32 @@ export class PlaceholderListComponent {
   protected stateOf(source: SourceDto): { word: string; className: string } | null {
     const state = sourceStateView(source);
     return state ? { word: state.word, className: toneClass(state.tone) } : null;
+  }
+
+  /** Right click on a row: the same two commands as its "Assign…" list. */
+  protected rowMenu(row: PlaceholderRowView): () => readonly ContextMenuEntry[] {
+    return () => [
+      {
+        label: t('regie.placeholders.assign.button'),
+        icon: 'link',
+        disabled: this.commands.blocked(row.id),
+        run: () => {
+          this.removing.set(null);
+          this.picking.set(row.id);
+        },
+      },
+      'separator',
+      {
+        label: t('regie.placeholders.assign.remove'),
+        icon: 'trash',
+        danger: true,
+        disabled: this.commands.blocked(row.id),
+        run: () => {
+          this.picking.set(row.id);
+          this.removing.set(row.id);
+        },
+      },
+    ];
   }
 
   /** Opens or closes the list of sources of the row; the removal confirmation closes. */

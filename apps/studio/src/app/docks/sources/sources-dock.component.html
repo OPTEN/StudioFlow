@@ -58,7 +58,8 @@
     } @else if (scene(); as scene) {
       <div class="c-src-dock__head">
         <span class="c-src-dock__scene"
-          >{{ editingParts().before }}<strong class="c-src-dock__scene-name">{{ scene.name }}</strong
+          >{{ editingParts().before
+          }}<strong class="c-src-dock__scene-name">{{ scene.name }}</strong
           >{{ editingParts().after }}</span
         >
         <sf-scene-tag [sceneId]="scene.id" />
@@ -97,6 +98,7 @@
           [label]="t('regie.sources.dock.listLabel')"
           [nameOf]="rowName"
           (reorder)="reorder($event)"
+          (focusStep)="onFocusStep($event)"
         >
           <ng-template sfSortableItem let-id>
             @if (rowsById().get(id); as row) {
@@ -106,6 +108,8 @@
                 [class.is-hidden]="row.hidden"
                 [class.is-locked]="row.locked"
                 [class.is-text]="row.isText"
+                [sfContextMenu]="rowMenu(row)"
+                [sfContextMenuLabel]="t('regie.sources.menu.label', { name: row.name })"
                 (click)="select(row)"
               >
                 <button
@@ -117,8 +121,13 @@
                   [attr.aria-label]="
                     t('regie.sources.row.select', { code: row.code, name: row.name })
                   "
-                  [attr.title]="row.hidden && !row.isText ? t('regie.sources.row.hiddenHint') : null"
+                  [attr.title]="
+                    row.hidden && !row.isText
+                      ? t('regie.sources.row.hiddenHint')
+                      : t('regie.sources.row.selectTitle')
+                  "
                   (click)="select(row, $event)"
+                  (keydown)="onRowKeyDown(row, $event)"
                 >
                   <span class="c-src__kind"><svg [sfIcon]="row.icon"></svg></span>
                   <span class="c-code">{{ row.code }}</span>

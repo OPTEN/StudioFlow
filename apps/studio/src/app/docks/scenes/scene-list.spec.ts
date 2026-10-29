@@ -44,9 +44,9 @@ describe('scene list helpers', () => {
     expect(direct.isPreview).toBe(false);
     expect(direct.pressed).toBe(false);
     expect(direct.hint).toBe('Click or press 1 to go live');
-    expect(sceneRowView(scene, 4, { ...context, previewSceneId: 'scn_a', studioMode: true }).hint).toBe(
-      'Click or press 5 to show in Preview',
-    );
+    expect(
+      sceneRowView(scene, 4, { ...context, previewSceneId: 'scn_a', studioMode: true }).hint,
+    ).toBe('Click or press 5 to show in Preview');
   });
 
   it('has no keycap after the ninth scene and says "No sources" without visible items', () => {

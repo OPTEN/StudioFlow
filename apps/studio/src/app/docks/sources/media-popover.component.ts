@@ -15,10 +15,12 @@ import { LIMITS, formatBytes, type AssetDto } from '@studioflow/scene-model';
 import { StudioApiService } from '../../core/api/studio-api.service';
 import { ProductionStoreService } from '../../core/state/production-store.service';
 import { ConfirmBoxComponent } from '../../core/ui/confirm-box.component';
+import { ContextMenuDirective, type ContextMenuEntry } from '../../core/ui/context-menu';
 import { IconComponent } from '../../core/ui/icon.component';
 import { PopoverDirective } from '../../core/ui/popover.directive';
 import { ToastService } from '../../core/ui/toast.service';
 import { EditorService } from '../../stage/editor.service';
+import { keepPopoverOpenWithContextMenu } from '../shared/context-menu-scope';
 import { DockCommandService } from '../shared/dock-command.service';
 import { InlineEditComponent } from '../shared/inline-edit.component';
 import { keepInViewport } from '../shared/keep-in-viewport';
@@ -39,7 +41,13 @@ export const MEDIA_POPOVER = 'media';
  */
 @Component({
   selector: 'sf-media-popover',
-  imports: [ConfirmBoxComponent, IconComponent, InlineEditComponent, PopoverDirective],
+  imports: [
+    ConfirmBoxComponent,
+    ContextMenuDirective,
+    IconComponent,
+    InlineEditComponent,
+    PopoverDirective,
+  ],
   templateUrl: './media-popover.component.html',
   styleUrl: './media-popover.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -92,6 +100,7 @@ export class MediaPopoverComponent {
   );
 
   constructor() {
+    keepPopoverOpenWithContextMenu(MEDIA_POPOVER);
     const element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
     afterNextRender(() => {
       const panel = element.querySelector<HTMLElement>('.c-pop');
@@ -104,6 +113,33 @@ export class MediaPopoverComponent {
         this.picked.emit();
       }
     });
+  }
+
+  /** Right click on a medium: the commands of its buttons (Add, Rename, Delete…). */
+  protected assetMenu(asset: AssetDto): () => readonly ContextMenuEntry[] {
+    return () => [
+      {
+        label: t('regie.media.menu.addTo', { scene: this.sceneName() }),
+        icon: 'plus',
+        checked: this.inScene(asset),
+        disabled: !this.canAddToScene(asset),
+        run: () => this.addToScene(asset),
+      },
+      'separator',
+      {
+        label: t('regie.media.menu.rename'),
+        icon: 'pencil',
+        disabled: this.commands.blocked(`asset:${asset.id}:rename`),
+        run: () => this.startRename(asset),
+      },
+      {
+        label: t('regie.media.menu.delete'),
+        icon: 'trash',
+        danger: true,
+        disabled: this.commands.blocked(`asset:${asset.id}:delete`),
+        run: () => this.askDelete(asset),
+      },
+    ];
   }
 
   /** Can the medium go into the edit scene right now? */

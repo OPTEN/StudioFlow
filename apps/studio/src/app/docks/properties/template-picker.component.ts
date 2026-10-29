@@ -6,7 +6,9 @@ import {
   type LayoutTemplate,
   type LayoutTemplateId,
 } from '@studioflow/scene-model';
+import { t } from '@studioflow/i18n';
 import { ProductionStoreService } from '../../core/state/production-store.service';
+import { ContextMenuDirective, type ContextMenuEntry } from '../../core/ui/context-menu';
 import { LayoutPreviewComponent, type PreviewBlock } from '../shared/layout-preview.component';
 
 /** Templates whose first slot is the main picture (prototype `presetThumb`: `full`, `pip`, `col`, `onetwo`). */
@@ -45,7 +47,7 @@ function tilesFor(canvas: CanvasSize): readonly TemplateTile[] {
  */
 @Component({
   selector: 'sf-template-picker',
-  imports: [LayoutPreviewComponent],
+  imports: [ContextMenuDirective, LayoutPreviewComponent],
   template: `
     @for (tile of tiles(); track tile.id) {
       <button
@@ -55,6 +57,8 @@ function tilesFor(canvas: CanvasSize): readonly TemplateTile[] {
         [attr.aria-pressed]="tile.id === 'auto' ? autoGridActive() : null"
         [class.is-active]="tile.id === 'auto' && autoGridActive()"
         [disabled]="disabled()"
+        [sfContextMenu]="tileMenu(tile)"
+        [sfContextMenuLabel]="tile.template.name"
         (click)="pick.emit(tile.id)"
       >
         <sf-layout-preview class="c-preset__preview" [blocks]="tile.blocks" [canvas]="canvas()" />
@@ -72,10 +76,26 @@ export class TemplatePickerComponent {
   /** Editing is not possible (live scene, offline). */
   readonly disabled = input(false);
 
+  /** Name of the scene the templates apply to (for the right-click menu). */
+  readonly sceneName = input('');
+
   /** The operator chose a template. */
   readonly pick = output<LayoutTemplateId>();
 
   private readonly store = inject(ProductionStoreService);
+
+  /** Right click on a tile: "Apply to “Interview”" (the same as a click, named with its target). */
+  protected tileMenu(tile: TemplateTile): () => readonly ContextMenuEntry[] {
+    return () => [
+      {
+        label: t('regie.properties.scene.applyTo', { scene: this.sceneName() }),
+        icon: 'check',
+        shortcut: 'Enter',
+        disabled: this.disabled(),
+        run: () => this.pick.emit(tile.id),
+      },
+    ];
+  }
 
   protected readonly canvas = this.store.canvas;
   protected readonly tiles = computed(() => tilesFor(this.store.canvas()));

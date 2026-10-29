@@ -11,6 +11,7 @@ import {
 import { PREFERENCE_KEYS } from '../../core/ui/preferences.service';
 import { EditorService } from '../../stage/editor.service';
 import { dockSnapshot } from '../testing/dock-fixtures';
+import { InspectorSectionsService } from './inspector-sections.service';
 import { PropertiesDockComponent } from './properties-dock.component';
 
 const BASE = `/api/productions/${PRODUCTION_ID}`;
@@ -104,7 +105,9 @@ describe('PropertiesDockComponent', () => {
 
   it('remembers a collapsed section in this browser', async () => {
     await setup();
-    const details = element.querySelector<HTMLDetailsElement>('details.c-insp-sec') as HTMLDetailsElement;
+    const details = element.querySelector<HTMLDetailsElement>(
+      'details.c-insp-sec',
+    ) as HTMLDetailsElement;
     expect(details.open).toBe(true);
     details.open = false;
     details.dispatchEvent(new Event('toggle'));
@@ -161,7 +164,22 @@ describe('PropertiesDockComponent', () => {
     expect(headName()).toBe('Laptop Lea · Slides');
     expect(
       Array.from(element.querySelectorAll('.c-insp-sec__title')).map((title) => text(title)),
-    ).toEqual(['Position & size', 'Fit & crop', 'Style', 'When the source fails', 'Layer']);
+    ).toEqual(['Position & size', 'Fit & crop', 'Layer']);
+    const tabs = Array.from(element.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
+    expect(tabs.map((tab) => [text(tab), tab.getAttribute('aria-selected')])).toEqual([
+      ['Layout', 'true'],
+      ['Style', 'false'],
+      ['When it fails', 'false'],
+    ]);
+    expect(element.querySelector<HTMLElement>('#sf-insp-panel-style')?.hidden).toBe(true);
+    tabs[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    await render();
+    expect(tabs[1].getAttribute('aria-selected')).toBe('true');
+    expect(document.activeElement).toBe(tabs[1]);
+    expect(element.querySelector<HTMLElement>('#sf-insp-panel-style')?.hidden).toBe(false);
+    expect(element.querySelector<HTMLElement>('#sf-insp-panel-layout')?.hidden).toBe(true);
+    TestBed.inject(InspectorSectionsService).setTab('layout');
+    await render();
     expect(text(element.querySelector('.c-insp-sec__note'))).toBe('Canvas 1920 × 1080');
     const x = field('sf-insp-x');
     expect(x.value).toBe('40');

@@ -6,14 +6,10 @@ const STORAGE_KEY = 'studioflow.inspector';
 
 /** The sections of the scene and element inspector. */
 export type InspectorSectionId =
-  | 'text'
-  | 'layout'
-  | 'background'
-  | 'geometry'
-  | 'fit'
-  | 'style'
-  | 'failure'
-  | 'layer';
+  'text' | 'layout' | 'background' | 'geometry' | 'fit' | 'style' | 'failure' | 'layer';
+
+/** The tabs of the element inspector: Text (texts only), Layout, Style and When it fails (pictures only). */
+export type InspectorTab = 'text' | 'layout' | 'style' | 'failure';
 
 /**
  * Which sections of the Properties dock are collapsed, remembered in this browser: an operator who never crops can fold
@@ -24,6 +20,17 @@ export type InspectorSectionId =
 export class InspectorSectionsService {
   private readonly storage = inject(BROWSER_STORAGE);
   private readonly collapsed = signal<ReadonlySet<InspectorSectionId>>(this.read());
+  private readonly tabSignal = signal<InspectorTab | null>(null);
+
+  /**
+   * The tab of the element inspector the operator chose last, or null (the first tab). Kept for this page only, so
+   * selecting another item stays on "Style" while the operator styles one source after the other.
+   */
+  readonly tab = this.tabSignal.asReadonly();
+
+  setTab(tab: InspectorTab): void {
+    this.tabSignal.set(tab);
+  }
 
   /** True while the section is open (reactive). */
   isOpen(id: InspectorSectionId): boolean {
