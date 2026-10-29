@@ -54,6 +54,14 @@ $DESKTOP_BREAKPOINTS: (
   }
 }
 
+/// Forced colours (Windows contrast themes): the browser replaces backgrounds and drops box-shadows, so every state
+/// painted only by them needs a border, an outline or a weight in system colours here (A11Y-11).
+@mixin forced-colors {
+  @media (forced-colors: active) {
+    @content;
+  }
+}
+
 /// Short laptops: height ≤ 820 px on screens wider than 1180 px (one-line scene rows, 36 px dock headers).
 @mixin short-laptop {
   @media (max-height: map.get($DESKTOP_BREAKPOINTS, short-height)) and (min-width: map.get($DESKTOP_BREAKPOINTS, stacked) + 1px) {

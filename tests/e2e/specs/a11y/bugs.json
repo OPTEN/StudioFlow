@@ -103,7 +103,8 @@
       "fix": "Emit the reduced-motion token overrides after the token block (media query inside the :root block of styles.scss), and use !important in the universal rule or put it in an @layer that wins."
     },
     "A11Y-11": {
-      "status": "open",
+      "status": "fixed",
+      "resolution": "2026-10-29: the redesigned controls have forced-colors rules (forced-colors mixin, apps/studio/src/styles/_mixins.scss): the iOS switch is drawn with a ButtonText border and thumb (Highlight / HighlightText when on), a selected segment or tab gets a 3 px Highlight bottom border and weight 800, pressed icon buttons, menu highlights, the current scene row and selected rows get a Highlight outline. The DEV-22 [forced colours, controls] case is a regression guard now.",
       "severity": "medium",
       "area": "A11Y",
       "title": "No forced-colors support: in Windows high-contrast mode the Studio Mode switch is invisible and the selected Transition segment (Cut / Fade) cannot be told from the other",

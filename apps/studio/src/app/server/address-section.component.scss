@@ -48,6 +48,11 @@
   &.is-selected {
     background: color-mix(in srgb, var(--blue) 6%, var(--group));
     box-shadow: 0 0 0 2px var(--blue);
+
+    @include forced-colors {
+      outline: 2px solid Highlight;
+      outline-offset: -2px;
+    }
   }
 
   &:has(.c-kind__radio:focus-visible) {
