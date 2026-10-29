@@ -135,8 +135,9 @@
   }
 }
 
+// No transition: the selection jumps like a system sidebar, and a half-faded white label on a still pale row (when the
+// route sets is-active after the first paint) is unreadable for a moment.
 .c-settings__item {
-  @include state-transition(background-color, color);
   align-items: center;
   border-radius: 8px;
   color: var(--text);

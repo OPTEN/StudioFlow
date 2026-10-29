@@ -83,6 +83,23 @@
   }
 }
 
+// A quiet audio channel: the look of a warning incident without its actions.
+.c-status__audio {
+  font-weight: 600;
+  margin: 0;
+  padding-inline: 8px 10px;
+
+  > svg {
+    color: var(--amber);
+    flex: none;
+  }
+
+  > .c-status__name {
+    @include ellipsis;
+    min-width: 0;
+  }
+}
+
 .c-status__target {
   align-items: center;
   background: transparent;
