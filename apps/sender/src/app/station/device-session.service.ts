@@ -1393,7 +1393,9 @@ export class DeviceSessionService {
 
   private updateDerived(): void {
     const slots = this.slots();
-    const terminal = this.phase() === 'removed' || this.phase() === 'stopped';
+    // Only the active session keeps the screen on: a replaced tab (another tab took over) and a blocked device have
+    // released the camera, and the `paused` slot the release leaves behind must not take the wake lock again (DEV-03).
+    const terminal = this.isTerminal();
     const phoneWaiting =
       this.kind() === 'phone' && this.settingsService.settings().cameraOn && !terminal;
     if (!terminal && (this.sending() || phoneWaiting)) {
