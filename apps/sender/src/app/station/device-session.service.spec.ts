@@ -667,6 +667,37 @@ describe('DeviceSessionService', () => {
     expect(wakeLock.active).toBe(false);
   });
 
+  it('a replaced tab releases the wake lock, also when its camera slot turns paused; “Continue here” takes it back (DEV-03)', async () => {
+    const service = setup();
+    await online(service);
+    media.publisher.emitSlot('camera', 'live');
+    await settle();
+    expect(wakeLock.active).toBe(true);
+
+    hub.emit('sessionReplaced');
+    expect(wakeLock.active).toBe(false);
+    media.publisher.emitSlot('camera', 'paused');
+    await settle();
+    expect(wakeLock.active).toBe(false);
+
+    service.takeOver();
+    expect(wakeLock.active).toBe(true);
+  });
+
+  it('a blocked device releases the wake lock (DEV-03)', async () => {
+    const service = setup();
+    await online(service);
+    expect(wakeLock.active).toBe(true);
+    api.getSelfTimed.mockRejectedValue(new ApiError(403, 'device_blocked', 'blocked'));
+
+    hub.emit('self', { ...self, state: 'blocked' });
+    media.publisher.emitSlot('camera', 'paused');
+    await settle();
+
+    expect(service.phase()).toBe('blocked');
+    expect(wakeLock.active).toBe(false);
+  });
+
   it('runs the first tech check once the camera is live, stores and reports it', async () => {
     const service = setup();
     await online(service);
