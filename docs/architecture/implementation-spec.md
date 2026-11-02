@@ -364,7 +364,10 @@ Reported slot states (decided 2026-10-22, sender open questions 1 and 2; this ov
 - A **new session** (`Hello` with another session id: another tab, or the same tab after a reload – every page load
   has its own id) starts without slot states and without rtc state; until it reports, only a published track makes a
   slot live. A reconnect of the same session keeps the states until its next report; `ended` and `failed` therefore
-  survive a hub disconnect of the same session, but not a reload.
+  survive a hub disconnect of the same session, but not a reload. The rtc state of a session whose hub connection
+  ended is `disconnected` until it reports again: a reconnect of the same session does not make a slot live through a
+  track that LiveKit still lists from before the outage (it notices the loss only after about 21 s), so one outage is
+  one incident and “is back” comes with the first report that says the media is connected (DEV-01).
 - `ended` = stopped on purpose (screen: “Stop sharing” («Teilen beenden») or the browser's stop button; camera: stopped by the user).
 - `paused` = the operating system suspended the capture and it is expected back (e.g. the phone app went to the
   background). It is not live, never `ended`.
@@ -1015,7 +1018,9 @@ Texts keep their own rectangle in an Auto grid scene.
 
 - `MediaSession`: owns a `Room`; `start()` connects with a token from `tokenProvider()` and keeps the room connected
   forever: SDK resume/reconnect first, then rejoin with a fresh token, then wait with `backoffDelay` and retry without
-  limit; `online`/`visibilitychange` cut the wait short. Intentional reasons (CLIENT_INITIATED, PARTICIPANT_REMOVED,
+  limit; `online`/`visibilitychange` cut the wait short, and an SDK reconnect of an established room that is still
+  running 750 ms after such a wake signal is dropped for an immediate rejoin (the SDK would keep its escalated
+  delay of up to 5 s although the network is back, DEV-02). Intentional reasons (CLIENT_INITIATED, PARTICIPANT_REMOVED,
   DUPLICATE_IDENTITY, ROOM_DELETED and a 403 from the token provider) stop it: state `stopped | replaced | removed`.
   State signal-like API: `state`, `onStateChange(fn)`; `stop()`.
 - `LiveKitSourceProvider implements SourceMediaProvider`: maps `{identity}/{trackName}` to remote video tracks,
