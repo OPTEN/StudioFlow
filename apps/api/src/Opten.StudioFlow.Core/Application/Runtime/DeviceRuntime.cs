@@ -41,7 +41,10 @@ public sealed class DeviceRuntime(string deviceId)
     /// <summary>Browser tab of the active session.</summary>
     public string? SessionId { get; private set; }
 
-    /// <summary>Media connection state from the latest report of the current session.</summary>
+    /// <summary>
+    /// Media connection state from the latest report of the current session; <c>disconnected</c> after its hub
+    /// connection ended (until it reports again), null for a new session that has not reported yet.
+    /// </summary>
     public RtcState? Rtc { get; private set; }
 
     /// <summary>Last telemetry.</summary>
@@ -150,7 +153,14 @@ public sealed class DeviceRuntime(string deviceId)
         }
     }
 
-    /// <summary>Ends the session when <paramref name="connectionId"/> is the active one; returns false otherwise.</summary>
+    /// <summary>
+    /// Ends the session when <paramref name="connectionId"/> is the active one; returns false otherwise. The media state
+    /// becomes <c>disconnected</c>: whatever the session reported before the hub connection ended is out of date, and
+    /// a LiveKit track can stay published for about 21 s after the media is gone. A reconnect of the same session keeps
+    /// that state until its next report, so its slots stay <c>reconnecting</c> until the session says its media is back
+    /// (DEV-01: no false “is back” on the hub reconnect); a new session starts without a media state (see
+    /// <see cref="Attach"/>).
+    /// </summary>
     public bool Detach(string connectionId, DateTimeOffset now)
     {
         if (!string.Equals(ConnectionId, connectionId, StringComparison.Ordinal))
@@ -160,7 +170,7 @@ public sealed class DeviceRuntime(string deviceId)
 
         ConnectionId = null;
         SessionId = null;
-        Rtc = null;
+        Rtc = RtcState.Disconnected;
         LastTally = null;
         LastReportAt = null;
         LastSeenAt = now;

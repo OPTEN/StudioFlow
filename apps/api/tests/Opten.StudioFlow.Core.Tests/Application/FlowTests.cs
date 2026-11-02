@@ -225,6 +225,53 @@ public sealed class DeviceFlowTests : IDisposable
     }
 
     [Fact]
+    public async Task HubReconnect_WithTrackStillPublished_StaysReconnectingUntilTheMediaIsBack()
+    {
+        // DEV-01: the phone loses its network; LiveKit still lists the track (it notices the loss only after ~21 s). The
+        // hub reconnect of the same tab must not count as a recovery: one incident, one “back” with the full length.
+        var (device, identity) = await LiveDeviceAsync("c1");
+        var camera = $"{device.Id}/camera";
+        await harness.LiveKit.HandleAsync(new LiveKitEvent(LiveKitEventKind.TrackPublished, harness.Production.Id, "RM_1", "PA_1", device.Id, "camera"), CancellationToken.None);
+
+        await harness.Devices.DisconnectedAsync(identity, "c1", CancellationToken.None);
+        harness.Clock.Advance(TimeSpan.FromSeconds(6));
+        await harness.Devices.HelloAsync(identity, "c2", new DeviceHelloDto("tab-1", "iPhone", "1.0"), CancellationToken.None);
+        var afterHello = harness.Source(camera).Status;
+        var connectionAfterHello = harness.Runtime.FindDevice(device.Id)!.PublishedConnection;
+        await harness.Devices.ReportAsync(identity, "c2", ServiceHarness.Report("camera", SlotState.Live, RtcState.Reconnecting), CancellationToken.None);
+        var afterReconnectingReport = harness.Source(camera).Status;
+        harness.Clock.Advance(TimeSpan.FromSeconds(2));
+        await harness.Devices.ReportAsync(identity, "c2", ServiceHarness.Report("camera", SlotState.Live), CancellationToken.None);
+
+        Assert.Equal((SourceStatus.Reconnecting, SourceStatus.Reconnecting, SourceStatus.Ok), (afterHello, afterReconnectingReport, harness.Source(camera).Status));
+        Assert.Equal(DeviceConnection.Reconnecting, connectionAfterHello);
+        Assert.Single(harness.Events.OfType<SourceUpsertedEvent>(), e => e.Source.Id == camera && e.Source.Status == SourceStatus.Reconnecting);
+        Assert.Empty(harness.Events.OfType<IncidentRemovedEvent>());
+        var incidents = harness.Events.OfType<IncidentUpsertedEvent>().Select(e => e.Incident).ToList();
+        Assert.Equal(2, incidents.Count);
+        Assert.Equal(incidents[0].Id, incidents[1].Id);
+        var logs = harness.Events.OfType<LogAppendedEvent>().Select(l => l.Entry.Text).Where(t => !t.EndsWith(" paired", StringComparison.Ordinal));
+        Assert.Equal(["K1 reconnecting", "K1 is back, was gone for 8 s"], logs);
+    }
+
+    [Fact]
+    public async Task HubReconnect_MediaUntouched_IsBackWithTheFirstReport()
+    {
+        var (device, identity) = await LiveDeviceAsync("c1");
+        var camera = $"{device.Id}/camera";
+        await harness.LiveKit.HandleAsync(new LiveKitEvent(LiveKitEventKind.TrackPublished, harness.Production.Id, "RM_1", "PA_1", device.Id, "camera"), CancellationToken.None);
+
+        await harness.Devices.DisconnectedAsync(identity, "c1", CancellationToken.None);
+        harness.Clock.Advance(TimeSpan.FromSeconds(2));
+        await harness.Devices.HelloAsync(identity, "c2", new DeviceHelloDto("tab-1", "iPhone", "1.0"), CancellationToken.None);
+        await harness.Devices.ReportAsync(identity, "c2", ServiceHarness.Report("camera", SlotState.Live), CancellationToken.None);
+
+        Assert.Equal(SourceStatus.Ok, harness.Source(camera).Status);
+        Assert.Equal(DeviceConnection.Online, harness.Runtime.FindDevice(device.Id)!.PublishedConnection);
+        Assert.Contains("K1 is back, was gone for 2 s", harness.Events.OfType<LogAppendedEvent>().Select(l => l.Entry.Text));
+    }
+
+    [Fact]
     public async Task Hello_FromOtherTab_ReplacesOldSessionWithoutPingPong()
     {
         var (device, identity) = await LiveDeviceAsync("c1");
