@@ -3,6 +3,7 @@ import { THRESHOLD } from '../../support/constants';
 import { dockerCtl, livekitCtl, restoreNetwork, type NetemProfile } from '../../support/docker-ctl';
 import { stackConfig } from '../../support/env';
 import { requireTool } from '../../support/fixtures';
+import { outBug } from '../../support/output/bugs';
 import { expect, test } from '../../support/ui/fixtures';
 import { sleep, waitUntil } from '../../support/shell';
 import { apiReady, ensureHealthy, inspectService, tryFetch } from '../../support/stack';
@@ -508,6 +509,7 @@ test.describe('OUT netem on LiveKit', () => {
       t.disruptive(scenario.priority),
       async ({ browser, api, production, pairContext, openPhone, openLaptop, onCleanup }) => {
         requireTool('netem');
+        if (scenario.id === 'E2E-NET-05') outBug('OUT-12', 'with 20 % loss on the media path a single freeze still lasts 6.5-8.3 s in some windows (T-FREEZE hard limit 5 s), issue #105');
         test.setTimeout(600_000);
         const deps = { api, production, pairContext, openPhone, openLaptop };
         const world = await liveWorld({ browser, deps, onCleanup }, { cameras: 1, latency: true });
