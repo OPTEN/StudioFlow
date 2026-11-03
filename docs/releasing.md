@@ -69,6 +69,14 @@ chore(deps): update postgres to 17.12
 docs: describe the update procedure
 ```
 
+- **Pushes to `main`.** Administrators may push straight to `main`, and then no pull request title is checked. The job
+  `lint-typecheck` of CI therefore runs `node tools/check-commit-subjects.mjs` on every push: it reads the subjects of
+  the commits between `github.event.before` and the new tip and fails when one does not match `type(scope): subject`
+  or `type!: subject`. The types are read from `.github/workflows/pr-title.yml`, so the title check and this check cannot
+  disagree; subjects git writes itself (`Merge ...`, `Revert "..."`) pass. A new branch or a force push (no usable
+  `before`) checks the tip commit only. A red run cannot be undone by rewriting `main`: fix the next commit and, if
+  the wrong one should appear in the release notes, describe it in a `fix:` or `feat:` commit. Locally:
+  `node tools/check-commit-subjects.mjs origin/main` checks the commits you are about to push.
 - Several commits in one pull request: only the title is used. Squash merge is the repository default (section 8).
 - To force a version (for example `1.0.0` when the product goes into production), put `Release-As: 1.0.0` on its own
   line at the end of the description of a commit on `main`.
@@ -155,6 +163,13 @@ never cancelled by a later push.
    built from the pull request. Wait until it is green.
 3. Merge it when the full run, CI on the pull request (`ci-ok`) and the latest **Release** run on `main` are green. It
    is a deliberate click; use **Squash and merge**.
+
+   release-please opens this pull request with the default token, and GitHub does not start workflows for pull requests
+   opened that way: the required checks **`ci-ok`** and **Conventional Commits title** never report (section 8). The
+   release pull request is therefore merged by an administrator with **admin bypass** ("Merge without waiting for
+   requirements"; `enforce_admins` is off). That is intended, so do the checking yourself first: run **E2E full**
+   (step 2), look at CI by hand (**Approve workflows to run**) and read the changed version files and `CHANGELOG.md`.
+   Its title `chore(main): release X.Y.Z` is Conventional Commits by construction.
 4. CI and then Release run for the merge commit. When they finish, the GitHub release `vX.Y.Z` has notes and files, and
    the images carry the version tags.
 5. Servers update with `docker compose pull && docker compose up -d` (runbook, section 14).

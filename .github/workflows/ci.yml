@@ -121,6 +121,16 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          # A push needs the history between the old and the new tip to check the commit subjects.
+          fetch-depth: ${{ github.event_name == 'push' && 0 || 1 }}
+      # Commits pushed straight to main skip the pull request title check. Pull requests are covered by that check
+      # (the squash merge makes the title the commit message), so this step only runs on push (docs/releasing.md, 2).
+      - name: Commit subjects (Conventional Commits)
+        if: github.event_name == 'push'
+        env:
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+        run: node tools/check-commit-subjects.mjs "$BEFORE" "$AFTER"
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc

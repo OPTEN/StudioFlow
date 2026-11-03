@@ -136,6 +136,8 @@ documentation and commit messages are English; German only inside the `de-CH` ca
 
   Examples: `feat(studio): add light mode`, `fix(api): keep the login after an API restart`,
   `docs: describe the update procedure`. The full rules are in [docs/releasing.md](docs/releasing.md).
+  Administrators who push straight to `main` get the same rule from CI: the job `lint-typecheck` fails when a new commit
+  subject does not match (`node tools/check-commit-subjects.mjs <base>` runs the check locally).
 - In the description say **what** and **why**, what you tested and how, and reference the issue (`Fixes #123`).
 - Update the documentation your change touches: the specification, the runbook, the test plan, `docs/decisions.md`.
 - A pull request is merged with **squash**, once CI is green and a maintainer approved it.
