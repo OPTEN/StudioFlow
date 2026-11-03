@@ -432,3 +432,15 @@ Results of the foundation spikes:
   (warning budget 900 kB, error 1.5 MB), sender initial 319 kB (warning 800 kB, error 1.5 MB). The output bundle stays
   free of Angular (`apps/output/vite.config.ts` aliases only the framework-free `@studioflow/i18n`): 122 kB main chunk
   and 34 kB shared-package chunk.
+
+## #97 Test plan and test IDs
+
+Taken on 2026-11-03, variant A of [#97](https://github.com/OPTEN/StudioFlow/issues/97) (architecture audit finding ARC-08).
+
+1. **Catalogue IDs for E2E only.** Every Playwright test carries the ID of its entry in `docs/testing.md`. xUnit and Vitest
+   tests carry none: 0 of 88 xUnit files and 0 of 254 Vitest specs do, and retrofitting about 250 IDs is not worth it.
+   The `UNIT-*` and `INT-*` entries of the plan describe the coverage per area instead.
+2. **No `check-catalogue.mjs`.** The planned check is dropped from `docs/testing.md` 6.5 and 6.7; the pull request review
+   checks the E2E IDs. A check can come back if the E2E IDs drift.
+3. **Gaps stay current.** When a gap of section 7 of `docs/testing.md` is closed, its entry is updated in the same change
+   (rule in `CONTRIBUTING.md`).
