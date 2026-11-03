@@ -1,4 +1,4 @@
-// Turns prototype/regie.html and its fonts into one self-contained HTML file (tools/build-prototype.mjs).
+// Turns prototype/regie.html (and any font it names) into one self-contained HTML file (tools/build-prototype.mjs).
 // Pure functions: the caller reads the files, so the unit tests need no disk.
 
 /** `url("fonts/name.woff2")` in the CSS of the prototype. */
@@ -55,24 +55,28 @@ export function licenseBlock(licenses) {
 /** Banner (fixed, dismissable) that says the data is synthetic. Own class names, so it cannot clash with the page. */
 export function noteBlock() {
   return `<style>
-.sf-proto-note { position: fixed; z-index: 2147483000; left: 50%; bottom: 8px; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; max-width: calc(100vw - 16px); padding: 5px 6px 5px 14px; border: 1px solid #353d4a; border-radius: 16px; background: rgba(13, 17, 23, .94); color: #e6edf3; font: 600 12.5px/1.35 "Sofia Sans Semi Condensed", system-ui, sans-serif; box-shadow: 0 4px 18px rgba(0, 0, 0, .45); }
-.sf-proto-note button { flex: none; border: 0; border-radius: 12px; padding: 3px 10px; background: #232a36; color: #e6edf3; font: inherit; cursor: pointer; }
-.sf-proto-note button:hover { background: #353d4a; }
-.sf-proto-note button:focus-visible { outline: 2px solid #79c0ff; outline-offset: 2px; }
+.sf-proto-note { position: fixed; z-index: 55; left: 50%; bottom: 8px; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; max-width: calc(100vw - 16px); padding: 5px 5px 5px 14px; border-radius: 999px; background: rgba(42, 42, 46, .96); color: #f5f5f7; font: 500 12.5px/1.35 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, Roboto, sans-serif; box-shadow: 0 12px 32px rgba(0, 0, 0, .42), 0 2px 6px rgba(0, 0, 0, .28), 0 0 0 .5px rgba(255, 255, 255, .1); }
+.sf-proto-note button { flex: none; border: 0; border-radius: 999px; padding: 4px 11px; background: rgba(120, 120, 128, .32); color: #f5f5f7; font: inherit; font-weight: 600; cursor: pointer; }
+.sf-proto-note button:hover { background: rgba(120, 120, 128, .45); }
+.sf-proto-note button:focus-visible { outline: 2px solid #5aa9ff; outline-offset: 2px; }
 .sf-proto-note[hidden] { display: none; }
 </style>
 <div class="sf-proto-note" id="sf-proto-note" role="note" lang="en"><span>${NOTE_TEXT}</span><button type="button" onclick="this.parentNode.hidden = true">Got it</button></div>`;
 }
 
-/** A comment right after the doctype that says what the file is. */
-export function headerComment() {
+/** A comment right after the doctype that says what the file is; it names the embedded fonts, if there are any. */
+export function headerComment(licenses = []) {
+  const names = licenses.map(({ name }) => name);
+  const fonts =
+    names.length === 0
+      ? '  It uses the system fonts of the device, like the control room itself.'
+      : `  The fonts ${names.join(' and ')} are embedded and licensed under the SIL Open Font License 1.1;\n  their texts are in the element #${LICENSES_ID} at the end of the page.`;
   return `<!--
-  StudioFlow clickable prototype (one file, works offline; fonts are embedded).
-  Built by tools/build-prototype.mjs from prototype/regie.html and prototype/fonts/.
+  StudioFlow clickable prototype (one file, works offline).
+  Built by tools/build-prototype.mjs from prototype/regie.html.
   All names, pictures and values in it are synthetic; it talks to no server.
-  Licence: MIT (https://opensource.org/license/mit). The fonts Sofia Sans Semi Condensed and JetBrains
-  Mono are licensed under the SIL Open Font License 1.1; their texts are in the element #${LICENSES_ID} at the end of
-  the page.
+  Licence: MIT (https://opensource.org/license/mit).
+${fonts}
 -->`;
 }
 
@@ -90,11 +94,12 @@ export function buildPrototype({ html, readFont, licenses }) {
   if (end < 0) throw new Error('The prototype has no </body>.');
   if (!/^\s*<!doctype html>/i.test(inlined)) throw new Error('The prototype does not start with <!doctype html>.');
   // Function replacers: the texts contain "$" characters that a replacement string would interpret.
-  const withComment = inlined.replace(/^(\s*<!doctype html>)/i, (doctype) => `${doctype}\n${headerComment()}`);
+  const withComment = inlined.replace(/^(\s*<!doctype html>)/i, (doctype) => `${doctype}\n${headerComment(licenses)}`);
   const withTitle = withComment.replace(
     '<title>StudioFlow control room</title>',
     () => '<title>StudioFlow control room (prototype)</title>',
   );
   const close = withTitle.toLowerCase().lastIndexOf('</body>');
-  return `${withTitle.slice(0, close)}${noteBlock()}\n${licenseBlock(licenses)}\n${withTitle.slice(close)}`;
+  const fonts = licenses.length > 0 ? `${licenseBlock(licenses)}\n` : '';
+  return `${withTitle.slice(0, close)}${noteBlock()}\n${fonts}${withTitle.slice(close)}`;
 }

@@ -99,6 +99,21 @@ describe('buildPrototype', () => {
     expect(dollar).toContain("costs $& and $` and $'");
   });
 
+  it('leaves out the licence block and says so when the page embeds no font', () => {
+    const html = buildPrototype({
+      html: PAGE.replace(/@font-face[^\n]*\n/g, ''),
+      readFont,
+      licenses: [],
+    });
+    expect(html).not.toContain(LICENSES_ID);
+    expect(html).toContain('system fonts');
+    expect(html).toContain(NOTE_TEXT);
+  });
+
+  it('names the embedded fonts in the header comment', () => {
+    expect(build()).toContain('The fonts Font A are embedded');
+  });
+
   it('gives the same bytes every time', () => {
     expect(build()).toBe(build());
   });
@@ -124,11 +139,12 @@ describe('tools/build-prototype.mjs', () => {
       const html = readFileSync(out, 'utf8');
       expect(externalReferences(html)).toEqual([]);
       expect(html).not.toMatch(/url\("fonts\//);
-      expect(html.match(/url\("data:font\/woff2;base64,/g)).toHaveLength(2);
-      expect(html).toContain('Sofia Sans Semi Condensed');
-      expect(html).toContain('JetBrains Mono');
+      // The Regie uses the platform's UI font; so does the prototype, so it embeds no font and no licence.
+      expect(html).not.toMatch(/url\("data:font\/woff2;base64,/);
+      expect(html).not.toContain(LICENSES_ID);
+      expect(html).toContain('system fonts');
       expect(html).toContain(NOTE_TEXT);
-      expect(html).toContain('SIL OPEN FONT LICENSE Version 1.1');
+      expect(html).toContain('<title>StudioFlow control room (prototype)</title>');
       expect(html.length).toBeGreaterThan(150_000);
     } finally {
       rmSync(dir, { recursive: true, force: true });

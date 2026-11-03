@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 /**
- * Builds the standalone prototype: prototype/regie.html and prototype/fonts/*.woff2 become one self-contained
- * `studioflow-prototype.html` (fonts as base64 data URLs, the font licences embedded, a visible note that all data is
- * synthetic). The file works offline and needs no server; it is attached to every release (docs/releasing.md).
+ * Builds the standalone prototype: prototype/regie.html becomes one self-contained `studioflow-prototype.html` (a
+ * visible note that all data is synthetic; a font from prototype/fonts that the page names would be embedded as a base64
+ * data URL with its licence, but the page uses the system UI font like the Regie). The file works offline and needs no
+ * server; it is attached to every release (docs/releasing.md).
  *
  * Usage: node tools/build-prototype.mjs [--out FILE]      (default: dist/studioflow-prototype.html)
  *
