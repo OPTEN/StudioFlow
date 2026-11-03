@@ -50,7 +50,9 @@ export class ControlColumnComponent {
   protected readonly reasonId = `sf-take-reason-${this.id}`;
 
   /** Tooltip of Take while it can take: "Take (Space)". */
-  protected readonly takeTitle = `${t('regie.stage.control.take')} (${keyHint('space')})`;
+  protected readonly takeTitle = computed(
+    () => `${t('regie.stage.control.take')} (${keyHint('space')})`,
+  );
   /** Cut is chosen: the duration row is inactive. */
   protected readonly cut = computed(() => this.switcher.transitionKind() === 'cut');
   /** The production has a mixer: show the level of the program sound. */

@@ -230,9 +230,12 @@ export class SceneRowComponent {
     const button = event.currentTarget as HTMLElement;
     const rect = button.getBoundingClientRect();
     this.menus.open(
-      this.menu(),
+      this.menu,
       { x: Math.max(EDGE, rect.right - MENU_WIDTH), y: rect.bottom + 4 },
-      { label: t('regie.scenes.row.menuLabel', { name: this.displayName() }), returnFocus: button },
+      {
+        label: () => t('regie.scenes.row.menuLabel', { name: this.displayName() }),
+        returnFocus: button,
+      },
     );
   }
 

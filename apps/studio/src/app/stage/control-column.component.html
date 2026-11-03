@@ -117,7 +117,7 @@
       class="c-take"
       type="button"
       aria-keyshortcuts="Space"
-      [title]="takeReason() || takeTitle"
+      [title]="takeReason() || takeTitle()"
       [attr.aria-describedby]="takeReason() ? reasonId : null"
       [disabled]="!switcher.canTake()"
       (click)="take()"

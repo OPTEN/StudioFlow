@@ -56,7 +56,7 @@
         class="c-chipbtn c-header__tool"
         type="button"
         aria-haspopup="dialog"
-        [title]="layoutTitle"
+        [title]="layoutTitle()"
         [sfPopoverTrigger]="layoutPopover"
       >
         <svg sfIcon="layout"></svg>
@@ -71,7 +71,7 @@
       class="c-ibtn c-header__settings"
       routerLink="/settings"
       [attr.aria-label]="t('regie.header.settings')"
-      [title]="settingsTitle"
+      [title]="settingsTitle()"
     >
       <svg sfIcon="gear"></svg>
     </a>
