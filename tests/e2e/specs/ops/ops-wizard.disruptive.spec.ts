@@ -152,7 +152,8 @@ test.describe('WIZ the wizard in the browser', () => {
     await expect(page.getByText('Enter four numbers from 0 to 255 separated by dots')).toBeVisible();
     await address.fill(config.nodeIp);
     await page.getByRole('button', { name: 'Test connection' }).click();
-    await expect(page.getByText(/The test worked: this browser exchanged data with the media server at .* \(round trip \d+ ms\)/), 'the WebRTC round trip through the address').toBeVisible({ timeout: 90_000 });
+    // The visible line (the status for assistive technology repeats it, hidden).
+    await expect(page.getByText(/The test worked: this browser exchanged data with the media server at .* \(round trip \d+ ms\)/).and(page.locator(':not(.u-sr-only)')), 'the WebRTC round trip through the address').toBeVisible({ timeout: 90_000 });
     await page.getByRole('button', { name: 'Save and continue' }).click();
 
     // Step 3: the address and the local certificate. The CA certificate can be downloaded; a domain is optional.

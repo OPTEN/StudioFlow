@@ -225,7 +225,7 @@ test.describe('XFER regie', () => {
       // Remove S1: the confirmation names what goes; Cancel changes nothing, the button removes the item.
       await missing.locator('[data-code="S1"]').getByRole('button', { name: 'Assign S1 · Lea laptop · Screen 1' }).click();
       await missing.getByRole('button', { name: 'Remove from all scenes…' }).click();
-      await expect(missing).toContainText('The 1 element that shows S1 · Lea laptop · Screen 1 is removed from its scene.');
+      await expect(missing).toContainText('The one place in a scene that shows S1 · Lea laptop · Screen 1 is removed.');
       await missing.getByRole('button', { name: 'Cancel' }).click();
       expect((await api.getSnapshot(copy.id)).body.placeholders).toHaveLength(1);
       await missing.getByRole('button', { name: 'Remove from all scenes…' }).click();

@@ -61,7 +61,9 @@ export function selfSigned(options: SelfSignedOptions): SelfSigned {
   const extensions = der(0xa3, sequence(sequence(oid('2.5.29.17'), octets(altNames)), sequence(oid('2.5.29.19'), octets(sequence()))));
   const toBeSigned = sequence(
     der(0xa0, integer(Buffer.from([2]))),
-    integer(Buffer.from(crypto.randomBytes(8).map((byte, index) => (index === 0 ? byte & 0x7f : byte)))),
+    // Serial: 8 random bytes, the first one in 0x40..0x7f: positive and never 0x00 (a leading zero byte would be an
+    // illegal DER padding, which made about one certificate in 256 unreadable).
+    integer(Buffer.from(crypto.randomBytes(8).map((byte, index) => (index === 0 ? (byte & 0x3f) | 0x40 : byte)))),
     ECDSA_SHA256,
     name,
     sequence(utcTime(notBefore), utcTime(notAfter)),
