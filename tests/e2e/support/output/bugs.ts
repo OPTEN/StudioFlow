@@ -25,6 +25,18 @@ function readBugs(file: string): Record<string, Entry> {
   }
 }
 
+/**
+ * For a confirmed bug that shows up only in some runs (a hard limit missed in one window of several): the test is not an
+ * expected failure (it would turn red whenever the run is lucky); it notes the bug and returns whether it is still open,
+ * so the test asserts the hard limit only once the bug is fixed and what holds in every run before that.
+ */
+export function intermittentOutBug(id: string, description: string): boolean {
+  const entry = readBugs(path.join(E2E_DIR, 'specs', 'output', 'bugs.json'))[id];
+  test.info().annotations.push({ type: 'bug', description: `${id} (${entry?.status ?? 'unregistered'}, intermittent, specs/output/bugs.json): ${description}` });
+  if (process.env['E2E_BUG_REPORT'] === '1') return false;
+  return entry?.status === 'open';
+}
+
 export function outBug(id: string, description: string): void {
   if (readBugs(path.join(E2E_DIR, 'known-bugs.json'))[id]) {
     knownBug(id, description);

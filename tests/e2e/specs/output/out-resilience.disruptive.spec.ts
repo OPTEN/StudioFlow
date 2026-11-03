@@ -3,7 +3,7 @@ import { THRESHOLD } from '../../support/constants';
 import { dockerCtl, livekitCtl, restoreNetwork, type NetemProfile } from '../../support/docker-ctl';
 import { stackConfig } from '../../support/env';
 import { requireTool } from '../../support/fixtures';
-import { outBug } from '../../support/output/bugs';
+import { intermittentOutBug } from '../../support/output/bugs';
 import { expect, test } from '../../support/ui/fixtures';
 import { sleep, waitUntil } from '../../support/shell';
 import { apiReady, ensureHealthy, inspectService, tryFetch } from '../../support/stack';
@@ -509,7 +509,9 @@ test.describe('OUT netem on LiveKit', () => {
       t.disruptive(scenario.priority),
       async ({ browser, api, production, pairContext, openPhone, openLaptop, onCleanup }) => {
         requireTool('netem');
-        if (scenario.id === 'E2E-NET-05') outBug('OUT-12', 'with 20 % loss on the media path a single freeze still lasts 6.5-8.3 s in some windows (T-FREEZE hard limit 5 s), issue #105');
+        const freezeLimitOpen =
+          scenario.id === 'E2E-NET-05' &&
+          intermittentOutBug('OUT-12', 'with 20 % loss on the media path a single freeze lasts 6.5-8.3 s in some runs (T-FREEZE hard limit 5 s), issue #105');
         test.setTimeout(600_000);
         const deps = { api, production, pairContext, openPhone, openLaptop };
         const world = await liveWorld({ browser, deps, onCleanup }, { cameras: 1, latency: true });
@@ -556,7 +558,13 @@ test.describe('OUT netem on LiveKit', () => {
           expect(m.lossPct!).toBeLessThanOrEqual(9);
         }
         if (scenario.id === 'E2E-NET-05') {
-          expect(result.worst.longestStillMs, 'T-FREEZE: the longest freeze stays below 5 s (hard)').toBeLessThanOrEqual(5000);
+          if (freezeLimitOpen) {
+            // OUT-12 (#105): the 5 s hard limit is missed in some runs; what holds in every run: the picture is never still
+            // for 15 s (as with 5 %). The hard limit applies again when the entry is set to fixed.
+            expect(result.worst.longestStillMs, 'the picture is never still for 15 s or more').toBeLessThan(15_000);
+          } else {
+            expect(result.worst.longestStillMs, 'T-FREEZE: the longest freeze stays below 5 s (hard)').toBeLessThanOrEqual(5000);
+          }
           expect(result.recoverMs, 'full quality within 10 s of clearing').not.toBeNull();
           expect(result.recoverMs!).toBeLessThanOrEqual(10_000);
           expect((await api.getSnapshot(production.id)).body.incidents.filter((incident) => incident.endedAt === null), 'no incident stays open').toEqual([]);
