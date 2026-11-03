@@ -4,6 +4,7 @@ import type { Mock } from 'vitest';
 import { silentLogger } from './logger';
 import {
   MediaSession,
+  WAKE_REJOIN_GRACE_MS,
   isTerminalState,
   toRtcState,
   type MediaSessionOptions,
@@ -143,6 +144,65 @@ describe('MediaSession', () => {
       rooms[0].setState(ConnectionState.Connected, RoomEvent.Reconnected);
       expect(session.state).toBe('connected');
       expect(rooms).toHaveLength(1);
+    });
+
+    it('joins with a new room when the SDK is still reconnecting a moment after a wake signal (DEV-02)', async () => {
+      const { session, rooms, lifecycle, tokenProvider, roomEvents } = await connected('sender');
+      rooms[0].setState(ConnectionState.Reconnecting, RoomEvent.Reconnecting);
+
+      lifecycle.wake();
+      lifecycle.wake();
+      await vi.advanceTimersByTimeAsync(WAKE_REJOIN_GRACE_MS - 1);
+      expect(rooms).toHaveLength(1);
+      await vi.advanceTimersByTimeAsync(1);
+
+      expect(rooms[0].disconnectCalls).toEqual([false]);
+      expect(rooms).toHaveLength(2);
+      expect(tokenProvider).toHaveBeenCalledTimes(2);
+      expect(roomEvents).toEqual([rooms[0], null, rooms[1]]);
+      expect(session.state).toBe('reconnecting');
+      rooms[1].resolveConnect();
+      await flushMicrotasks();
+      expect(session.state).toBe('connected');
+      expect(session.room).toBe(rooms[1]);
+    });
+
+    it('keeps the room when the SDK reconnects within the grace time after a wake signal', async () => {
+      const { session, rooms, lifecycle } = await connected('sender');
+      rooms[0].setState(ConnectionState.Reconnecting, RoomEvent.Reconnecting);
+
+      lifecycle.wake();
+      await vi.advanceTimersByTimeAsync(WAKE_REJOIN_GRACE_MS / 2);
+      rooms[0].setState(ConnectionState.Connected, RoomEvent.Reconnected);
+      await vi.advanceTimersByTimeAsync(WAKE_REJOIN_GRACE_MS);
+
+      expect(rooms).toHaveLength(1);
+      expect(rooms[0].disconnectCalls).toEqual([]);
+      expect(session.state).toBe('connected');
+    });
+
+    it('starts no rejoin on a wake signal while connected, offline or stopped', async () => {
+      let online = false;
+      const harness = setup('sender', { online: () => online });
+      harness.session.start();
+      await flushMicrotasks();
+      harness.rooms[0].resolveConnect();
+      await flushMicrotasks();
+
+      harness.lifecycle.wake();
+      await vi.advanceTimersByTimeAsync(WAKE_REJOIN_GRACE_MS);
+      harness.rooms[0].setState(ConnectionState.Reconnecting, RoomEvent.Reconnecting);
+      harness.lifecycle.wake();
+      await vi.advanceTimersByTimeAsync(WAKE_REJOIN_GRACE_MS);
+      expect(harness.rooms).toHaveLength(1);
+
+      online = true;
+      harness.lifecycle.wake();
+      harness.session.stop();
+      await vi.advanceTimersByTimeAsync(WAKE_REJOIN_GRACE_MS);
+      expect(harness.rooms).toHaveLength(1);
+      expect(harness.session.state).toBe('stopped');
+      expect(vi.getTimerCount()).toBe(0);
     });
   });
 

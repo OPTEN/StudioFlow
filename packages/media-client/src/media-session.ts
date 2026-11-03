@@ -1,6 +1,8 @@
 /**
  * One LiveKit connection that stays up forever (spec 8.4): SDK resume/reconnect first; when the SDK gives up or the
  * room is lost otherwise, the session waits with the shared backoff, fetches a fresh token and joins with a new `Room`.
+ * A wake signal (network back, page visible again) cuts a backoff pause short and, when the SDK's own reconnect does
+ * not finish within {@link WAKE_REJOIN_GRACE_MS}, replaces it with a fresh join (the SDK keeps its escalated delay).
  */
 import { backoffDelay } from '@studioflow/realtime-client';
 import type { LiveKitTokenDto, RtcState } from '@studioflow/scene-model';
@@ -101,6 +103,8 @@ export interface MediaSessionOptions {
   readonly tokenTimeoutMs?: number;
   /** Upper bound for one `room.connect()` (default 45 s; the SDK's own signal + ICE timeouts are 15 s each). */
   readonly connectTimeoutMs?: number;
+  /** True while the browser has a network (default `navigator.onLine`); a wake while offline starts no rejoin. */
+  readonly online?: () => boolean;
 }
 
 interface CurrentRoom {
@@ -112,6 +116,18 @@ interface CurrentRoom {
 
 const DEFAULT_TOKEN_TIMEOUT_MS = 15_000;
 const DEFAULT_CONNECT_TIMEOUT_MS = 45_000;
+
+/**
+ * How long the SDK may still be reconnecting after a wake signal before the session gives up on it and joins with a new
+ * room (DEV-02). livekit-client retries with the escalated delay of its reconnect policy (up to 5 s) even when the
+ * network is back, and a resume after a long loss usually fails once more because the peer connections are gone; a
+ * resume that can work (signal blip, intact peer connections) finishes well within this time.
+ */
+export const WAKE_REJOIN_GRACE_MS = 750;
+
+function browserOnline(): boolean {
+  return typeof navigator === 'undefined' || navigator.onLine !== false;
+}
 
 /**
  * Keeps one LiveKit room connected for a role. Never runs two connect attempts at once; every async continuation is
@@ -129,6 +145,7 @@ export class MediaSession implements SessionStateSource {
   readonly #createLifecycle: () => PageLifecycle;
   readonly #tokenTimeoutMs: number;
   readonly #connectTimeoutMs: number;
+  readonly #online: () => boolean;
   readonly #stateListeners: Listeners<[MediaSessionState]>;
   readonly #roomListeners: Listeners<[MediaRoom | null]>;
 
@@ -140,6 +157,7 @@ export class MediaSession implements SessionStateSource {
   #lifecycle: PageLifecycle | null = null;
   #waiting = false;
   #retryTimer: TimerHandle | null = null;
+  #wakeRejoinTimer: TimerHandle | null = null;
 
   constructor(options: MediaSessionOptions) {
     this.role = options.role;
@@ -152,6 +170,7 @@ export class MediaSession implements SessionStateSource {
     this.#createLifecycle = options.pageLifecycle ?? (() => watchPageLifecycle());
     this.#tokenTimeoutMs = options.tokenTimeoutMs ?? DEFAULT_TOKEN_TIMEOUT_MS;
     this.#connectTimeoutMs = options.connectTimeoutMs ?? DEFAULT_CONNECT_TIMEOUT_MS;
+    this.#online = options.online ?? browserOnline;
     const onListenerError = (error: unknown): void =>
       this.#logger.warn('media session listener failed', errorContext(error));
     this.#stateListeners = new Listeners(onListenerError);
@@ -213,6 +232,7 @@ export class MediaSession implements SessionStateSource {
   #endRun(): void {
     this.#run++;
     this.#cancelRetry();
+    this.#cancelWakeRejoin();
     this.#lifecycle?.dispose();
     this.#lifecycle = null;
     this.#releaseRoom();
@@ -370,6 +390,43 @@ export class MediaSession implements SessionStateSource {
   #onWake(run: number): void {
     if (this.#waiting) {
       this.#retryNow(run);
+    } else if (this.#state === 'reconnecting' && this.#current?.established === true) {
+      this.#scheduleWakeRejoin(run, this.#current.room);
+    }
+  }
+
+  /**
+   * The SDK is reconnecting an established room when the network comes back: give it {@link WAKE_REJOIN_GRACE_MS} to
+   * finish, then drop that room and join with a new one at once instead of waiting for its escalated backoff (DEV-02).
+   */
+  #scheduleWakeRejoin(run: number, room: MediaRoom): void {
+    if (this.#wakeRejoinTimer !== null) {
+      return;
+    }
+    this.#wakeRejoinTimer = this.#clock.setTimeout(() => {
+      this.#wakeRejoinTimer = null;
+      if (
+        run !== this.#run ||
+        this.#state !== 'reconnecting' ||
+        !this.#isEstablished(room) ||
+        this.#lifecycle?.suspended === true ||
+        !this.#online()
+      ) {
+        return;
+      }
+      this.#logger.debug(
+        'LiveKit reconnect still running after a wake signal: joining with a new room',
+      );
+      this.#releaseRoom();
+      this.#attempt = 0;
+      void this.#connect(run);
+    }, WAKE_REJOIN_GRACE_MS);
+  }
+
+  #cancelWakeRejoin(): void {
+    if (this.#wakeRejoinTimer !== null) {
+      this.#clock.clearTimeout(this.#wakeRejoinTimer);
+      this.#wakeRejoinTimer = null;
     }
   }
 

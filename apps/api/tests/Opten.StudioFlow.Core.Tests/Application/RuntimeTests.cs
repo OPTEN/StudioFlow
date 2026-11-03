@@ -630,6 +630,33 @@ public sealed class DeviceRuntimeTests
     }
 
     [Fact]
+    public void Detach_MediaCountsAsDisconnectedUntilTheSameSessionReportsAgain()
+    {
+        device.Attach("c1", "tab-1", Build.T0);
+        device.ApplyReport(Report(("camera", SlotState.Live)), OwnSlots, Build.T0);
+
+        device.Detach("c1", Build.T0.AddSeconds(1));
+        var afterDetach = device.Rtc;
+        device.Attach("c2", "tab-1", Build.T0.AddSeconds(5));
+        var afterReconnect = device.Rtc;
+        device.ApplyReport(Report(("camera", SlotState.Live)), OwnSlots, Build.T0.AddSeconds(6));
+
+        Assert.Equal((RtcState.Disconnected, RtcState.Disconnected, RtcState.Connected), (afterDetach, afterReconnect, device.Rtc));
+    }
+
+    [Fact]
+    public void Detach_ThenNewSession_StartsWithoutMediaState()
+    {
+        device.Attach("c1", "tab-1", Build.T0);
+        device.ApplyReport(Report(("camera", SlotState.Live)), OwnSlots, Build.T0);
+        device.Detach("c1", Build.T0.AddSeconds(1));
+
+        device.Attach("c2", "tab-2", Build.T0.AddSeconds(2));
+
+        Assert.Null(device.Rtc);
+    }
+
+    [Fact]
     public void ApplyReport_NullSlots_AreTolerated() =>
         Assert.Empty(device.ApplyReport(new DeviceReportDto((RtcState)99, null!, null, null, null, null, null), OwnSlots, Build.T0).Telemetry.Slots);
 
