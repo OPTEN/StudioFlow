@@ -1,4 +1,4 @@
-# Status and handover (2026-10-29)
+# Status and handover (2026-11-03)
 
 > **Internal working log.** This file is the hand-over of the maintainer's working sessions until the first release. It
 > is not user documentation and may be removed afterwards; the lasting content is in `docs/decisions.md`,
@@ -20,7 +20,7 @@ rules in `docs/i18n.md`.
 
 ## Local environment
 
-- Windows 11, Git Bash. Node 22 is not on the PATH: prefix commands with
+- Windows 11, Git Bash. Node 24 (`.nvmrc`, #98) is not on the PATH: prefix commands with
   `export PATH="/c/Users/<user>/AppData/Roaming/nvm/v24.22.2:$PATH"` (installed via nvm). A new worktree needs `npm ci`.
 - .NET SDK 10, Docker Desktop 29 (start it first), Playwright browsers installed (chromium, firefox, webkit).
 - No `pwsh`; PowerShell scripts are parsed with Windows PowerShell 5.1 (scripts are ASCII-only English, see D9).
@@ -107,6 +107,13 @@ under the same identity). E2E-AUD-13, E2E-PAIR-09 and E2E-SWITCH-08 (`ERR_NO_BUF
 flakes: 3x rerun, 33/33 green. #81 and #82 are closed. The v0.1.1 bundle was installed once as an operator (checksums,
 cosign 3, setup, login, backup, update, Caddy recreate): all fine.
 
+**Release check 0.2.0 (2026-11-03, main dc5c985, Node 24.22.2, 1.6 h + 29 min):** full local matrix (stack 2,
+projects smoke, desktop-chromium, i18n, short-ttl, disruptive, pixel-7, iphone-15, ipad, desktop-firefox, webkit):
+634 passed, 3 failed, 5 skipped; soak (20 min + 4 min guard, stack 1): 2 passed, DOM nodes flat at 439, no removed
+`<video>` alive. The three failures were test-side and are fixed in #114: E2E-NET-05 (OUT-12 / #105 is intermittent,
+the expected failure passed), E2E-OPS-41 (status read before it followed) and E2E-AUD-11 (gain read during the ramp);
+rerun: ops-wizard 8/8, E2E-NET-05 and E2E-AUD-11 3/3 green. Issues #92-#94, #97, #99, #101, #102 closed, #98 with #113.
+
 ## Remaining plan
 
 1. Follow-ups below.
@@ -130,6 +137,10 @@ cosign 3, setup, login, backup, update, Caddy recreate): all fine.
 ## Known open bugs
 
 - `AuditExportStreamingTests` times out in the cloud container now and then (green on GitHub).
+- #105 (OUT-12): with 20 % packet loss on the media path one freeze of the output lasts 6.5-8.3 s in some runs (hard
+  limit 5 s); the 5 % budget holds. E2E-NET-05 asserts the 5 s limit again once the entry is fixed.
+- #96: the Renovate app is not installed (an organisation owner installs it in the GitHub UI) and the repository does
+  not allow auto-merge yet (`bash tools/github-repo-settings.sh` as an administrator sets it).
 
 ## Gotchas learned
 
