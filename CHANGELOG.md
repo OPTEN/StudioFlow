@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.1](https://github.com/OPTEN/StudioFlow/compare/v0.2.0...v0.2.1) (2026-11-03)
+
+
+### Features
+
+* **prototype:** follow the redesigned Regie ([#115](https://github.com/OPTEN/StudioFlow/issues/115)) ([afbaa3e](https://github.com/OPTEN/StudioFlow/commit/afbaa3edeede017ef43931f968c6bd542269b993))
+
+
+### Miscellaneous Chores
+
+* release 0.2.1 ([2d54c52](https://github.com/OPTEN/StudioFlow/commit/2d54c5249f1f4190f22e273f2a25349b9f06856f))
+
 ## [0.2.0](https://github.com/OPTEN/StudioFlow/compare/v0.1.1...v0.2.0) (2026-11-03)
 
 
