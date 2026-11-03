@@ -444,3 +444,17 @@ Taken on 2026-11-03, variant A of [#97](https://github.com/OPTEN/StudioFlow/issu
    checks the E2E IDs. A check can come back if the E2E IDs drift.
 3. **Gaps stay current.** When a gap of section 7 of `docs/testing.md` is closed, its entry is updated in the same change
    (rule in `CONTRIBUTING.md`).
+
+## #98 Node 24 LTS for the build and the tools
+
+Decided and done on 2026-11-03 (architecture audit ARC-27, issue #98).
+
+1. Node runs only in the build of the frontends (stage 1 of `infra/caddy/Dockerfile`) and in the tools and tests, never
+   at runtime. Node 22 is in maintenance since 2025-10-21 and reaches its end of life on 2027-04-30, so the build moves
+   now, not shortly before that date.
+2. The pins move together: `.nvmrc` (CI reads it), `NODE_VERSION` of the Caddy image and `engines` in `package.json`
+   (`^24.15.0 || >=26.0.0`, the ranges Angular 22 accepts; Node 22 is no longer accepted).
+3. Node 24 is in maintenance itself since 2026-10-20 (end of life 2028-04-30); Node 26 became the active LTS on
+   2026-10-28. The next move, to Node 26, is due before the end of 2027, after Angular and the tools have run on it for a
+   while. Renovate leaves Node majors to a person (`.github/renovate.json5`), so this file holds the date.
+

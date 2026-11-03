@@ -21,7 +21,7 @@ issues: see [SECURITY.md](SECURITY.md).
 
 | Tool | Version | Used for |
 |---|---|---|
-| Node.js | 22.22.3 or newer (`.nvmrc`; `package.json` `engines` lists the accepted ranges) | the frontends, the shared packages, the tools |
+| Node.js | 24.22.2 or newer (24 LTS or 26) (`.nvmrc`; `package.json` `engines` lists the accepted ranges) | the frontends, the shared packages, the tools |
 | .NET SDK | 10 (`global.json`) | the API |
 | Docker | with Compose v2 | PostgreSQL, LiveKit and Caddy for development, the API integration tests (Testcontainers), the end-to-end tests, the release images |
 

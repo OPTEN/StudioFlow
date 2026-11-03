@@ -130,7 +130,7 @@ service makes the internal secrets once. Details: [implementation spec](docs/arc
 
 ## Development
 
-Prerequisites: **Node.js 22.22.3 or newer** (`.nvmrc`), the **.NET 10 SDK** and **Docker** with Compose v2.
+Prerequisites: **Node.js 24.22.2 or newer** (`.nvmrc`), the **.NET 10 SDK** and **Docker** with Compose v2.
 
 ```bash
 npm ci                    # once, and after every change of package-lock.json

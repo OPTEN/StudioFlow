@@ -1250,7 +1250,7 @@ nowhere else; none is required (`${VAR:-default}`). No container has the Docker 
   `POSTGRES_PASSWORD`, `LIVEKIT_API_KEY` or `LIVEKIT_API_SECRET` in the environment (an old `.env`) is adopted instead of a
   random value, on the first start only. It also hands the shared volumes `caddy_certs`, `livekit_config` and `backup_config`
   to the API user.
-- `caddy`: build context = repository root, `infra/caddy/Dockerfile`: stage 1 `node:22.22.3-alpine` (`npm ci`, studio and
+- `caddy`: build context = repository root, `infra/caddy/Dockerfile`: stage 1 `node:24.22.2-alpine` (`npm ci`, studio and
   sender builds, the output build with `STUDIOFLOW_REVISION`), stage 2 `caddy:2.11.7-builder-alpine` + xcaddy with the DNS
   modules cloudflare v0.2.4, infomaniak v1.0.2, hetzner/v2 v2.0.1, desec v1.1.0, route53 v1.6.2, gandi v1.2.1, ovh v1.1.0,
   stage 3 `caddy:2.11.7-alpine` with `dist/studio/browser` → `/srv/studio`, `dist/sender/browser` → `/srv/join`,

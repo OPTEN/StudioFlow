@@ -3,7 +3,7 @@
 # section 10).
 # Build context is the repository root (docker-compose.yml: context ".", dockerfile infra/caddy/Dockerfile).
 
-ARG NODE_VERSION=22.22.3
+ARG NODE_VERSION=24.22.2
 ARG CADDY_VERSION=2.11.7
 
 # --- 1. Frontends: Regie (/), sender PWA (/join/), output page (/o/) ---------------------------------------------
