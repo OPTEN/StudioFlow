@@ -253,7 +253,8 @@ export class MediaSession implements SessionStateSource {
     }
     try {
       const connecting = room.connect(token.url, token.token, {
-        autoSubscribe: this.role !== 'sender',
+        // The output subscribes to the sources of the scenes only (see `LiveKitSourceProvider.setWantedSources`).
+        autoSubscribe: this.role === 'studio',
       });
       await withTimeout(connecting, this.#connectTimeoutMs, this.#clock);
     } catch (error) {

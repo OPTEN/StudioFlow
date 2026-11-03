@@ -114,7 +114,7 @@ export class MediaView {
     return this.source.kind === 'device' ? this.video : null;
   }
 
-  /** Releases the provider registration and the decoder, and removes the element. Idempotent. */
+  /** Releases the provider registration, the stream and the decoder, and removes the element. Idempotent. */
   dispose(): void {
     if (this.disposed) {
       return;
@@ -124,6 +124,12 @@ export class MediaView {
     const { element, video } = this;
     if (video && this.source.kind === 'device') {
       this.host.guard(() => this.host.provider.detach(this.source.sourceId, video));
+      // Without this the media pipeline keeps the removed element, its live track and the whole old layer alive.
+      this.host.guard(() => {
+        video.pause();
+        video.srcObject = null;
+        video.load();
+      });
     } else if (video) {
       this.host.guard(() => {
         this.host.provider.detachAsset?.(this.source.sourceId, video);

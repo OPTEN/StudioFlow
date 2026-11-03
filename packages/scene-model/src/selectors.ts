@@ -64,6 +64,23 @@ export function sourcesInScene(scene: SceneDto | null | undefined): string[] {
   return [...new Set(scene.items.filter((item) => !item.hidden).map((item) => item.source))];
 }
 
+/**
+ * Every source the scenes of the production use: the items (hidden ones too, they may be shown at any moment) and the
+ * fallback sources of their `onLost` rules. This is what the output page receives; a source in no scene is not subscribed.
+ */
+export function sourcesOfScenes(state: ProductionState): ReadonlySet<string> {
+  const sources = new Set<string>();
+  for (const scene of state.scenes) {
+    for (const item of scene.items) {
+      sources.add(item.source);
+      if (item.onLost?.fallbackSource) {
+        sources.add(item.onLost.fallbackSource);
+      }
+    }
+  }
+  return sources;
+}
+
 /** True when a visible item of the scene shows the source. */
 export function isSourceVisibleIn(scene: SceneDto | null | undefined, sourceId: string): boolean {
   return !!scene && scene.items.some((item) => !item.hidden && item.source === sourceId);

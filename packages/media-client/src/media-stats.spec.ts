@@ -289,6 +289,41 @@ describe('summarizeSenderStats', () => {
     });
   });
 
+  it('counts the packets sent again as the loss of the link, not the net loss the remote reports', () => {
+    const stats = [
+      layer({
+        rid: 'f',
+        frameWidth: 1280,
+        frameHeight: 720,
+        framesPerSecond: 30,
+        packetsSent: 1000,
+        packetsLost: 2,
+        retransmittedPacketsSent: 50,
+      }),
+    ];
+    expect(summarizeSenderStats(stats, new DeltaRatio(), {}).packetLossPct).toBe(5);
+  });
+
+  it('measures the loss per interval and follows a link that gets better', () => {
+    const loss = new DeltaRatio();
+    const key = {};
+    const sample = (sent: number, resent: number) => [
+      layer({
+        frameWidth: 1280,
+        frameHeight: 720,
+        packetsSent: sent,
+        retransmittedPacketsSent: resent,
+      }),
+    ];
+    expect(summarizeSenderStats(sample(1000, 200), loss, key).packetLossPct).toBe(20);
+    expect(summarizeSenderStats(sample(2000, 210), loss, key).packetLossPct).toBe(1);
+  });
+
+  it('keeps the loss the remote reports when it is larger than what was sent again (nothing recovered)', () => {
+    const stats = [layer({ frameWidth: 640, frameHeight: 360, packetsSent: 100, packetsLost: 10 })];
+    expect(summarizeSenderStats(stats, new DeltaRatio(), {}).packetLossPct).toBe(10);
+  });
+
   it('returns nulls without active layers', () => {
     expect(summarizeSenderStats([], new DeltaRatio(), {})).toEqual({
       width: null,

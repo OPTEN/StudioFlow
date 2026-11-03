@@ -5,6 +5,7 @@ import {
   CAMERA_2,
   fakeAnimate,
   flushMicrotasks,
+  giveFrame,
   IMAGE,
   mount,
   scene,
@@ -59,6 +60,79 @@ describe('scene renderer: transitions', () => {
     expect(result.done).toBe(true);
     expect(mounted.provider.attached(CAMERA)).toEqual([]);
     expect(animations).toHaveLength(0);
+  });
+
+  describe('a cut to a camera that is not on stage yet', () => {
+    const startOn = (...sources: string[]): void => {
+      mounted = mount();
+      for (const source of sources) {
+        mounted.provider.live(source);
+      }
+      mounted.renderer.show(scene('scn_a', [sceneItem('itm_a', CAMERA)]));
+    };
+    const newVideo = (): HTMLVideoElement => {
+      const video = mounted.provider.attachCalls.at(-1)?.video;
+      if (!video) {
+        throw new Error('no video registered');
+      }
+      return video;
+    };
+
+    it('keeps the shown scene until the new video has a frame, then switches', async () => {
+      startOn(CAMERA, CAMERA_2);
+      void mounted.renderer.transitionTo(scene('scn_b', [sceneItem('itm_b', CAMERA_2)]), CUT);
+      expect(layerIds()).toEqual(['scn_a']);
+      const video = newVideo();
+      expect(video.isConnected).toBe(false);
+      // The new scene is already asked for its picture while it waits.
+      expect(mounted.provider.sizeCalls.some((call) => call.sourceId === CAMERA_2)).toBe(true);
+
+      giveFrame(video);
+      video.dispatchEvent(new Event('loadeddata'));
+
+      expect(layerIds()).toEqual(['scn_b']);
+      expect(video.isConnected).toBe(true);
+      expect(mounted.provider.attached(CAMERA)).toEqual([]);
+    });
+
+    it('switches after 100 ms when the camera delivers no frame', () => {
+      startOn(CAMERA, CAMERA_2);
+      void mounted.renderer.transitionTo(scene('scn_b', [sceneItem('itm_b', CAMERA_2)]), CUT);
+      vi.advanceTimersByTime(99);
+      expect(layerIds()).toEqual(['scn_a']);
+      vi.advanceTimersByTime(1);
+      expect(layerIds()).toEqual(['scn_b']);
+    });
+
+    it('does not wait for a source that is not live', () => {
+      startOn(CAMERA);
+      void mounted.renderer.transitionTo(scene('scn_b', [sceneItem('itm_b', CAMERA_2)]), CUT);
+      expect(layerIds()).toEqual(['scn_b']);
+    });
+
+    it('cuts at once to a scene whose cameras the shown scene plays already', () => {
+      startOn(CAMERA);
+      void mounted.renderer.transitionTo(scene('scn_b', [sceneItem('itm_b', CAMERA)]), CUT);
+      expect(layerIds()).toEqual(['scn_b']);
+    });
+
+    it('completes the waiting cut when the next switch arrives', async () => {
+      startOn(CAMERA, CAMERA_2);
+      void mounted.renderer.transitionTo(scene('scn_b', [sceneItem('itm_b', CAMERA_2)]), CUT);
+      mounted.renderer.show(scene('scn_c', [sceneItem('itm_c', SCREEN)]));
+      expect(layerIds()).toEqual(['scn_c']);
+      vi.advanceTimersByTime(500);
+      expect(layerIds()).toEqual(['scn_c']);
+      expect(mounted.errors).toEqual([]);
+    });
+
+    it('releases a waiting layer when the renderer is destroyed', () => {
+      startOn(CAMERA, CAMERA_2);
+      void mounted.renderer.transitionTo(scene('scn_b', [sceneItem('itm_b', CAMERA_2)]), CUT);
+      mounted.renderer.destroy();
+      expect(mounted.provider.registrationCount).toBe(0);
+      expect(vi.getTimerCount()).toBe(0);
+    });
   });
 
   it('moves the <video> of a shared source on a cut instead of recreating it', () => {

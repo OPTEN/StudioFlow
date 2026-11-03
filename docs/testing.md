@@ -361,8 +361,8 @@ grips `Move dock <title> with the arrow keys`, separators `Height of the docks a
 `{"deviceId","secret","productionId"}` once paired (before that only `{"clientId"}`, the redeem client id); localStorage `studioflow.sender.settings` =
 `{"facing","resolution","dark","cameraOn","sharedScreens","techCheck"}`; sessionStorage `studioflow.pairing` = `{"requestId","pollToken","checkCode","expiresAt","name","kind"}`.
 
-**Output** (`apps/output`): stage element `[data-scene-id]`; per item `[data-item-id][data-source][data-state=live|hold|held|fallback|missing|connecting]`;
-slate `[data-slate=standby|end|denied]` with `[data-testid=slate-title]`, `[data-testid=slate-subtitle]`; debug overlay `[data-testid=debug-overlay]` (one `key: value` per line);
+**Output** (`apps/output`): stage `.sf-r-stage`, one layer per shown scene `.sf-r-layer[data-scene-id]`, per item `.sf-r-item[data-item-id]` (the page has no `data-state` or `data-source`; the **state** of an item named in this plan, `live|hold|held|fallback|missing|connecting`, is derived from what the renderer shows: a displayed `.sf-r-fallback` is `fallback`, `.sf-r-held` is `held`, a displayed `canvas.sf-r-hold-frame` is `hold`, else the device `<video>` with `readyState >= 2` and `videoWidth > 0` is `live` and any other device video is `connecting`, an item without media is `missing`; `tests/e2e/support/output/browser/output-probe.js` does exactly that);
+slate `.sf-r-slate` with `.sf-r-slate-title` and `.sf-r-slate-subtitle` (the slate that tells “standby”, “end” or “denied” is told by its text: “Starting soon”, “Thanks for watching”, “No access”); debug overlay `<pre class="c-debug">` (localized, in sections, see E2E-OUT-05; issue #94 OUT-07);
 No `window.__sfOutput` (spec 12): tests read the DOM attributes above and the `debug=1` overlay; `?latency=1` collects latency samples in `window.__studioflowLatency`.
 
 **localStorage (Regie)**: `studioflow.studio` = `'1'|'0'`; `studioflow.layout` = JSON v1 (prototype shape); `studioflow.transition` = `{"kind":"cut"|"fade","durationMs":300}` [GAP-34].
@@ -1270,7 +1270,7 @@ header “READY” / “LIVE” + `hh:mm:ss` / “ENDED”, buttons “Start bro
 **E2E-SWITCH-09** · P0 · pw — No black frame when switching (preload)
 - Pre: scene A = K1 full screen, scene B = K2 full screen, both cameras live (timecode or fake pattern, mean luminance ≥ 40), output open at 1920×1080.
 - Steps: `startScreencast`; 50 alternating cuts every 700 ms and 20 fades of 300 ms, the target of every cut being the preview scene (Studio Mode: the next Take; decision #12 keeps only the preview scene ready, so that is the case this test measures); analyse frames. A second run of cuts to a scene that is **neither in the program nor in the preview** (6 cuts 8 s apart, so its sources are paused again): the cold case.
-- Expect: preview scene: in every frame after a switch the item rectangle has mean luminance ≥ 20 (no black or empty frame); at switch time the target `<video>` already has `readyState ≥ 2` and `videoWidth > 0` (preloaded); the first picture is on screen ≤ 150 ms after the new layer and never below the LOW layer; `T-SWITCH` unaffected. Cold scene: the layer is in the DOM within `T-SWITCH` and the picture follows with the next keyframe, ≤ 1.5 s after the layer (`T-SWITCH-COLD`, about 0.5 s expected). The LOW layer is 320 px wide when the sender has CPU to spare; a sender that adapts to its CPU (`qualityLimitationReason = cpu`) sends smaller layers (240 px = 3/4 × 320), and the floor of that cut is the lowest layer the sender sends (read with `getStats` before the cut; the annotation `sender-cpu-limited` counts those cuts). The times (picture ≤ 150 ms, layer p95 ≤ 300 ms, cold ≤ 1.5 s) are enforced when the machine was at 60 % CPU or less; on a busier one a failure ends in a skip `not-comparable` (6.8).
+- Expect: preview scene: in every frame after a switch the item rectangle has mean luminance ≥ 20 (no black or empty frame); at switch time the target `<video>` already has `readyState ≥ 2` and `videoWidth > 0` (the renderer builds the layer of a cut to a new live camera unseen, requests its sources and puts it on stage when its videos have a decoded frame, after 100 ms at the latest; the shown scene stays until then; issue #94 OUT-01); the first picture is on screen ≤ 150 ms after the new layer and never below the LOW layer; `T-SWITCH` unaffected. Cold scene: the layer is in the DOM within `T-SWITCH` and the picture follows with the next keyframe, ≤ 1.5 s after the layer (`T-SWITCH-COLD`, about 0.5 s expected). The LOW layer is 320 px wide when the sender has CPU to spare; a sender that adapts to its CPU (`qualityLimitationReason = cpu`) sends smaller layers (240 px = 3/4 × 320), and the floor of that cut is the lowest layer the sender sends (read with `getStats` before the cut; the annotation `sender-cpu-limited` counts those cuts). The times (picture ≤ 150 ms, layer p95 ≤ 300 ms, cold ≤ 1.5 s) are enforced when the machine was at 60 % CPU or less; on a busier one a failure ends in a skip `not-comparable` (6.8).
 
 **E2E-SWITCH-10** · P1 · pw — Preview scene sources are preloaded at high quality, other scenes are paused
 - Steps: output with `debug=1`; Studio Mode on; select a preview scene whose camera is not in the program; read the frames decoded and the width of the camera's inbound stream on the output's peer connection.
@@ -1521,11 +1521,11 @@ Strings: “Starting soon”, “Thanks for watching”, “No access”, “Pic
 
 **UNIT-OUT-03** · P0 · vitest — Hold frame timing (fake timers)
 - Steps: item with `onLost.holdMs` = 3000 / 10000 / null / 0, width 1360 / 320 / 319 px; source lost at t0; advance to t0+2999, +3000; source returns at +2000 and at +5000; lost again; two items with different hold times.
-- Expect: `data-state`: `live → hold` at loss (last frame kept, `video` element and `srcObject`/last frame retained) → `held` at exactly `holdMs` (null: never; 0: immediately); held style: blur ≈ 2.5 % of the item width (±1 px), overlay `rgba(13,17,23,.72)`, centred text “Picture returns shortly” only when the item is ≥ 320 px wide (319 px: no text); return in `hold` or `held` clears everything and resets the timer; independent timers per item; timers cleared on `destroy()`.
+- Expect: state: `live → hold` at loss (last frame kept, `video` element and `srcObject`/last frame retained) → `held` at exactly `holdMs` (null: never; 0: immediately); held style: blur ≈ 2.5 % of the item width (±1 px), overlay `rgba(13,17,23,.72)`, centred text “Picture returns shortly” only when the item is ≥ 320 px wide (319 px: no text); return in `hold` or `held` clears everything and resets the timer; independent timers per item; timers cleared on `destroy()`.
 
 **UNIT-OUT-04** · P1 · vitest — Fallback source
 - Steps: `fallbackSource` = image asset / live camera / unknown / own source; source lost beyond `holdMs`; source returns.
-- Expect: after `holdMs` the fallback is rendered in the item rectangle instead of the blurred frame (`data-state=fallback`); unknown or unavailable fallback → regular held style; return restores the live source and removes the fallback.
+- Expect: after `holdMs` the fallback is rendered in the item rectangle instead of the blurred frame (state `fallback`); unknown or unavailable fallback → regular held style; return restores the live source and removes the fallback.
 
 **UNIT-OUT-05** · P0 · vitest — Transitions
 - Steps: `transitionTo(scene, {fade, 300})` with mocked `Element.prototype.animate`; second `transitionTo` during the fade; `transitionTo(null)`; `{cut}`; `reducedMotion: true`; `show()` during a fade.
@@ -1545,7 +1545,7 @@ Strings: “Starting soon”, “Thanks for watching”, “No access”, “Pic
 
 **UNIT-OUT-09** · P0 · vitest — Output boot and 403 handling (`apps/output`)
 - Steps: URL parsing (`/o/webinar?k=abc`, missing `k`, `bg=transparent`, `debug=1`, junk params, encoded slug); fake API returns 403 on snapshot/token/hub; advance fake timers 29 s, 30 s, 90 s.
-- Expect: missing key → slate “No access” without any network request; 403 → slate “No access” (`data-slate=denied`), no retry before 30 s, then at most one attempt per 30 s; unknown params ignored; slug/key never written into the DOM or console.
+- Expect: missing key → slate “No access” without any network request; 403 → slate “No access”, no retry before 30 s, then at most one attempt per 30 s; unknown params ignored; slug/key never written into the DOM or console.
 
 **UNIT-OUT-10** · P0 · vitest — Output state handling
 - Steps: snapshot then events: `programSwitched` (cut, fade), `sceneUpserted` for the shown scene, `productionChanged` (standby→live→ended→standby), `revisionOnly`, gap, hub loss, LiveKit loss.
@@ -1565,7 +1565,7 @@ Strings: “Starting soon”, “Thanks for watching”, “No access”, “Pic
 
 **E2E-OUT-02** · P0 · pw — Program rendering
 - Steps: start the broadcast with a scene holding K1 (camera) and S1 (screen).
-- Expect: two `<video>` elements, `muted`, `playsinline`, `autoplay`, `expectVideoPlaying` for both within `T-VIDEO-START`; rectangles equal the item rectangles × stage scale (±1 px); no audio receiver on any peer connection; autoplay works without a user gesture (output inside an iframe with `allow="autoplay; fullscreen"` and standalone). The answer to "was a gesture needed" is the state of `navigator.userActivation` at the first `playing` event of the document. Any call into the page is a gesture (`Runtime.callFunctionOn` with `userGesture`), so the test must not ask early; and the report of the output (every 2 s, latency from the ICE and jitter-buffer stats) does not wait for the `playing` event of the `<video>`, so on a loaded machine one read after the report can find nothing (issue 51: `undefined` in 3 of 4 runs at a load of 35, none in 20 runs with the wait). The probe therefore writes a console line at the first `playing` and the test waits for that line (`probe.activationAtFirstPlay()`), without a call into the frame.
+- Expect: two `<video>` elements, `muted`, `playsinline`, `autoplay`, `expectVideoPlaying` for both within `T-VIDEO-START`; rectangles equal the item rectangles × stage scale (±1 px); no audio RTP stream carries data on any peer connection while no microphone or screen sound is on air (livekit-client negotiates three receive-only audio and three video transceivers up front, the audio ones muted and without RTP; the sound of a microphone arrives over such a transceiver and is played by the Web Audio mix, see E2E-AUD; issue #94 OUT-10); autoplay works without a user gesture (output inside an iframe with `allow="autoplay; fullscreen"` and standalone). The answer to "was a gesture needed" is the state of `navigator.userActivation` at the first `playing` event of the document. Any call into the page is a gesture (`Runtime.callFunctionOn` with `userGesture`), so the test must not ask early; and the report of the output (every 2 s, latency from the ICE and jitter-buffer stats) does not wait for the `playing` event of the `<video>`, so on a loaded machine one read after the report can find nothing (issue 51: `undefined` in 3 of 4 runs at a load of 35, none in 20 runs with the wait). The probe therefore writes a console line at the first `playing` and the test waits for that line (`probe.activationAtFirstPlay()`), without a call into the frame.
 
 **E2E-OUT-03** · P0 · pw — Letterboxing in non-16:9 iframes
 - Steps: `embedHost` iframe of sizes 1920×1080, 1280×720, 800×600, 1680×720, 160×90, 3840×2160 (dpr 1), 600×1000, 10×10; resize the iframe at runtime; dpr 1 and 2.
@@ -1577,16 +1577,16 @@ Strings: “Starting soon”, “Thanks for watching”, “No access”, “Pic
 
 **E2E-OUT-05** · P1 · pw — `debug=1` overlay
 - Steps: open with `&debug=1`.
-- Expect: `[data-testid=debug-overlay]` in a mono font, in sections (Program, Connections, Sources, Audio) with lines `scene`, `revision`, `Server` (hub and sync), `Media server` (LiveKit), per source `<code> <w>x<h> <fps> fps <kbps> kbps`, `latency <n> ms`; updates at least every 1 s; `pointer-events: none`; absent without the parameter; values match the `<video>` elements (`videoWidth`/`videoHeight`) and the API state [GAP-24]; the last line is the build, `StudioFlow 0.1.0+1a2b3c4` (the commit is missing in a local build).
+- Expect: the overlay `<pre class="c-debug">` (a mono font, localized, issue #94 OUT-07) in sections (Program, Connections, Sources, Audio) with lines `scene`, `revision`, `Server` (hub and sync), `Media server` (LiveKit), per source `<code> <w>x<h> <fps> fps <kbps> kbps`, `latency <n> ms`; updates at least every 1 s; `pointer-events: none`; absent without the parameter; values match the `<video>` elements (`videoWidth`/`videoHeight`) and the API state [GAP-24]; the last line is the build, `StudioFlow 0.1.0+1a2b3c4` (the commit is missing in a local build).
 
 **E2E-OUT-06** · P0 · pw — Hold frame on source loss
 - Pre: K1 item 1360 px wide (holdMs 3000), K2 item 300 px wide (holdMs 3000), K3 item (holdMs null), K4 item (holdMs 10000); all live; output open.
-- Steps: close the K1…K4 phone pages (track unpublished); observe `data-state` and frames.
+- Steps: close the K1…K4 phone pages (track unpublished); observe the item state and frames.
 - Expect: immediately `hold`: the element stays visible with the last frame (not black; `expectVideoFrozen` for 1.5 s); K1 changes to `held` at 3.0 s ± 0.3 s (`T-HOLD`): filter blur ≈ 2.5 % of the item width (34 px at stage scale 1, i.e. an output viewport of 1920×1080; ± 1 px), overlay `rgba(13,17,23,.72)`, text “Picture returns shortly”; K2 (300 px) `held` without text; K3 stays `hold` for 60 s; K4 `held` at 10 s ± 0.3 s; every sampled frame of a lost item has a copy of its last picture (`holdFrame` of the probe) whose luminance was measured and is at least 12 (a luminance that could not be measured is reported as such, it is not counted as black; issue #50); reopening the K1 sender page within `held` (credentials in storage, auto-start) → `live` with moving frames, filter removed, no black frame in between (screencast).
 
 **E2E-OUT-07** · P1 · pw — Fallback source
 - Steps: K1 item `fallbackSource` = image asset “Break slate”; K1 offline beyond `holdMs`; K1 back; then fallback = a live camera K2; then fallback = deleted asset.
-- Expect: after `holdMs` the item shows the image (`data-state=fallback`, no blur); K1 back → live; fallback camera is shown live; deleted/unknown fallback → regular held style; no exceptions.
+- Expect: after `holdMs` the item shows the image (state `fallback`, no blur); K1 back → live; fallback camera is shown live; deleted/unknown fallback → regular held style; no exceptions.
 
 **E2E-OUT-08** · P0 · pw — Survives API restart
 - Steps: broadcast live with two cameras on air; `docker.restart('api')`; after it is healthy switch scenes from the Regie.
@@ -1594,7 +1594,7 @@ Strings: “Starting soon”, “Thanks for watching”, “No access”, “Pic
 
 **E2E-OUT-09** · P0 · pw — Survives LiveKit restart
 - Steps: `docker.restart('livekit')` with cameras on air.
-- Expect: pictures freeze on the last frame (state `hold`, later `held` per hold times), never black or empty; no page reload; within `T-RESTART-LK` after LiveKit is healthy the output and all senders have rejoined (fresh tokens), `data-state=live` again and frames advance; Regie shows `reconnecting` incidents that end in “back”.
+- Expect: pictures freeze on the last frame (state `hold`, later `held` per hold times), never black or empty; no page reload; within `T-RESTART-LK` after LiveKit is healthy the output and all senders have rejoined (fresh tokens), state `live` again and frames advance; Regie shows `reconnecting` incidents that end in “back”.
 
 **E2E-OUT-10** · P0 · pw — Reload
 - Steps: reload the output while live (F5) ten times, once with `cache: disabled`.
@@ -1602,11 +1602,11 @@ Strings: “Starting soon”, “Thanks for watching”, “No access”, “Pic
 
 **E2E-OUT-11** · P0 · pw — Slates
 - Steps: standby → start → end → reset; rename the production; set slate title/subtitle through the API; slate with background image.
-- Expect: slate text via `slate-title`/`slate-subtitle`; 300 ms fade (WAAPI duration); renamed production updates the subtitle live; background image cover-fitted; slate covers scene and videos completely; start fades the slate out to the program, end fades in the end slate over the last picture.
+- Expect: slate text via `slate-title`/`slate-subtitle`; 300 ms fade (WAAPI duration); renamed production updates the subtitle live (as long as the subtitle is still the name of the production; an edited subtitle stays, issue #94 OUT-02); background image cover-fitted; slate covers scene and videos completely; start fades the slate out to the program, end fades in the end slate over the last picture.
 
 **E2E-OUT-12** · P0 · pw — Access denied
 - Steps: wrong key; missing `k`; unknown slug; key of another production; observe for 70 s with request logging.
-- Expect: slate “No access” (`data-slate=denied`), drawn as a quiet notice of the page, no video, no scene content; identical for the three refused links (no hint whether the slug exists), with the plain cause, the next step and “This page tries again by itself every 30 seconds.”; the missing key says that the link is incomplete and is never retried; at most 3 attempts in 70 s, spaced ≥ 30 s; fixing the URL and reloading works.
+- Expect: slate “No access” (told by its text, the page has no `data-slate`), drawn as a quiet notice of the page, no video, no scene content; identical for the three refused links (no hint whether the slug exists), with the plain cause, the next step and “This page tries again by itself every 30 seconds.”; the missing key says that the link is incomplete and is never retried; at most 3 attempts in 70 s, spaced ≥ 30 s; fixing the URL and reloading works.
 
 **E2E-OUT-13** · P0 · pw — Glass-to-glass latency
 - Pre: `chromium-desktop` on the perf runner (≥ 4 cores, nothing else running); laptop shares the timecode tab (screen, VP9) and a phone publishes the timecode camera (H.264); scene “Full screen” with the source; output 1920×1080 standalone; warm-up 5 s. Tagged `@perf`: not part of the nightly run on the 2-vCPU runner (6.8).
@@ -1619,7 +1619,7 @@ Strings: “Starting soon”, “Thanks for watching”, “No access”, “Pic
 
 **E2E-OUT-15** · P1 · pw — Output status in the Regie
 - Steps: no output → open one → open a second → block the first page's main thread for 10 s (`page.evaluate` busy loop) → resume → close both.
-- Expect: chip “Output to proxy” lamp grey/“not connected” → green with mono latency (e.g. “148 ms”) within 5 s; popover “connected, 1 consumer” → “2 consumers”, lists both IPs, “1920 × 1080 · 16:9 · 30 fps”, “Latency <n> ms measured”; blocked page → state `stale` after ≤ 8 s then `connected` again; closing → `none` within 8 s; link box shows the URL masked (`?k=••••••`) and “Copy” puts the full URL with the real key into the clipboard.
+- Expect: chip “Output to proxy” lamp grey/“not connected” → green with mono latency (e.g. “148 ms”) within 5 s; popover “connected, 1 consumer” → “2 consumers”, lists both IPs, “1920 × 1080 · 16:9 · 30 fps”, “Latency <n> ms measured”; blocked page → the hub connection is dropped by the API after its client timeout of 5 s, so the chip shows “not connected” (state `none`) after 3.5-5.3 s and `connected` again within about a second of the page running (`stale`, “connected, no current picture”, is the state of a connected hub client that stops reporting, asserted with a silent hub client; a blocked page cannot be that, it does not answer pings either; issue #94 OUT-09); closing → `none` within 8 s; link box shows the URL masked (`?k=••••••`) and “Copy” puts the full URL with the real key into the clipboard.
 
 **E2E-OUT-16** · P1 · pw — Embedding as the proxy would
 - Steps: `embedHost` page at the allowed origin with `<iframe src=… title="Webinar Q4 live" allow="autoplay; fullscreen" allowfullscreen style="width:100%;aspect-ratio:16/9;border:0">`; request fullscreen on the iframe.
@@ -1642,11 +1642,11 @@ Strings: “Starting soon”, “Thanks for watching”, “No access”, “Pic
 
 **E2E-OUT-20** · P1 · pw — Reports
 - Steps: observe output reports for 12 s.
-- Expect: ≈ 6 reports (hub `Report` or `POST /api/output/{slug}/report`, every 2 s ± 0.5 s) with `rendering: true`, `fps` between 20 and 31, `latencyMs`, `programSceneId` equal to the current program; `outputStatusChanged` emitted at most every 5 s unless the value changes > 20 %.
+- Expect: ≈ 6 reports (hub `Report` or `POST /api/output/{slug}/report`, every 2 s ± 0.5 s) with `rendering: true`, `fps` between 20 and 31 (the frame rate of the busiest picture, read from `getVideoPlaybackQuality`, so 30 for a 30 fps camera; not the animation frame rate of the page; issue #94 OUT-08), `latencyMs`, `programSceneId` equal to the current program; `outputStatusChanged` emitted at most every 5 s unless the value changes > 20 %.
 
 **E2E-OUT-21** · P1 · pw — Simulcast layer selection from the scene
 - Steps: output with `debug=1`; scene A with K1 at full canvas, scene B with K1 as a 270 px thumbnail, K2 only in scene C.
-- Expect: K1 full-size item receives the highest layer (≥ 1280 px wide); in scene B (270 px) K1 drops to ≤ 360 px; K2 (not in program or preview) is paused: no frames are decoded; screens (simulcast off) have one layer; transitions between qualities happen without visible black frames.
+- Expect: the output joins LiveKit without auto-subscribe and subscribes to the pictures of the sources the scenes use and the sounds of the mixer channels only (E2E-OUT-22; a source in no scene is not received, issue #94 OUT-04); K1 full-size item receives the highest layer (≥ 1280 px wide); in scene B (270 px) K1 drops to ≤ 360 px; K2 (not in program or preview) is paused: no frames are decoded; screens (simulcast off) have one layer; transitions between qualities happen without visible black frames.
 
 **E2E-OUT-22** · P1 · pw — Output subscribes only to scene sources [GAP-26]
 - Steps: laptop screen S1 live but placed in **no** scene; output open.
@@ -1724,11 +1724,11 @@ Strings: “Starting soon”, “Thanks for watching”, “No access”, “Pic
 
 **E2E-NET-04** · P1 · pw (`@linux-netem`) — 5 % loss
 - Steps: (a) `lk.netem({lossPct:5})` (both directions) for 60 s with a camera on air; (b) only with `@netns`: `phone.netem({lossPct:5})` shapes one phone while the others stay clean.
-- Expect: (a) output fps ≥ 24, downlink loss `packetsLost/(packetsReceived+packetsLost)` between 2 and 9 %, Regie station “Packet loss” (uplink, reported by the sender) between 2 and 9 %, total freeze ≤ 2 s per minute (`T-FREEZE`); (b) only the shaped phone shows loss; no `reconnecting` incident in either case; quality recovers ≤ 10 s after clearing.
+- Expect: (a) output fps ≥ 24, downlink loss `packetsLost/(packetsReceived+packetsLost)` between 2 and 9 %, Regie station “Packet loss” (uplink, reported by the sender: the packets it had to send again over the packets it sent, per interval; the net count the remote reports is near zero because the retransmissions fill the gaps, issue #94 OUT-05) between 2 and 9 %, total freeze ≤ 2 s per minute (`T-FREEZE`, median of six windows; measured after issue #94: 0.7 s per minute at 28 fps, before 26-52 s per minute at 5-14 fps on a quiet machine); (b) only the shaped phone shows loss; no `reconnecting` incident in either case; quality recovers ≤ 10 s after clearing.
 
 **E2E-NET-05** · P1 · pw (`@linux-netem`) — 20 % loss
 - Steps: as -04 with 20 %.
-- Expect: picture continues (no freeze > 5 s), Regie shows high loss (≥ 10 %), the sender does not enter an endless reconnect loop (≤ 1 rejoin per 30 s; note that LiveKit's webhooks to the API are shaped as well, so incidents may appear a few seconds late); if ICE fails the standard incident “reconnecting” appears and ends in “back”; full quality ≤ 10 s after clearing.
+- Expect: picture continues (no freeze > 5 s), Regie shows high loss (≥ 10 %), the sender does not enter an endless reconnect loop (≤ 1 rejoin per 30 s; note that LiveKit's webhooks to the API are shaped as well, so incidents may appear a few seconds late); if ICE fails the standard incident “reconnecting” appears and ends in “back”; full quality ≤ 10 s after clearing. What the output does about loss (issue #94, OUT-06): its receivers buffer 50 ms on a clean link, 200 ms from 2 % loss and 400 ms from 10 % (up at once, down after three calm intervals of 2 s), and a stream on a lossy link that decodes no frame for a second is made to ask the SFU for a keyframe (the track is disabled and enabled again; libwebrtc would wait three seconds for the missing packets first), at most every 3 s. Measured with 20 % loss on both directions of the media path (8 windows of 25 s, before → after): freezes 53 → 19 per minute, 31 → 15 s of freeze per minute, 6 → 9 fps, longest still picture of the worst window 6.1 → 3.5 s (one run before the keyframe request: 7.2 s; on 2026-11-03 on another machine 8.3, 6.5 and 6.6 s in three runs, while the other windows stay at 1.4-4.2 s, so the hard limit is not met reliably: issue #105, registry OUT-12); the picture drops to 320 px and recovers in about 6 s. The total freeze time at 20 % is not bounded below by the product: the decoder needs the retransmissions of a lossy link, and 20 % on both directions loses a third of them again. The pinned limit is the longest freeze (≤ 5 s hard, 2 s target, not reached); there is no budget for the total at 20 %.
 
 **E2E-NET-06** · P1 · pw (`@linux-netem`) — 1 Mbit/s rate limit
 - Steps: `lk.netem({rateKbit:1000})` with a camera and a screen on air for 60 s; clear.
@@ -1781,7 +1781,7 @@ Strings: “Starting soon”, “Thanks for watching”, “No access”, “Pic
 **E2E-NET-18** · P1 · pw (`soak`, nightly 30 min; weekly 60 min) — Soak
 - Pre: 3 phones + 2 laptops live, Regie ×2, output ×1 (plus one `debug=1` output), scene set with fades and cuts.
 - Steps: every 20 s a random program switch (alternating cut/fade); every 5 min one phone offline for 8 s; every 10 min one laptop ends and re-shares; sample every 60 s (after `HeapProfiler.collectGarbage`): per page `JSHeapUsedSize`, `Nodes`, `JSEventListeners`, `Documents`, video element count, `window.__sfNet.counts()` (WebSockets, RTCPeerConnections), console errors; api/livekit/postgres/caddy RSS (`docker stats`), `select count(*) from pg_stat_activity`, hub connection count.
-- Expect: `T-MEM` thresholds met between minute 10 and the end; video element count == item count of the current scene ± 0; RTCPeerConnection count constant; WebSocket count constant; zero uncaught exceptions; no container restarts (`docker events`); latency p95 at the end ≤ start + 50 ms; revisions of both Regies equal the server's; CSV in `results/soak-<ts>.csv`.
+- Expect: `T-MEM` thresholds met between minute 10 and the end; video element count == item count of the current scene ± 0 and no removed `<video>` still alive after a collection (a removed device video is paused and loses its `srcObject`, issue #94 OUT-11); DOM nodes flat; RTCPeerConnection count constant; WebSocket count constant; zero uncaught exceptions; no container restarts (`docker events`); latency p95 at the end ≤ start + 50 ms; revisions of both Regies equal the server's; CSV in `results/soak-<ts>.csv`.
 
 **E2E-NET-19** · P1 · pw — Many sources
 - Pre: 8 phone contexts (fake cameras 720p) + 2 laptops (screens); scenes: “3 × 3” with 9 items, Auto grid with 10, single full-screen.
@@ -3012,7 +3012,7 @@ Procedure: run `testssl.sh` against the HTTPS endpoint, an OWASP ZAP baseline sc
 | | Regie vs output fade start offset | ≤ 50 ms | ≤ 100 ms | — |
 | | Fade left half-finished | never | never | PRODUCT.md principle 3 |
 | `T-TALLY` | Switch event → `tally` applied on the device, p95 | ≤ 250 ms | ≤ 500 ms | — |
-| `T-HOLD` | `data-state=hold` → `held` vs `holdMs` | ± 100 ms | ± 300 ms | spec 8.3 |
+| `T-HOLD` | state `hold` → `held` vs `holdMs` | ± 100 ms | ± 300 ms | spec 8.3 |
 | `T-BLOCK` | “Block now” → sender “Blocked” and LiveKit participant gone | ≤ 1 s | ≤ 2 s | spec 4.6 |
 | | “Unblock” → sender back (15 s retry cadence + connect) | ≤ 17 s | ≤ 20 s | spec 4.6 |
 | `T-KEY` | Key regeneration → connected outputs kicked; old key REST 403 | ≤ 1 s; immediate | ≤ 2 s; immediate | spec 4.8 |
@@ -3225,7 +3225,7 @@ Pin: MP4 brands `isom iso2 mp41 mp42 avc1 M4V`; WebM requires DocType `webm`; im
 **GAP-14 · Content-Security-Policy is not specified.** Spec 10 says "strict CSP (see security review)", but no security-review document exists (`docs/` has only `architecture/`).
 Pin: invariants **I-CSP** (see `E2E-AUTH-09`); the exact policy is to be written in the security review; Angular's inline styles may require `style-src 'unsafe-inline'` (allowed, flagged P2); Safari needs the explicit `wss://<host>` in `connect-src`.
 
-**GAP-15 · No test hooks defined.** The spec defines no `data-testid`, no read-only state objects, no storage key for the sender credentials. Pinned names are in 1.7 (`regie-ready`, `connection-state`, `data-tally`, `data-state`, `data-slate`, `window.__sfStudio|__sfSender`); spec 12 adds: tests prefer roles, labels and visible (English) text; the two global state views exist only with the opt-in flag `localStorage['studioflow.testHooks'] = '1'`; there is no `window.__sfOutput` (only the output page's `?latency=1` aid). Storage keys as implemented: sender localStorage `studioflow.sender.v1` (credentials, before pairing the redeem client id), `studioflow.sender.settings`, sessionStorage `studioflow.pairing`; Regie localStorage `studioflow.studio`, `studioflow.layout`, `studioflow.transition`; the opt-in flag `studioflow.testHooks`.
+**GAP-15 · No test hooks defined.** The spec defines no `data-testid`, no read-only state objects, no storage key for the sender credentials. Pinned names are in 1.7 (`regie-ready`, `connection-state`, `data-tally`, `data-state` (Regie and sender), `window.__sfStudio|__sfSender`); spec 12 adds: tests prefer roles, labels and visible (English) text; the two global state views exist only with the opt-in flag `localStorage['studioflow.testHooks'] = '1'`; there is no `window.__sfOutput` (only the output page's `?latency=1` aid). Storage keys as implemented: sender localStorage `studioflow.sender.v1` (credentials, before pairing the redeem client id), `studioflow.sender.settings`, sessionStorage `studioflow.pairing`; Regie localStorage `studioflow.studio`, `studioflow.layout`, `studioflow.transition`; the opt-in flag `studioflow.testHooks`.
 
 **GAP-16 · Compose, `.env.example` and scripts differ from spec 10.** Spec 10 names the TLS modes `dns | internal | public`; `.env.example`, `setup.sh` and `docker-compose.yml` implement `internal | acme | custom | dns-cloudflare | dns-infomaniak | dns-hetzner | dns-desec | dns-route53 | dns-gandi | dns-ovh`. Spec 10 lists ports 80/443; the compose file also publishes 443/udp (HTTP/3) and has no port variables. The compose file adds `STUDIOFLOW_PUBLIC_BASE_URL`, `STUDIOFLOW_SUBNET`, `STUDIOFLOW_TRUSTED_PROXIES`, `STUDIOFLOW_MAX_UPLOAD`, `STUDIOFLOW_MAX_BODY`, `STUDIOFLOW_HSTS_MAX_AGE` and the profiles `chaos` (netem) and `tools`.
 Pin: the implemented names are authoritative for the tests (`.env.example` is the contract, as its header says) and spec 10 is to be updated; services `caddy`, `api`, `livekit`, `postgres`; healthchecks as implemented (`pg_isready`, API `/health/live`, LiveKit `GET /` on 7880, Caddy loopback `:2020/healthz`); `setup.sh --non-interactive` with the documented flags. *Superseded by issue #27: the stack is zero-config, the TLS modes are `internal`, `custom` and `dns-<provider>` chosen in the wizard, and there is no script (section 2.11).*

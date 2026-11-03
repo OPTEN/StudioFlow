@@ -155,6 +155,7 @@ export class FakeRemotePublication implements MediaRemotePublication {
   readonly setVideoQuality = vi.fn<(quality: number) => void>();
   readonly setVideoDimensions = vi.fn<(dimensions: VideoDimensions) => void>();
   readonly setEnabled = vi.fn<(enabled: boolean) => void>();
+  readonly setSubscribed = vi.fn<(subscribed: boolean) => void>();
 
   constructor(
     readonly trackName: string,
@@ -297,6 +298,43 @@ export class FakeRoom extends FakeEmitter implements MediaRoom {
       this.emit(RoomEvent.TrackSubscribed, track, publication, participant);
     }
     return { participant, publication, track };
+  }
+
+  /**
+   * Adds (or reuses) a participant with a publication nobody subscribed to (a room joined with `autoSubscribe: false`) and
+   * emits TrackPublished. Subscribing to it is up to the test: `publication.setSubscribed` records the request.
+   */
+  publish(
+    identity: string,
+    trackName: string,
+    kind: 'video' | 'audio' = 'video',
+  ): { participant: FakeRemoteParticipant; publication: FakeRemotePublication } {
+    let participant = this.remoteParticipants.get(identity);
+    if (participant === undefined) {
+      participant = new FakeRemoteParticipant(identity);
+      this.remoteParticipants.set(identity, participant);
+    }
+    const publication = new FakeRemotePublication(trackName, kind);
+    participant.trackPublications.set(trackName, publication);
+    this.emit(RoomEvent.TrackPublished, publication, participant);
+    return { participant, publication };
+  }
+
+  /**
+   * A participant that was in the room before this page joined: its unsubscribed publications exist when ParticipantConnected
+   * is emitted, and TrackPublished is not (the SDK fires it only for tracks published after both sides joined).
+   */
+  join(
+    identity: string,
+    tracks: Array<[name: string, kind?: 'video' | 'audio']>,
+  ): FakeRemoteParticipant {
+    const participant = new FakeRemoteParticipant(identity);
+    for (const [name, kind] of tracks) {
+      participant.trackPublications.set(name, new FakeRemotePublication(name, kind ?? 'video'));
+    }
+    this.remoteParticipants.set(identity, participant);
+    this.emit(RoomEvent.ParticipantConnected, participant);
+    return participant;
   }
 
   /** Emits TrackUnsubscribed + TrackUnpublished for a publication, like the SDK on unpublish or full reconnect. */

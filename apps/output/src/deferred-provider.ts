@@ -1,3 +1,4 @@
+import type { WantedSources } from '@studioflow/media-client';
 import type {
   DesiredSize,
   SourceAvailability,
@@ -5,6 +6,15 @@ import type {
 } from '@studioflow/scene-renderer';
 
 const PENDING: SourceAvailability = { state: 'pending' };
+
+/** The real provider as the deferred one uses it: the source provider that can also be told which sources to receive. */
+export interface BindableProvider extends SourceMediaProvider {
+  setWantedSources(wanted: WantedSources): void;
+}
+
+function sameSet(a: ReadonlySet<string>, b: ReadonlySet<string>): boolean {
+  return a.size === b.size && [...a].every((value) => b.has(value));
+}
 
 /** Listener for video registrations (latency probe). */
 export type VideoListener = (sourceId: string, video: HTMLVideoElement, attached: boolean) => void;
@@ -22,7 +32,8 @@ export class DeferredSourceProvider implements SourceMediaProvider {
   readonly #videoListeners = new Set<VideoListener>();
   readonly #assetVideos = new Map<string, Set<HTMLVideoElement>>();
   readonly #assetListeners = new Set<VideoListener>();
-  #inner: SourceMediaProvider | null = null;
+  #inner: BindableProvider | null = null;
+  #wanted: WantedSources | null = null;
   #unsubscribeInner: (() => void) | null = null;
 
   constructor(private readonly resolveAsset: (assetId: string) => string | null) {}
@@ -33,11 +44,15 @@ export class DeferredSourceProvider implements SourceMediaProvider {
   }
 
   /** Hands every registration to the real provider; later calls go straight through. Binds only once. */
-  bind(inner: SourceMediaProvider): void {
+  bind(inner: BindableProvider): void {
     if (this.#inner) {
       return;
     }
     this.#inner = inner;
+    const wanted = this.#wanted;
+    if (wanted) {
+      this.#call(() => inner.setWantedSources(wanted));
+    }
     this.#unsubscribeInner = inner.onChange((sourceId) => this.#emit(sourceId));
     for (const [sourceId, videos] of this.#videos) {
       for (const video of videos) {
@@ -131,6 +146,23 @@ export class DeferredSourceProvider implements SourceMediaProvider {
     const inner = this.#inner;
     if (inner) {
       this.#call(() => inner.setDesiredSize(sourceId, consumerId, size));
+    }
+  }
+
+  /** The sources the page receives (those of its scenes and its mix); remembered until the real provider is bound. */
+  setWantedSources(wanted: WantedSources): void {
+    const before = this.#wanted;
+    if (
+      before &&
+      sameSet(before.pictures, wanted.pictures) &&
+      sameSet(before.sounds, wanted.sounds)
+    ) {
+      return;
+    }
+    this.#wanted = wanted;
+    const inner = this.#inner;
+    if (inner) {
+      this.#call(() => inner.setWantedSources(wanted));
     }
   }
 

@@ -287,6 +287,45 @@ export function releaseCanvas(canvas: HTMLCanvasElement): void {
 }
 
 /**
+ * Calls `onReady` once when every video reports frame data or after `timeoutMs` (shared by all of them), at once for no
+ * video. Returns a cancel function; after cancelling, `onReady` is never called.
+ */
+export function waitForVideoFrames(
+  videos: readonly HTMLVideoElement[],
+  timeoutMs: number,
+  onReady: () => void,
+): () => void {
+  if (videos.length === 0) {
+    onReady();
+    return () => undefined;
+  }
+  let open = videos.length;
+  let active = true;
+  const cancel = (): void => {
+    active = false;
+    for (const cancelVideo of cancels) {
+      cancelVideo();
+    }
+  };
+  const ready = (): void => {
+    if (active) {
+      cancel();
+      onReady();
+    }
+  };
+  // A video that did not report by the deadline does not hold the others back: its own timeout reports it as ready.
+  const cancels = videos.map((video) =>
+    waitForVideoFrame(video, timeoutMs, () => {
+      open -= 1;
+      if (open === 0) {
+        ready();
+      }
+    }),
+  );
+  return cancel;
+}
+
+/**
  * Calls `onReady` once when the video reports new frame data or after `timeoutMs` (safety net: never keep a hold
  * picture forever over a live source). Returns a cancel function; after cancelling, `onReady` is never called.
  */

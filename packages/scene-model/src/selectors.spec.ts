@@ -16,6 +16,7 @@ import {
   sceneHealth,
   sourceLabel,
   sourcesInScene,
+  sourcesOfScenes,
   stationOrder,
   tallyOf,
 } from './selectors';
@@ -122,6 +123,29 @@ describe('sourcesInScene / isSourceVisibleIn', () => {
     expect(sourcesInScene(null)).toEqual([]);
     expect(sourcesInScene(sceneFixture('scn', 0))).toEqual([]);
     expect(isSourceVisibleIn(undefined, K1)).toBe(false);
+  });
+});
+
+describe('sourcesOfScenes', () => {
+  it('collects the sources of every scene, hidden items and fallbacks included, each once', () => {
+    const state = stateFromSnapshot(
+      snapshotFixture({
+        scenes: [
+          sceneFixture('scn_a', 0, [itemFixture('a', K1), itemFixture('b', K1, { hidden: true })]),
+          sceneFixture('scn_b', 1, [
+            itemFixture('c', K2, { onLost: { holdMs: 1000, fallbackSource: M1 } }),
+          ]),
+        ],
+      }),
+    );
+    expect([...sourcesOfScenes(state)].sort()).toEqual([K1, K2, M1].sort());
+  });
+
+  it('leaves out a source that is in no scene', () => {
+    const state = stateFromSnapshot(
+      snapshotFixture({ scenes: [sceneFixture('scn_a', 0, [itemFixture('a', K1)])] }),
+    );
+    expect(sourcesOfScenes(state).has(S1)).toBe(false);
   });
 });
 

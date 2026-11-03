@@ -5,6 +5,7 @@ import {
   isDeviceSourceRef,
   programScene,
   sourcesInScene,
+  sourcesOfScenes,
   type OutputChangesDto,
   type OutputReport,
   type TransitionDto,
@@ -470,6 +471,11 @@ export function startOutputApp(
   });
   disposers.push(
     productionSync.onChange((state, cause) => {
+      // Only the sources of the scenes and the channels of the mix are received (the provider keeps the last set).
+      provider.setWantedSources({
+        pictures: sourcesOfScenes(state),
+        sounds: new Set(state.audioChannels.keys()),
+      });
       audio.update(state, cause);
       const transition =
         cause.kind === 'event' && cause.event.type === 'programSwitched'

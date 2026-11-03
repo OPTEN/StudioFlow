@@ -217,6 +217,27 @@ export class ItemView {
     return this.media?.source.kind === 'text';
   }
 
+  /** The resolved source of the media view, null once it was handed over. */
+  get mediaSource(): ResolvedSource | null {
+    return this.media?.source ?? null;
+  }
+
+  /**
+   * The video of a shown, live device source that has no decoded frame yet (a new element: until its first frame the
+   * item shows nothing but the scene ground), else null.
+   */
+  get unframedVideo(): HTMLVideoElement | null {
+    const source = this.media?.source;
+    const video = this.media?.deviceVideo;
+    return video &&
+      source?.kind === 'device' &&
+      !this.item.hidden &&
+      this.ctx.availability(source.sourceId).state === 'live' &&
+      !hasVideoFrame(video)
+      ? video
+      : null;
+  }
+
   /** Paint order within the layer (array index). */
   setOrder(index: number): void {
     setStyle(this.root, 'z-index', String(index));

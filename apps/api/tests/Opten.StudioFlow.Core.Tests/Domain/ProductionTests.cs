@@ -272,4 +272,37 @@ public sealed class ProductionTests
         Assert.True(production.UsesAsset(image.Id));
         Assert.False(production.Update(new UpdateProductionRequest(null, null, null), catalog));
     }
+
+    [Fact]
+    public void Update_Rename_FollowsTheStandbySubtitleThatIsStillTheName()
+    {
+        var catalog = new SourceCatalog([], []);
+
+        Assert.True(production.Update(new UpdateProductionRequest("Webinar Q4", null, null), catalog));
+
+        Assert.Equal(new SlateDto("Starting soon", "Webinar Q4", null), production.StandbySlate);
+        Assert.True(production.Update(new UpdateProductionRequest("Webinar Q5", null, null), catalog));
+        Assert.Equal("Webinar Q5", production.StandbySlate.Subtitle);
+    }
+
+    [Fact]
+    public void Update_Rename_KeepsAnEditedStandbySubtitle()
+    {
+        var catalog = new SourceCatalog([], []);
+        production.Update(new UpdateProductionRequest(null, new SlateDto("Soon", "Our own words", null), null), catalog);
+
+        production.Update(new UpdateProductionRequest("Webinar Q4", null, null), catalog);
+
+        Assert.Equal("Our own words", production.StandbySlate.Subtitle);
+    }
+
+    [Fact]
+    public void Update_RenameWithSlate_TakesTheSlateAsGiven()
+    {
+        var catalog = new SourceCatalog([], []);
+
+        production.Update(new UpdateProductionRequest("Webinar Q4", new SlateDto("Soon", null, null), null), catalog);
+
+        Assert.Equal(new SlateDto("Soon", null, null), production.StandbySlate);
+    }
 }

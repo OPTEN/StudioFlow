@@ -229,6 +229,12 @@ public sealed class Production
         var changed = false;
         if (name is not null && !string.Equals(name, Name, StringComparison.Ordinal))
         {
+            // A subtitle that is still the name (the default of a new production) follows the rename, one that was edited stays.
+            if (standby is null && string.Equals(StandbySlate.Subtitle, Name, StringComparison.Ordinal))
+            {
+                StandbySlate = StandbySlate with { Subtitle = name };
+            }
+
             Name = name;
             changed = true;
         }

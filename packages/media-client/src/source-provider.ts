@@ -14,8 +14,10 @@ import { systemClock, type Clock, type TimerHandle } from './clock';
 import { DecoderCapability, kindFromStats, type DecoderKind } from './decoder-info';
 import { DesiredSizes } from './desired-size';
 import { Listeners } from './listeners';
+import { LossPlayout } from './loss-playout';
 import type {
   MediaPublicationRef,
+  MediaRemoteParticipant,
   MediaRemotePublication,
   MediaRemoteTrack,
   MediaRoom,
@@ -25,6 +27,8 @@ import { listenTo } from './livekit-port';
 import { consoleLogger, errorContext, type MediaLogger } from './logger';
 import type { RoomSource } from './media-session';
 import {
+  indexStats,
+  inboundVideo,
   ReceiverStatsReader,
   type AudioReceiverSnapshot,
   type ReceiverSnapshot,
@@ -78,6 +82,15 @@ export interface LiveKitSourceProviderOptions {
 
 type SubscriberRole = 'studio' | 'output';
 
+/**
+ * The sources an output subscribes to: the pictures (cameras and screens) and the sounds (microphones, the audio of
+ * screens) it needs. A source in neither set is not received at all.
+ */
+export interface WantedSources {
+  readonly pictures: ReadonlySet<string>;
+  readonly sounds: ReadonlySet<string>;
+}
+
 /** Playout targets: the Regie wants the lowest possible delay, the output a small cushion against jitter. */
 const PLAYOUT: Readonly<
   Record<SubscriberRole, { readonly delaySeconds: number; readonly jitterBufferTargetMs: number }>
@@ -85,6 +98,16 @@ const PLAYOUT: Readonly<
   studio: { delaySeconds: 0, jitterBufferTargetMs: 0 },
   output: { delaySeconds: 0.05, jitterBufferTargetMs: 50 },
 };
+
+/**
+ * A stream on a lossy link that decodes no frame for this long is stuck: the decoder waits up to three seconds for a frame
+ * whose packets never complete before it asks for a keyframe. The output asks the SFU for one itself (the track is disabled
+ * and enabled again, which makes the SFU request a keyframe from the sender), not more often than every
+ * {@link KEYFRAME_REQUEST_EVERY_MS}.
+ */
+const STALL_AFTER_MS = 1_000;
+const KEYFRAME_REQUEST_EVERY_MS = 3_000;
+const STALL_POLL_MS = 500;
 
 const PENDING: SourceAvailability = { state: 'pending' };
 const LIVE: SourceAvailability = { state: 'live' };
@@ -180,6 +203,19 @@ export class LiveKitSourceProvider implements SourceMediaProvider {
   readonly #decoders: DecoderCapability;
   readonly #decoderMarks = new WeakMap<MediaRemoteTrack, DecoderMark>();
   readonly #entries = new Map<string, SourceEntry>();
+  /** Null: the room decides (a studio subscribes to everything). */
+  #wanted: WantedSources | null = null;
+  /** The subscription state asked for per publication, so that a publication is only told once. */
+  readonly #requested = new WeakMap<MediaRemotePublication, boolean>();
+  /** The playout buffer of each video track an output receives, sized by its loss. */
+  readonly #lossPlayouts = new WeakMap<MediaRemoteTrack, LossPlayout>();
+  /** The streams on a lossy link that are watched for a stall, and the watch (it only runs while there is one). */
+  readonly #lossyTracks = new Set<MediaRemoteTrack>();
+  readonly #decodeMarks = new WeakMap<
+    MediaRemoteTrack,
+    { decoded: number; since: number; requestedAt: number }
+  >();
+  #stallWatch: TimerHandle | null = null;
   readonly #changes: Listeners<[string]>;
   readonly #audioChanges: Listeners<[string]>;
   readonly #stats = new ReceiverStatsReader();
@@ -262,6 +298,20 @@ export class LiveKitSourceProvider implements SourceMediaProvider {
     this.#prune(sourceId, entry);
   }
 
+  /**
+   * Restricts the room to the sources an output needs (a room joined with `autoSubscribe: false`): the tracks of these
+   * sources are subscribed, as they are published and as the set changes, and the tracks of every other source are not
+   * (or no longer) received, so a source that is in no scene costs no bandwidth and cannot be seen by whoever holds the
+   * output link. Without a call the room's own subscription mode applies.
+   */
+  setWantedSources(wanted: WantedSources): void {
+    if (this.#disposed) {
+      return;
+    }
+    this.#wanted = wanted;
+    this.#syncSubscriptions();
+  }
+
   /** {@inheritDoc SourceMediaProvider.assetUrl} */
   assetUrl(assetId: string): string | null {
     try {
@@ -328,6 +378,7 @@ export class LiveKitSourceProvider implements SourceMediaProvider {
    * What the decoders did since the previous call: how many streams decode, how many of them in software, and the
    * frames dropped against the frames received (the output reports this; a share above a few percent means the machine
    * cannot keep up). Paused streams decode nothing and do not count. The first call counts since the stream started.
+   * An output also sizes the playout buffer of every stream by the loss of the interval with each call (see {@link LossPlayout}).
    */
   async decoderSummary(): Promise<DecoderSummary> {
     const tracks = [...this.#entries.values()]
@@ -342,6 +393,7 @@ export class LiveKitSourceProvider implements SourceMediaProvider {
     let framesDropped = 0;
     let framesReceived = 0;
     for (const { track, snapshot } of reads) {
+      this.#adaptPlayout(track, snapshot.packetLossPct);
       const mark: DecoderMark = {
         framesDecoded: snapshot.framesDecoded ?? 0,
         framesDropped: snapshot.framesDropped ?? 0,
@@ -392,6 +444,11 @@ export class LiveKitSourceProvider implements SourceMediaProvider {
       return;
     }
     this.#disposed = true;
+    if (this.#stallWatch !== null) {
+      this.#clock.clearTimeout(this.#stallWatch);
+      this.#stallWatch = null;
+    }
+    this.#lossyTracks.clear();
     this.#stopRoomWatch();
     this.#events?.dispose();
     this.#events = null;
@@ -423,6 +480,16 @@ export class LiveKitSourceProvider implements SourceMediaProvider {
       .on(RoomEvent.TrackSubscribed, (track, publication, participant) =>
         this.#onSubscribed(track, publication, participant.identity),
       )
+      // The tracks that were published before this page joined come with the participants (TrackPublished is only fired for
+      // tracks published after both sides joined).
+      .on(RoomEvent.Connected, () => this.#syncSubscriptions())
+      .on(RoomEvent.Reconnected, () => this.#syncSubscriptions())
+      .on(RoomEvent.ParticipantConnected, (participant) =>
+        this.#subscribeToParticipant(participant),
+      )
+      .on(RoomEvent.TrackPublished, (publication, participant) =>
+        this.#subscribeIfWanted(publication, participant.identity),
+      )
       .on(RoomEvent.TrackUnsubscribed, (track, publication, participant) =>
         this.#onTrackGone(
           participant.identity,
@@ -449,11 +516,43 @@ export class LiveKitSourceProvider implements SourceMediaProvider {
     // Tracks that were subscribed before this provider was bound (provider created after the session connected).
     for (const participant of room.remoteParticipants.values()) {
       for (const publication of participant.trackPublications.values()) {
+        this.#subscribeIfWanted(publication, participant.identity);
         if (publication.isSubscribed && publication.track !== undefined) {
           this.#onSubscribed(publication.track, publication, participant.identity);
         }
       }
     }
+  }
+
+  #syncSubscriptions(): void {
+    for (const participant of this.#boundRoom?.remoteParticipants.values() ?? []) {
+      this.#subscribeToParticipant(participant);
+    }
+  }
+
+  #subscribeToParticipant(participant: MediaRemoteParticipant): void {
+    for (const publication of participant.trackPublications.values()) {
+      this.#subscribeIfWanted(publication, participant.identity);
+    }
+  }
+
+  /** Subscribes or unsubscribes a publication according to {@link setWantedSources}, once per change. */
+  #subscribeIfWanted(publication: MediaRemotePublication, identity: string): void {
+    const wanted = this.#wanted;
+    if (wanted === null) {
+      return;
+    }
+    const soundId = audioSourceIdOf(identity, publication.trackName);
+    const pictureId = sourceIdOf(identity, publication.trackName);
+    const subscribe =
+      soundId === null
+        ? pictureId !== null && wanted.pictures.has(pictureId)
+        : wanted.sounds.has(soundId);
+    if ((this.#requested.get(publication) ?? publication.isSubscribed) === subscribe) {
+      return;
+    }
+    this.#requested.set(publication, subscribe);
+    this.#guard('subscription', () => publication.setSubscribed(subscribe));
   }
 
   #onSubscribed(
@@ -601,12 +700,107 @@ export class LiveKitSourceProvider implements SourceMediaProvider {
   #applyPlayout(track: MediaRemoteTrack): void {
     const playout = PLAYOUT[this.#role];
     this.#guard('setPlayoutDelay', () => track.setPlayoutDelay?.(playout.delaySeconds));
+    this.#setJitterBufferTarget(track, playout.jitterBufferTargetMs);
+  }
+
+  #setJitterBufferTarget(track: MediaRemoteTrack, targetMs: number): void {
     const receiver = track.receiver;
     if (receiver !== undefined && 'jitterBufferTarget' in receiver) {
       this.#guard('jitterBufferTarget', () => {
-        receiver.jitterBufferTarget = playout.jitterBufferTargetMs;
+        receiver.jitterBufferTarget = targetMs;
       });
     }
+  }
+
+  /**
+   * An output sizes the playout buffer of a video stream by its loss (see {@link LossPlayout}); `lossPct` is the loss of the
+   * last interval from the receiver statistics. Called with every reading of the decoder summary, which the output page takes
+   * every 2 s.
+   */
+  #adaptPlayout(track: MediaRemoteTrack, lossPct: number | undefined): void {
+    if (this.#role !== 'output') {
+      return;
+    }
+    let playout = this.#lossPlayouts.get(track);
+    if (playout === undefined) {
+      playout = new LossPlayout(PLAYOUT.output.jitterBufferTargetMs);
+      this.#lossPlayouts.set(track, playout);
+    }
+    const before = playout.target;
+    const after = playout.update(lossPct === undefined ? undefined : lossPct / 100);
+    if (after !== before) {
+      this.#setJitterBufferTarget(track, after);
+    }
+    if (playout.lossy) {
+      this.#lossyTracks.add(track);
+      this.#scheduleStallWatch();
+    } else {
+      this.#lossyTracks.delete(track);
+    }
+  }
+
+  #scheduleStallWatch(): void {
+    if (this.#stallWatch !== null || this.#disposed) {
+      return;
+    }
+    this.#stallWatch = this.#clock.setTimeout(() => {
+      this.#stallWatch = null;
+      void this.#lookForStalls().finally(() => {
+        if (this.#lossyTracks.size > 0) {
+          this.#scheduleStallWatch();
+        }
+      });
+    }, STALL_POLL_MS);
+  }
+
+  /** Asks for a keyframe on every watched stream that has decoded nothing for {@link STALL_AFTER_MS}. */
+  async #lookForStalls(): Promise<void> {
+    const now = this.#clock.now();
+    const watched = [...this.#entries.values()].filter(
+      (entry) =>
+        !entry.paused &&
+        entry.subscription !== null &&
+        this.#lossyTracks.has(entry.subscription.track),
+    );
+    for (const track of [...this.#lossyTracks]) {
+      if (!watched.some((entry) => entry.subscription?.track === track)) {
+        this.#lossyTracks.delete(track);
+      }
+    }
+    await Promise.all(
+      watched.map(async ({ subscription }) => {
+        if (subscription === null || subscription.publication.isMuted) {
+          return;
+        }
+        try {
+          const report = await subscription.track.getRTCStatsReport();
+          const inbound = report === undefined ? undefined : inboundVideo(indexStats(report));
+          const decoded = Number(inbound?.['framesDecoded']);
+          if (!Number.isFinite(decoded)) {
+            return;
+          }
+          const mark = this.#decodeMarks.get(subscription.track);
+          if (mark === undefined || decoded !== mark.decoded) {
+            this.#decodeMarks.set(subscription.track, {
+              decoded,
+              since: now,
+              requestedAt: mark?.requestedAt ?? Number.NEGATIVE_INFINITY,
+            });
+          } else if (
+            now - mark.since >= STALL_AFTER_MS &&
+            now - mark.requestedAt >= KEYFRAME_REQUEST_EVERY_MS
+          ) {
+            mark.requestedAt = now;
+            this.#guard('request keyframe', () => {
+              subscription.publication.setEnabled(false);
+              subscription.publication.setEnabled(true);
+            });
+          }
+        } catch (error) {
+          this.#logger.warn('stall check failed', errorContext(error));
+        }
+      }),
+    );
   }
 
   /**

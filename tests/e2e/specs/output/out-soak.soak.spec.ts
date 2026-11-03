@@ -6,7 +6,6 @@ import { inspectService, SERVICES } from '../../support/stack';
 import { expect, test } from '../../support/ui/fixtures';
 import { CdpCounters, growth, slopePerMinute, type Counters } from '../../support/ui/counters';
 import { sleep } from '../../support/output/analysis';
-import { outBug } from '../../support/output/bugs';
 import { collectLatencyRun } from '../../support/output/latency';
 import { openProbedOutput } from '../../support/output/open';
 import { RESULTS_DIR, recordMeasurement } from '../../support/output/stats';
@@ -20,8 +19,8 @@ import { t } from '../../support/tags';
  * a new video and tears the old one down). After forced garbage collections the page's JS heap, DOM nodes (DevTools
  * counter, detached ones included), event listeners, documents, `<video>` elements (attached AND still alive after being
  * removed), WebSockets and RTCPeerConnections are sampled every minute (always 5 s after a switch, never in the middle of
- * a fade). Nothing may grow without bound. The long run (OUT_SOAK_MINUTES, default 20) asserts everything, the short
- * guard run asserts everything except the DOM node and removed-video counts, which known bug OUT-11 makes grow.
+ * a fade). Nothing may grow without bound. The long run (OUT_SOAK_MINUTES, default 20) and the short guard run assert
+ * the same; since OUT-11 is fixed the removed-video count is 0 and the DOM nodes stay flat in both.
  */
 
 const MINUTES = Number(process.env['OUT_SOAK_MINUTES'] ?? 20);
@@ -48,7 +47,6 @@ interface Sample {
 async function runSoak(
   fx: { browser: Browser; deps: WorldDeps; onCleanup: (fn: () => Promise<unknown> | unknown) => void },
   minutes: number,
-  strictLeak: boolean,
 ): Promise<void> {
   const { browser, deps, onCleanup } = fx;
   const { api, production } = deps;
@@ -175,7 +173,7 @@ async function runSoak(
   fs.writeFileSync(path.join(RESULTS_DIR, `soak-${new Date().toISOString().replace(/[:.]/g, '-')}-${minutes}min.csv`), csv);
   await recordMeasurement(
     test.info(),
-    strictLeak ? 'net-18-soak' : 'net-18-soak-guard',
+    minutes === MINUTES ? 'net-18-soak' : 'net-18-soak-guard',
     { minutes, switches, table, series, mainThreadBusy: busy, startToEnd, middleToEnd, heapSlopeMBPerMinute: mb(heapSlope), nodeSlopePerMinute: nodeSlope, rssGrowthMB, latencyStart, latencyEnd, containersBefore, containersAfter, pageErrors: output.problems.pageErrors, consoleErrors: output.problems.consoleErrors },
     `${minutes} min, ${switches} switches; JS heap ${table.map((row) => row.jsHeapMB).join('/')} MB (start/middle/end), nodes ${table.map((row) => row.nodes).join('/')}, listeners ${table.map((row) => row.listeners).join('/')}, attached videos ${table.map((row) => row.attachedVideos).join('/')}, removed videos still alive ${table.map((row) => row.removedVideosStillAlive).join('/')}, peers ${table.map((row) => row.peerConnections).join('/')}; latency p95 ${latencyStart.p95.toFixed(0)} -> ${latencyEnd.p95.toFixed(0)} ms; container RSS growth ${JSON.stringify(rssGrowthMB)}`,
   );
@@ -200,7 +198,7 @@ async function runSoak(
   expect(output.problems.pageErrors, 'no uncaught exception').toEqual([]);
   expect(output.problems.consoleErrors.length - consoleErrorsAtStart, 'no console error during the run').toBe(0);
   expect(latencyEnd.p95, 'latency p95 at the end within 50 ms of the start').toBeLessThanOrEqual(latencyStart.p95 + 50);
-  if (strictLeak) {
+  {
     expect(middleToEnd.nodes / middle.counters.nodes, `DOM nodes growth from the middle to the end (hard 5 %): ${middle.counters.nodes} -> ${last.counters.nodes}`).toBeLessThanOrEqual(0.05);
     for (const sample of samples) expect(sample.census.detached, `removed <video> elements still alive at minute ${sample.minute}`).toBe(0);
   }
@@ -211,18 +209,17 @@ test.describe('OUT soak', () => {
     `E2E-NET-18 [output, soak] ${MINUTES} minutes with a program switch every 10 s between two cameras: the output page does not grow (heap, nodes, listeners, videos, peers, sockets), no errors, no container restart`,
     t.with('@p1', '@soak'),
     async ({ browser, api, production, pairContext, openPhone, openLaptop, onCleanup }) => {
-      outBug('OUT-11', 'removed device <video> elements keep their MediaStream track and stay alive: about 150 DOM nodes and one video element leak per program switch');
       test.setTimeout((MINUTES + 14) * 60_000);
-      await runSoak({ browser, deps: { api, production, pairContext, openPhone, openLaptop }, onCleanup }, MINUTES, true);
+      await runSoak({ browser, deps: { api, production, pairContext, openPhone, openLaptop }, onCleanup }, MINUTES);
     },
   );
 
   test(
-    'E2E-NET-18 [output, soak, guard] 4 minutes with a switch every 10 s: heap, listeners, attached videos, peers, sockets, errors, latency and the server containers stay put (the DOM node and removed-video counts are covered by the long run)',
+    'E2E-NET-18 [output, soak, guard] 4 minutes with a switch every 10 s: heap, listeners, attached videos, peers, sockets, errors, latency and the server containers stay put, and no removed <video> or DOM node is left behind (OUT-11)',
     t.with('@p1', '@soak'),
     async ({ browser, api, production, pairContext, openPhone, openLaptop, onCleanup }) => {
       test.setTimeout(18 * 60_000);
-      await runSoak({ browser, deps: { api, production, pairContext, openPhone, openLaptop }, onCleanup }, 4, false);
+      await runSoak({ browser, deps: { api, production, pairContext, openPhone, openLaptop }, onCleanup }, 4);
     },
   );
 });

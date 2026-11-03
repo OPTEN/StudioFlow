@@ -7,11 +7,12 @@ import { createElement, FILL, px, setStyle, setStyles } from './dom';
 import { fadeOpacity, type Fade } from './fade';
 import { FpsMeter } from './fps-meter';
 import { clampNumber } from './geometry';
+import { waitForVideoFrames } from './hold-frame';
 import { consoleErrorSink, guarded, type ErrorSink } from './guard';
 import { PALETTE } from './palette';
 import { requestPixelRatio, watchDevicePixelRatio } from './pixel-ratio';
 import { createRenderContext, type RenderContext, type RenderFrame } from './render-context';
-import { MediaPool, SceneLayer } from './scene-layer';
+import { MediaPool, renderableItems, SceneLayer } from './scene-layer';
 import { SlateView } from './slate-view';
 import { stillPoolFor, type StillPool } from './still-pool';
 import { fitStage } from './stage-fit';
@@ -32,6 +33,12 @@ const MAX_FADE_MS = 10_000;
 const ALERT_TICK_MS = 1000;
 /** Refresh of the rolling hold frames: the frame shown after a loss is at most this old. */
 const HOLD_FRAME_REFRESH_MS = 1000;
+/**
+ * Longest wait of a cut for the first frames of the new scene's cameras: the new layer is only put on stage when they
+ * have a picture, so a cut never shows the empty scene ground, and a source that does not deliver (a paused one waits for
+ * its next keyframe) delays the cut by this much at most.
+ */
+const CUT_FIRST_FRAME_WAIT_MS = 100;
 /** Bound for renders requested by renders (a provider that calls back synchronously must not loop forever). */
 const MAX_RENDER_PASSES = 4;
 
@@ -65,9 +72,10 @@ function fadeDurationOf(
   return clampNumber(transition.durationMs, 0, MAX_FADE_MS, 0);
 }
 
-/** A fade between two scene layers that is still running. */
+/** A fade, or a cut that waits for its first frames, that is still running. */
 interface RunningFade {
-  readonly fade: Fade;
+  /** Ends the animation at once (a cut has none). */
+  readonly fade: Pick<Fade, 'finish'>;
   /** Removes the outgoing layer and resolves the transition promise. Idempotent. */
   readonly complete: () => void;
 }
@@ -468,6 +476,10 @@ class DomSceneRenderer implements SceneRenderer {
 
   private cutTo(scene: SceneDto | null): void {
     const previous = this.current;
+    if (scene && previous && this.needsFirstFrames(scene, previous)) {
+      this.cutWhenFramed(scene, previous);
+      return;
+    }
     const pool = previous ? new MediaPool(previous.releaseMedia()) : undefined;
     this.current = scene ? new SceneLayer(scene, this.ctx, this.scenesEl, { pool }) : null;
     // A first render while the previous layer still exists, so lost sources keep their hold frames.
@@ -477,6 +489,54 @@ class DomSceneRenderer implements SceneRenderer {
     previous?.dispose();
     pool?.disposeRest();
     this.renderRequested = true;
+  }
+
+  /**
+   * True when the cut would show a live camera that no item of the shown scene plays yet: its `<video>` is new and has no
+   * picture for the first few frames (items sharing a source with the shown scene take that video over instead).
+   */
+  private needsFirstFrames(scene: SceneDto, previous: SceneLayer): boolean {
+    return renderableItems(scene).some((item) => {
+      if (item.hidden) {
+        return false;
+      }
+      const source = this.ctx.resolve(item.source);
+      return (
+        source.kind === 'device' &&
+        this.ctx.availability(source.sourceId).state === 'live' &&
+        !previous.plays(source)
+      );
+    });
+  }
+
+  /**
+   * A cut to a scene with new cameras: the layer is built unseen (its sources are requested, its videos decode) and put on
+   * stage when they have a picture, or after {@link CUT_FIRST_FRAME_WAIT_MS}; the shown scene stays until then.
+   */
+  private cutWhenFramed(scene: SceneDto, previous: SceneLayer): void {
+    const layer = new SceneLayer(scene, this.ctx, this.scenesEl, { deferred: true });
+    this.outgoing = previous;
+    this.current = layer;
+    this.renderRequested = true;
+    let cancelWait = (): void => undefined;
+    const running: RunningFade = {
+      fade: { finish: () => undefined },
+      complete: () => {
+        if (this.runningFade !== running) {
+          return;
+        }
+        this.runningFade = null;
+        cancelWait();
+        layer.insert();
+        this.outgoing?.dispose();
+        this.outgoing = null;
+        this.requestRender();
+      },
+    };
+    this.runningFade = running;
+    cancelWait = waitForVideoFrames(layer.unframedVideos(), CUT_FIRST_FRAME_WAIT_MS, () =>
+      this.ctx.guard(running.complete),
+    );
   }
 
   private holdFrameDonor(sourceId: string, requester: object): HTMLCanvasElement | null {

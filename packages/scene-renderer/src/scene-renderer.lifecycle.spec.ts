@@ -89,6 +89,35 @@ describe('scene renderer: lifecycle and robustness', () => {
     expect(mounted.container.childElementCount).toBe(0);
   });
 
+  it('releases the stream of a removed device video, so no element outlives its scene', () => {
+    mounted = mount();
+    mounted.renderer.show(scene('scn_a', [sceneItem('itm_a', CAMERA)]));
+    const video = mounted.part('itm_a', 'video') as HTMLVideoElement;
+    const stream = new MediaStream();
+    video.srcObject = stream;
+    const pause = vi.spyOn(video, 'pause').mockImplementation(() => undefined);
+    vi.spyOn(video, 'load').mockImplementation(() => undefined);
+
+    mounted.renderer.show(scene('scn_b', [sceneItem('itm_b', CAMERA_2)]));
+
+    expect(video.isConnected).toBe(false);
+    expect(pause).toHaveBeenCalled();
+    expect(video.srcObject).toBeNull();
+  });
+
+  it('keeps the stream of a video that moves to the next scene with the same source', () => {
+    mounted = mount();
+    mounted.renderer.show(scene('scn_a', [sceneItem('itm_a', CAMERA)]));
+    const video = mounted.part('itm_a', 'video') as HTMLVideoElement;
+    const stream = new MediaStream();
+    video.srcObject = stream;
+
+    mounted.renderer.show(scene('scn_b', [sceneItem('itm_b', CAMERA)]));
+
+    expect(video.isConnected).toBe(true);
+    expect(video.srcObject).toBe(stream);
+  });
+
   it('disconnects its ResizeObserver', () => {
     const disconnect = vi.fn();
     const observe = vi.fn();

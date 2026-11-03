@@ -5,10 +5,16 @@ import type { MediaRoom } from './livekit-port';
 import { silentLogger } from './logger';
 import { MediaSession, type RoomSource } from './media-session';
 import type { MediaRole } from './room-options';
-import { LiveKitSourceProvider, type LiveKitSourceProviderOptions } from './source-provider';
+import {
+  LiveKitSourceProvider,
+  type LiveKitSourceProviderOptions,
+  type WantedSources,
+} from './source-provider';
 import {
   FakeLifecycle,
   FakeMediaStream,
+  FakeRemoteParticipant,
+  FakeRemotePublication,
   FakeRemoteTrack,
   FakeRoom,
   fakeCreateStream,
@@ -171,6 +177,105 @@ describe('LiveKitSourceProvider', () => {
       room.subscribe(DEVICE, 'camera');
       expect(element.srcObject).toBeNull();
       expect(() => provider.detach('unknown', element)).not.toThrow();
+    });
+  });
+
+  describe('wanted sources (output)', () => {
+    const wanted = (pictures: string[], sounds: string[] = []): WantedSources => ({
+      pictures: new Set(pictures),
+      sounds: new Set(sounds),
+    });
+
+    it('subscribes to the tracks of wanted sources as they are published and leaves the others alone', () => {
+      const { room, provider } = setup();
+      provider.setWantedSources(wanted([CAMERA]));
+      const camera = room.publish(DEVICE, 'camera').publication;
+      const screen = room.publish(DEVICE, 'screen-1').publication;
+      expect(camera.setSubscribed).toHaveBeenCalledExactlyOnceWith(true);
+      expect(screen.setSubscribed).not.toHaveBeenCalled();
+    });
+
+    it('subscribes to tracks that were published before the set arrived', () => {
+      const { room, provider } = setup();
+      const camera = room.publish(DEVICE, 'camera').publication;
+      const mic = room.publish(DEVICE, 'mic', 'audio').publication;
+      expect(camera.setSubscribed).not.toHaveBeenCalled();
+      provider.setWantedSources(wanted([CAMERA], [`${DEVICE}/mic`]));
+      expect(camera.setSubscribed).toHaveBeenCalledExactlyOnceWith(true);
+      expect(mic.setSubscribed).toHaveBeenCalledExactlyOnceWith(true);
+    });
+
+    it('keeps the picture and the sound of a screen apart', () => {
+      const { room, provider } = setup();
+      provider.setWantedSources(wanted([], [SCREEN]));
+      const picture = room.publish(DEVICE, 'screen-1').publication;
+      const sound = room.publish(DEVICE, 'screen-1-audio', 'audio').publication;
+      expect(picture.setSubscribed).not.toHaveBeenCalled();
+      expect(sound.setSubscribed).toHaveBeenCalledExactlyOnceWith(true);
+    });
+
+    it('unsubscribes a source that leaves the set and subscribes it again when it returns', () => {
+      const { room, provider } = setup();
+      provider.setWantedSources(wanted([CAMERA]));
+      const { publication } = room.publish(DEVICE, 'camera');
+      publication.isSubscribed = true;
+      provider.setWantedSources(wanted([CAMERA]));
+      expect(publication.setSubscribed).toHaveBeenCalledTimes(1);
+
+      provider.setWantedSources(wanted([]));
+      expect(publication.setSubscribed).toHaveBeenLastCalledWith(false);
+      provider.setWantedSources(wanted([CAMERA]));
+      expect(publication.setSubscribed).toHaveBeenLastCalledWith(true);
+      expect(publication.setSubscribed).toHaveBeenCalledTimes(3);
+    });
+
+    it('subscribes to the tracks of a participant that was in the room before the page joined', () => {
+      const { room, provider } = setup();
+      provider.setWantedSources(wanted([CAMERA], [`${DEVICE}/mic`]));
+      const participant = room.join(DEVICE, [['camera'], ['screen-1'], ['mic', 'audio']]);
+      const subscribed = (name: string) => participant.trackPublications.get(name)?.setSubscribed;
+      expect(subscribed('camera')).toHaveBeenCalledExactlyOnceWith(true);
+      expect(subscribed('mic')).toHaveBeenCalledExactlyOnceWith(true);
+      expect(subscribed('screen-1')).not.toHaveBeenCalled();
+    });
+
+    it('subscribes to what is already in the room when the connection is up and when it is back', () => {
+      const { room, provider } = setup();
+      const participant = new FakeRemoteParticipant(DEVICE);
+      const camera = new FakeRemotePublication('camera');
+      participant.trackPublications.set('camera', camera);
+      room.remoteParticipants.set(DEVICE, participant);
+      provider.setWantedSources(wanted([CAMERA]));
+      expect(camera.setSubscribed).toHaveBeenCalledTimes(1);
+
+      camera.setSubscribed.mockClear();
+      provider.setWantedSources(wanted([]));
+      room.emit(RoomEvent.Connected);
+      room.emit(RoomEvent.Reconnected);
+      expect(camera.setSubscribed).toHaveBeenCalledTimes(1);
+      expect(camera.setSubscribed).toHaveBeenCalledWith(false);
+    });
+
+    it('does not touch the room before it is told which sources are wanted', () => {
+      const { room } = setup();
+      const { publication } = room.publish(DEVICE, 'camera');
+      expect(publication.setSubscribed).not.toHaveBeenCalled();
+    });
+
+    it('applies the set to the next room too', () => {
+      const { room, source, provider } = setup();
+      provider.setWantedSources(wanted([CAMERA]));
+      const next = new FakeRoom();
+      next.publish(DEVICE, 'camera');
+      next.publish(DEVICE, 'screen-1');
+      source.switchTo(next);
+      expect(
+        next.remoteParticipants.get(DEVICE)?.trackPublications.get('camera')?.setSubscribed,
+      ).toHaveBeenCalledWith(true);
+      expect(
+        next.remoteParticipants.get(DEVICE)?.trackPublications.get('screen-1')?.setSubscribed,
+      ).not.toHaveBeenCalled();
+      expect(room.listenerCount(RoomEvent.TrackPublished)).toBe(0);
     });
   });
 
@@ -504,6 +609,155 @@ describe('LiveKitSourceProvider', () => {
       const { track } = room.subscribe(DEVICE, 'camera');
       expect(track.setPlayoutDelay).toHaveBeenCalledWith(0.05);
       expect(track.receiver?.jitterBufferTarget).toBe(50);
+    });
+
+    describe('on a link that loses packets (output)', () => {
+      const lossStats = (lost: number, received: number): Map<string, unknown> =>
+        new Map<string, unknown>([
+          [
+            'IT',
+            {
+              type: 'inbound-rtp',
+              kind: 'video',
+              packetsLost: lost,
+              packetsReceived: received,
+              bytesReceived: 1000,
+            },
+          ],
+        ]);
+
+      async function subscribed() {
+        const { room, provider } = setup('output');
+        need(provider, CAMERA);
+        const track = new FakeRemoteTrack();
+        room.subscribe(DEVICE, 'camera', { track });
+        return { provider, track };
+      }
+
+      it('buffers longer as the loss grows and shrinks again when the link is calm', async () => {
+        const { provider, track } = await subscribed();
+        track.stats = lossStats(0, 1000);
+        await provider.decoderSummary();
+        expect(track.receiver?.jitterBufferTarget).toBe(50);
+
+        track.stats = lossStats(50, 1950); // 5 % of the 1000 packets of the interval
+        await provider.decoderSummary();
+        expect(track.receiver?.jitterBufferTarget).toBe(200);
+
+        track.stats = lossStats(250, 2750); // 20 %
+        await provider.decoderSummary();
+        expect(track.receiver?.jitterBufferTarget).toBe(400);
+
+        for (let interval = 1; interval <= 3; interval += 1) {
+          track.stats = lossStats(250, 2750 + interval * 1000);
+          await provider.decoderSummary();
+        }
+        expect(track.receiver?.jitterBufferTarget).toBe(50);
+      });
+
+      describe('a stream that stops decoding', () => {
+        const stuckStats = (decoded: number, lost = 250): Map<string, unknown> =>
+          new Map<string, unknown>([
+            [
+              'IT',
+              {
+                type: 'inbound-rtp',
+                kind: 'video',
+                packetsLost: lost,
+                packetsReceived: 750,
+                bytesReceived: 1000,
+                framesDecoded: decoded,
+              },
+            ],
+          ]);
+
+        async function lossy() {
+          const { provider, track } = await subscribed();
+          track.stats = stuckStats(100);
+          await provider.decoderSummary();
+          return { provider, track };
+        }
+
+        it('is asked for a keyframe once after a second without a decoded frame, then every 3 s at most', async () => {
+          const { room, provider } = setup('output');
+          need(provider, CAMERA);
+          const track = new FakeRemoteTrack();
+          const { publication } = room.subscribe(DEVICE, 'camera', { track });
+          track.stats = stuckStats(100);
+          await provider.decoderSummary(); // 25 % loss: the stream is watched
+
+          await vi.advanceTimersByTimeAsync(500); // first look: 100 frames
+          expect(publication.setEnabled).not.toHaveBeenCalledWith(false);
+          await vi.advanceTimersByTimeAsync(1000); // still 100 frames after more than a second
+          expect(publication.setEnabled.mock.calls.slice(-2)).toEqual([[false], [true]]);
+
+          publication.setEnabled.mockClear();
+          await vi.advanceTimersByTimeAsync(2000);
+          expect(publication.setEnabled).not.toHaveBeenCalled();
+          await vi.advanceTimersByTimeAsync(1500);
+          expect(publication.setEnabled.mock.calls).toEqual([[false], [true]]);
+        });
+
+        it('leaves a stream alone that keeps decoding, a muted one and a clean link', async () => {
+          const { room, provider } = setup('output');
+          need(provider, CAMERA);
+          const track = new FakeRemoteTrack();
+          const { publication } = room.subscribe(DEVICE, 'camera', { track });
+          publication.setEnabled.mockClear();
+          track.stats = stuckStats(100);
+          await provider.decoderSummary();
+          for (let frames = 101; frames < 110; frames += 1) {
+            track.stats = stuckStats(frames);
+            await vi.advanceTimersByTimeAsync(500);
+          }
+          expect(publication.setEnabled).not.toHaveBeenCalled();
+
+          publication.isMuted = true;
+          await vi.advanceTimersByTimeAsync(5000);
+          expect(publication.setEnabled).not.toHaveBeenCalled();
+          publication.isMuted = false;
+
+          // The link is clean again: the watch ends and nothing is asked for.
+          for (let interval = 0; interval < 3; interval += 1) {
+            track.stats = new Map<string, unknown>([
+              [
+                'IT',
+                {
+                  type: 'inbound-rtp',
+                  kind: 'video',
+                  packetsLost: 250,
+                  packetsReceived: 750 + (interval + 1) * 1000,
+                  bytesReceived: 1000,
+                  framesDecoded: 120,
+                },
+              ],
+            ]);
+            await provider.decoderSummary();
+          }
+          publication.setEnabled.mockClear();
+          await vi.advanceTimersByTimeAsync(10_000);
+          expect(publication.setEnabled).not.toHaveBeenCalled();
+          expect(vi.getTimerCount()).toBe(0);
+        });
+
+        it('stops watching when the provider is disposed', async () => {
+          const { provider } = await lossy();
+          provider.dispose();
+          expect(vi.getTimerCount()).toBe(0);
+        });
+      });
+
+      it('leaves the buffer of the Regie alone', async () => {
+        const { room, provider } = setup('studio');
+        need(provider, CAMERA);
+        const track = new FakeRemoteTrack();
+        room.subscribe(DEVICE, 'camera', { track });
+        track.stats = lossStats(0, 1000);
+        await provider.decoderSummary();
+        track.stats = lossStats(250, 1750);
+        await provider.decoderSummary();
+        expect(track.receiver?.jitterBufferTarget).toBe(0);
+      });
     });
 
     it('tolerates browsers without playout APIs', () => {

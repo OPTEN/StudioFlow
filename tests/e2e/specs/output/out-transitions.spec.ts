@@ -5,7 +5,6 @@ import { expect, test } from '../../support/ui/fixtures';
 import { SCREEN_COLORS } from '../../support/ui/init';
 import { colorsClose, isShadeOf } from '../../support/ui/pixels';
 import { GROUND, firstEvent, itemsOfLayer, sleep, toneOf } from '../../support/output/analysis';
-import { outBug } from '../../support/output/bugs';
 import { openProbedOutput } from '../../support/output/open';
 import { DecodedFrame, CENTRE, Screencast } from '../../support/output/screencast';
 import { fmt, judgeTiming, recordMeasurement, startCpuMonitor, summarize, timingGate } from '../../support/output/stats';
@@ -387,7 +386,6 @@ test.describe('OUT transitions', () => {
     'E2E-OUT-11 [output, rename] renaming the production updates the standby slate subtitle live',
     t.p1,
     async ({ browser, api, production, onCleanup }) => {
-      outBug('OUT-02', 'the standby slate subtitle is a copy of the name taken at creation; renaming the production leaves it unchanged');
       const { probe } = await openProbedOutput({ browser, onCleanup }, production, {}, { viewport: { width: 1280, height: 720 } });
       await expect.poll(async () => (await probe.snapshot()).slate?.subtitle, { timeout: 15_000 }).toBe(production.name);
       await probe.takeEvents();
@@ -497,7 +495,6 @@ test.describe('OUT transitions', () => {
     'E2E-SWITCH-09 [output, cut, no dark frame] after a cut to a not yet shown camera no frame is dark: the target video has a decoded frame when the layer appears',
     t.p0,
     async ({ browser, api, production, pairContext, openPhone, openLaptop, onCleanup }) => {
-      outBug('OUT-01', 'a cut to a scene whose camera is not in the program shows 1-5 frames without picture (dark scene ground)');
       test.setTimeout(300_000);
       const deps = { api, production, pairContext, openPhone, openLaptop };
       const k1 = await addCamera(deps, 'Camera One');

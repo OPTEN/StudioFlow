@@ -90,6 +90,13 @@ describe('MediaSession', () => {
       expect(states).toEqual(['connecting', 'connected']);
     });
 
+    it('leaves the subscriptions to the page as output', async () => {
+      const { session, rooms } = setup('output');
+      session.start();
+      await flushMicrotasks();
+      expect(rooms[0].connectCalls[0].options).toEqual({ autoSubscribe: false });
+    });
+
     it('does not subscribe as sender', async () => {
       const { session, rooms } = setup('sender');
       session.start();

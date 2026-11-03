@@ -165,7 +165,10 @@ describe('scene renderer: randomised stress', () => {
         // Thumbnails play no video of their own: one hidden video per source feeds their snapshots.
         const deviceVideos = container.querySelectorAll('video.sf-r-media--device').length;
         const feeders = document.querySelectorAll('.sf-r-stills video').length;
-        expect(provider.registrationCount).toBe(deviceVideos + feeders);
+        // A cut to new cameras builds its layer unseen for up to 100 ms: its videos (at most 11 items) are registered
+        // but not in the container yet.
+        expect(provider.registrationCount).toBeGreaterThanOrEqual(deviceVideos + feeders);
+        expect(provider.registrationCount).toBeLessThanOrEqual(deviceVideos + feeders + 11);
         expect(container.querySelectorAll('.sf-r-layer').length).toBeLessThanOrEqual(2);
         expect(container.querySelectorAll('.sf-r-slate').length).toBeLessThanOrEqual(1);
         expect(vi.getTimerCount()).toBeLessThan(80);

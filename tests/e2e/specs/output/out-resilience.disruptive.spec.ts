@@ -508,8 +508,8 @@ test.describe('OUT netem on LiveKit', () => {
       `${scenario.id} [output, netem ${scenario.name}] the output stays up under impairment of LiveKit: no reload, no slate, latency and frame gaps recorded, recovery after clearing`,
       t.disruptive(scenario.priority),
       async ({ browser, api, production, pairContext, openPhone, openLaptop, onCleanup }) => {
-        if (scenario.id === 'E2E-NET-05') outBug('OUT-06', 'with 20 % loss on the media path the picture freezes for more than 5 s in some windows (T-FREEZE hard limit), is frozen for 14-52 s of every minute and drops to 320 px / 2-15 fps');
         requireTool('netem');
+        if (scenario.id === 'E2E-NET-05') outBug('OUT-12', 'with 20 % loss on the media path a single freeze still lasts 6.5-8.3 s in some windows (T-FREEZE hard limit 5 s), issue #105');
         test.setTimeout(600_000);
         const deps = { api, production, pairContext, openPhone, openLaptop };
         const world = await liveWorld({ browser, deps, onCleanup }, { cameras: 1, latency: true });
@@ -576,11 +576,31 @@ test.describe('OUT netem on LiveKit', () => {
 
 test.describe('OUT freeze budget and sender loss report', () => {
   test(
-    'E2E-NET-04 [freeze budget and sender report] with 5 % loss on the link the output freezes at most 2 s per minute with at least 24 fps (T-FREEZE, median of six windows) and the sender reports an uplink loss between 2 and 9 % (Regie “Packet loss”)',
+    'E2E-NET-04 [sender report] with 5 % loss on the link the sender reports an uplink loss between 2 and 9 % (Regie “Packet loss”): the packets it had to send again, not the net loss',
     t.disruptive('@p1'),
     async ({ browser, api, production, pairContext, openPhone, openLaptop, onCleanup }) => {
-      outBug('OUT-05', 'the sender reports the loss net of NACK retransmissions (0.1-0.3 % with 5 % loss on the link), the plan expects the link loss');
-      outBug('OUT-06', 'with 5 % loss on the media path the output freezes for 0-52 s per minute (26-52 s on a quiet machine, plan: <= 2 s) at 5-25 fps');
+      requireTool('netem');
+      test.setTimeout(600_000);
+      const deps = { api, production, pairContext, openPhone, openLaptop };
+      const world = await liveWorld({ browser, deps, onCleanup }, { cameras: 1, latency: true });
+      await waitForQuietMachine({ maxBusyPct: 50, timeoutMs: Math.min(120_000, defaultMaxWaitMs()) });
+      const result = await impair(world, { api, production }, { lossPct: 5 }, { windowMs: 25_000, windows: 3, settleMs: 8000 });
+      await recordMeasurement(
+        test.info(),
+        'net-04-sender-report',
+        { ...result },
+        `5 % loss: sender-reported uplink loss ${result.uplinkLossPct} % (the output sees ${result.median.lossPct?.toFixed(1)} % downlink)`,
+      );
+      expect(result.uplinkLossPct, 'the sender reports its uplink loss').not.toBeNull();
+      expect(result.uplinkLossPct!, 'uplink loss reported by the sender (Regie “Packet loss”) between 2 and 9 %').toBeGreaterThanOrEqual(2);
+      expect(result.uplinkLossPct!).toBeLessThanOrEqual(9);
+    },
+  );
+
+  test(
+    'E2E-NET-04 [freeze budget] with 5 % loss on the link the output freezes at most 2 s per minute with at least 24 fps (T-FREEZE, median of six windows)',
+    t.disruptive('@p1'),
+    async ({ browser, api, production, pairContext, openPhone, openLaptop, onCleanup }) => {
       requireTool('netem');
       test.setTimeout(900_000);
       const deps = { api, production, pairContext, openPhone, openLaptop };
@@ -592,13 +612,10 @@ test.describe('OUT freeze budget and sender loss report', () => {
         test.info(),
         'net-04-freeze-budget',
         { ...result },
-        `5 % loss: freeze seconds per minute per window ${result.windows.map((w) => w.freezeSecondsPerMin.toFixed(1)).join('/')} (median ${m.freezeSecondsPerMin.toFixed(1)}, plan <= 2), fps median ${m.fps.toFixed(1)} (plan >= 24), baseline freezes ${result.baseline.freezeSecondsPerMin.toFixed(1)} s per minute; machine CPU per window ${result.windows.map((w) => w.machineCpuBusyPct).join('/')} %; sender-reported uplink loss ${result.uplinkLossPct} %`,
+        `5 % loss: freeze seconds per minute per window ${result.windows.map((w) => w.freezeSecondsPerMin.toFixed(1)).join('/')} (median ${m.freezeSecondsPerMin.toFixed(1)}, plan <= 2), fps median ${m.fps.toFixed(1)} (plan >= 24), baseline freezes ${result.baseline.freezeSecondsPerMin.toFixed(1)} s per minute; machine CPU per window ${result.windows.map((w) => w.machineCpuBusyPct).join('/')} %`,
       );
       expect(m.freezeSecondsPerMin, 'T-FREEZE: total freeze below 2 s per minute (hard, median of six windows)').toBeLessThanOrEqual(2);
       expect(m.fps, 'output fps >= 24 (median of six windows)').toBeGreaterThanOrEqual(24);
-      expect(result.uplinkLossPct, 'the sender reports its uplink loss').not.toBeNull();
-      expect(result.uplinkLossPct!, 'uplink loss reported by the sender (Regie “Packet loss”) between 2 and 9 %').toBeGreaterThanOrEqual(2);
-      expect(result.uplinkLossPct!).toBeLessThanOrEqual(9);
     },
   );
 });
