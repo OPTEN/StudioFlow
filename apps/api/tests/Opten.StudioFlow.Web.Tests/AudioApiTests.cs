@@ -185,14 +185,16 @@ public sealed class AudioMixerApiTests(StudioFlowApp app) : IClassFixture<Studio
         var fromOutput = await outputEvents.NextAsync(e => e is AudioChannelsChangedEvent && e.Revision == fromStudio.Revision);
         await SetAsync(admin, false, new AudioChannelDto(mic, -6, false, AudioMode.Always, 0)).ExpectAsync(HttpStatusCode.OK);
         await SetAsync(admin, false, new AudioChannelDto(mic, -9, true, AudioMode.Always, 0)).ExpectAsync(HttpStatusCode.OK);
-        var next = await studioEvents.NextAsync(e => e is AudioChannelsChangedEvent changed && changed.Channels.Any(channel => channel.GainDb == -9));
+        // The repeated -6 dB setting changes nothing, so the next mixer event is already the -9 dB one. Its revision is
+        // higher, but not necessarily by one: other revisioned events (the station's status) may come in between.
+        var next = await studioEvents.NextAsync(e => e is AudioChannelsChangedEvent);
 
         Assert.Equal(-6, ((AudioChannelsChangedEvent)fromStudio).Channels.Single().GainDb);
         Assert.Equal(fromStudio.Revision, fromOutput.Revision);
         Assert.True(fromStudio.Revision > studioStart.Revision);
         Assert.Equal(studioStart.Revision, outputStart.Revision);
-        Assert.Equal(fromStudio.Revision + 1, next.Revision);
         Assert.Equal(-9, ((AudioChannelsChangedEvent)next).Channels.Single().GainDb);
+        Assert.True(next.Revision > fromStudio.Revision);
     }
 
     [Fact]
