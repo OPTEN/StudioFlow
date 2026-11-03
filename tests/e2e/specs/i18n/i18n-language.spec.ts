@@ -117,7 +117,7 @@ test.describe('I18N language in English', () => {
     await expect(page.getByRole('heading', { name: 'Pair device' })).toBeVisible();
 
     // The sender's select is named by its visible label “Language” (WCAG 2.5.3 label in name).
-    await page.getByLabel('Language', { exact: true }).selectOption('de-CH');
+    await page.getByRole('combobox', { name: 'Language', exact: true }).selectOption('de-CH');
     await expect(page.getByRole('heading', { name: 'Gerät koppeln' })).toBeVisible();
     expect(await documentLanguage(page)).toBe('de-CH');
     expect(await page.evaluate(() => (window as unknown as { __noReload?: boolean }).__noReload), 'the page was not reloaded').toBe(true);
