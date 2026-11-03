@@ -8,6 +8,7 @@ import {
   Injectable,
   afterRenderEffect,
   computed,
+  untracked,
   inject,
   input,
   signal,
@@ -33,11 +34,26 @@ export interface ContextMenuItem {
 /** A command or a separator line. */
 export type ContextMenuEntry = ContextMenuItem | 'separator';
 
+/** Entries as a list, or as a builder that is evaluated while the menu is open (so its texts follow the language). */
+export type ContextMenuEntries = readonly ContextMenuEntry[] | (() => readonly ContextMenuEntry[]);
+
+/** Accessible name as a text, or as a builder that is evaluated while the menu is open. */
+export type ContextMenuLabel = string | (() => string);
+
+/** The open menu with its entries and label resolved. */
 interface OpenMenu {
   readonly entries: readonly ContextMenuEntry[];
   readonly x: number;
   readonly y: number;
   readonly label: string;
+  readonly returnFocus: HTMLElement | null;
+}
+
+interface MenuRequest {
+  readonly entries: ContextMenuEntries;
+  readonly x: number;
+  readonly y: number;
+  readonly label: ContextMenuLabel;
   readonly returnFocus: HTMLElement | null;
 }
 
@@ -49,10 +65,24 @@ interface OpenMenu {
  */
 @Injectable({ providedIn: 'root' })
 export class ContextMenuService {
-  private readonly menu = signal<OpenMenu | null>(null);
+  private readonly menu = signal<MenuRequest | null>(null);
 
-  /** The open menu, or null. */
-  readonly current = this.menu.asReadonly();
+  /**
+   * The open menu, or null. Builders passed to {@link open} are evaluated here, so an open menu follows the language
+   * (and the state its entries read) instead of keeping the texts of the moment it was opened.
+   */
+  readonly current = computed<OpenMenu | null>(() => {
+    const request = this.menu();
+    if (!request) {
+      return null;
+    }
+    const { entries, label, ...rest } = request;
+    return {
+      ...rest,
+      entries: typeof entries === 'function' ? entries() : entries,
+      label: typeof label === 'function' ? label() : label,
+    };
+  });
 
   constructor() {
     const unregister = inject(KeyboardService).registerEscape('popover', () => {
@@ -67,11 +97,12 @@ export class ContextMenuService {
 
   /** Opens a menu at a viewport position; empty lists open nothing. */
   open(
-    entries: readonly ContextMenuEntry[],
+    entries: ContextMenuEntries,
     position: { x: number; y: number },
-    options: { label?: string; returnFocus?: HTMLElement | null } = {},
+    options: { label?: ContextMenuLabel; returnFocus?: HTMLElement | null } = {},
   ): void {
-    if (!entries.some((entry) => entry !== 'separator')) {
+    const initial = typeof entries === 'function' ? untracked(entries) : entries;
+    if (!initial.some((entry) => entry !== 'separator')) {
       return;
     }
     this.menu.set({
@@ -123,8 +154,8 @@ export class ContextMenuDirective {
   readonly sfContextMenuLabel = input('');
 
   protected onContextMenu(event: MouseEvent): void {
-    const entries = this.sfContextMenu()();
-    if (!entries.some((entry) => entry !== 'separator')) {
+    const entries = this.sfContextMenu();
+    if (!untracked(entries).some((entry) => entry !== 'separator')) {
       return;
     }
     event.preventDefault();
@@ -139,16 +170,16 @@ export class ContextMenuDirective {
     event.preventDefault();
     const rect = this.host.nativeElement.getBoundingClientRect();
     this.menus.open(
-      this.sfContextMenu()(),
+      this.sfContextMenu(),
       { x: rect.left + 12, y: rect.bottom - 4 },
       this.options(),
     );
   }
 
-  private options(): { label: string; returnFocus: HTMLElement | null } {
+  private options(): { label: () => string; returnFocus: HTMLElement | null } {
     const active = this.host.nativeElement.ownerDocument.activeElement;
     return {
-      label: this.sfContextMenuLabel(),
+      label: () => this.sfContextMenuLabel(),
       returnFocus: active instanceof HTMLElement ? active : this.host.nativeElement,
     };
   }

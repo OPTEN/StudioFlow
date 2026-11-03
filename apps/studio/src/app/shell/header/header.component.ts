@@ -91,9 +91,13 @@ export class HeaderComponent {
   protected readonly presencePopover = PRESENCE_POPOVER;
   protected readonly t = t;
   /** "Settings (Ctrl+,)": the tooltip names the shortcut. */
-  protected readonly settingsTitle = `${t('regie.header.settings')} (${keyHint('mod', ',')})`;
+  protected readonly settingsTitle = computed(
+    () => `${t('regie.header.settings')} (${keyHint('mod', ',')})`,
+  );
   /** "Keyboard shortcuts (?)" on the Layout button. */
-  protected readonly layoutTitle = `${t('regie.header.layout.title')} (${t('regie.header.layout.shortcuts')}: ?)`;
+  protected readonly layoutTitle = computed(
+    () => `${t('regie.header.layout.title')} (${t('regie.header.layout.shortcuts')}: ?)`,
+  );
 
   /** The keyboard shortcuts sheet is open. */
   protected readonly shortcutsOpen = signal(false);
