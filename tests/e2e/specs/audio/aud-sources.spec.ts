@@ -444,10 +444,20 @@ test.describe('AUD sources', () => {
       expect((await api.setAudioChannels(production.id, { channels: [channel(desk.sourceId('mic'), { mode: 'off' }), channel(laptops[2]!.sourceId, { gainDb: -20, mode: 'follow' })] })).status).toBe(200);
       await waitGone(STATION_HZ, [TONES.s1, TONES.s2]);
       // The strongest of ten readings of each (a tone of the fake source or the output can pause for a moment, which only lowers a reading).
-      const third = await readings([TONES.s3, TONES.s1], 10);
-      const quiet = Math.max(...third.map((sample) => sample.db[0]!));
-      const loud = Math.max(...third.map((sample) => sample.db[1]!));
-      expect(loud - quiet, `the third screen is quieter (${TONES.s3} Hz ${quiet.toFixed(1)} dB, ${TONES.s1} Hz ${loud.toFixed(1)} dB)`).toBeGreaterThan(8);
+      // Polled: the station can be gone from the mix a moment before the gain of the third screen has reached -20 dB, and
+      // the strongest reading of a window that starts then is one from before the change (5.8 dB in the release check).
+      await expect
+        .poll(
+          async () => {
+            const third = await readings([TONES.s3, TONES.s1], 10);
+            const quiet = Math.max(...third.map((sample) => sample.db[0]!));
+            const loud = Math.max(...third.map((sample) => sample.db[1]!));
+            test.info().annotations.push({ type: 'measurement', description: `third screen ${TONES.s3} Hz ${quiet.toFixed(1)} dB, ${TONES.s1} Hz ${loud.toFixed(1)} dB` });
+            return loud - quiet;
+          },
+          { timeout: 10_000, message: 'the third screen is at least 8 dB quieter (levels in the measurement annotations)' },
+        )
+        .toBeGreaterThan(8);
 
       // A device that is removed takes its channel with it.
       const removed = await api.deleteDevice(production.id, laptops[0]!.device.id);

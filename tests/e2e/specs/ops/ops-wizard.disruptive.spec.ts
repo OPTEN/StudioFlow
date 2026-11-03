@@ -414,7 +414,8 @@ test.describe('OPS settings validation and secrets', () => {
     expect(changed.status, changed.raw.text()).toBe(200);
     expect(changed.body.baseUrl, 'a media address does not change the address devices open').toBe(config.baseURL);
     await waitUntil('LiveKit announces the new address', async () => (await announced('10.99.99.99')) && (await yaml()).includes('node_ip: 10.99.99.99'), { timeoutMs: 90_000, intervalMs: 1000 });
-    expect((await admin.getServerSettingsStatus()).body.liveKit.applied).toBe(true);
+    // The status follows a moment after LiveKit announced the new address (the API reads it on its next check).
+    await expect.poll(async () => (await admin.getServerSettingsStatus()).body.liveKit.applied, { message: 'the status says the setting is applied', timeout: 30_000 }).toBe(true);
 
     // A test announces an address without saving it; ending it returns to the saved one.
     const trial = await admin.startMediaTest({ address: config.nodeIp });
