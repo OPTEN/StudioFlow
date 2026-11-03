@@ -940,6 +940,9 @@ nothing is changed on a running server (apply them with section 8). The rules ar
    the path filters passes, a red one blocks) and allow auto-merge (Settings › General). Automerge below only merges when
    it is green; the weekly dependency audit (`audit.yml`) is a report and not required.
 
+`bash tools/github-repo-settings.sh` sets steps 2 and 3 (auto-merge, Dependabot alerts, the protection of `main`) and
+reports whether Renovate is active (step 1 stays a click in the GitHub UI; the script prints the link).
+
 **What arrives, and when**
 
 | What | Pull requests | Merged by |
