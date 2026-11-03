@@ -81,7 +81,7 @@ dotnet ef migrations add <Name> --project src/Opten.StudioFlow.Infrastructure --
 
 ## Tests
 
-Every change comes with tests, and every test carries the ID of its entry in the [test plan](docs/testing.md).
+Every change comes with tests. Every E2E (Playwright) test carries the ID of its entry in the [test plan](docs/testing.md) (for example `E2E-AUTH-01`); xUnit and Vitest tests carry no catalogue ID, the plan describes their coverage per area (see [decisions](docs/decisions.md), #97). When a gap of section 7 of the test plan is closed, update its entry in the same change.
 
 | Command | What it runs |
 |---|---|
