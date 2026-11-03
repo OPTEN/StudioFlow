@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.2.0](https://github.com/OPTEN/StudioFlow/compare/v0.1.1...v0.2.0) (2026-11-03)
+
+
+### Features
+
+* **ui:** complete UI/UX redesign of the studio, sender and output page ([#95](https://github.com/OPTEN/StudioFlow/issues/95)) ([ea9e2b5](https://github.com/OPTEN/StudioFlow/commit/ea9e2b549263f7783334ef34cc598dce5afd1e7d))
+
+
+### Bug Fixes
+
+* **output:** open output bugs of [#94](https://github.com/OPTEN/StudioFlow/issues/94) (cut without empty frames, standby subtitle, subscriptions, loss report, lossy links, leaked videos) ([#110](https://github.com/OPTEN/StudioFlow/issues/110)) ([ab7eb41](https://github.com/OPTEN/StudioFlow/commit/ab7eb4161645b20744ccbd513b1b8b713dbe9fbb))
+* Regie texts follow a runtime language switch; fix sender language select locator ([#103](https://github.com/OPTEN/StudioFlow/issues/103)) ([2603a20](https://github.com/OPTEN/StudioFlow/commit/2603a20dc277272cc7e7d1a99e462d02f235dc33))
+* **sender:** phone recovery, wake lock and open DEV/A11Y registry bugs ([#93](https://github.com/OPTEN/StudioFlow/issues/93)) ([#100](https://github.com/OPTEN/StudioFlow/issues/100)) ([1408404](https://github.com/OPTEN/StudioFlow/commit/1408404449dc0e5c1a128308f5e82006c6716558))
+* **studio:** accessible names that contain the visible text and a bounded message strip ([eaf7240](https://github.com/OPTEN/StudioFlow/commit/eaf7240520be2964fb92e4496a3dea3e654341bf))
+* **studio:** expose splitter values, drop the disabled tab stop and move seams by exact steps ([2a3df7e](https://github.com/OPTEN/StudioFlow/commit/2a3df7eaf2d272db24132806a91967b8c73cbc1e))
+* **studio:** honour reduced motion and forced colours in the CSS ([fc9c8c9](https://github.com/OPTEN/StudioFlow/commit/fc9c8c9d24b85331c25b1a24a1a0fc4733f93afd))
+* **studio:** keep the global keys alive on a focused switch and spell out small presence counts ([72a7646](https://github.com/OPTEN/StudioFlow/commit/72a76460f3726e4b36a9074109c087182596e677))
+* **studio:** Regie accessibility leftovers of [#92](https://github.com/OPTEN/StudioFlow/issues/92) (label in name, presence text, Preview tag contrast) ([#104](https://github.com/OPTEN/StudioFlow/issues/104)) ([8ace086](https://github.com/OPTEN/StudioFlow/commit/8ace086497fca75aecc79e31753c5ff8f525c4c8))
+
 ## [0.1.1](https://github.com/OPTEN/StudioFlow/compare/v0.1.0...v0.1.1) (2026-10-28)
 
 

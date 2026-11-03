@@ -17,6 +17,6 @@
     <!-- The one version of the API (and of every image): release-please sets it in the release pull request, together
          with package.json and docker-compose.release.yml. The Docker build adds the commit as SourceRevisionId, so the
          running API reports "0.1.0+1a2b3c4". -->
-    <Version>0.1.1</Version> <!-- x-release-please-version -->
+    <Version>0.2.0</Version> <!-- x-release-please-version -->
   </PropertyGroup>
 </Project>
