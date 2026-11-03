@@ -46,4 +46,7 @@ five state colours carry over.
 | `assets/screenshot-sender.webp` | `docs/assets/screenshot-sender.png` |
 | `public/og.png` | `og/og.html` |
 
-Crops are made with ffmpeg (`-c:v libwebp -quality 88`). After a UI change, capture again and re-crop.
+The crops are cut by `node site/crop-ui.mjs video/work/crops` (its table holds the rectangles; it also lays the QR code of the
+site over the pairing tile) and converted with ffmpeg (`-c:v libwebp -quality 88`); `regie-960.webp` and
+`hero-poster.webp` are the whole still, scaled. After a UI change, capture again, check the rectangles against the new
+stills and re-crop; the image sizes in `index.html` follow the crops.

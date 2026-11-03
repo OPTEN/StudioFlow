@@ -8,7 +8,7 @@
 //   take      Take clicked at capture 7.14 s          -> film 12.5
 //   layout    "Side by side" clicked at capture 6.32  -> film 16.0
 //   output    fade to Interview at capture 7.33 s     -> film 18.5
-//   obs       the "Use as camera" steps, already open from capture 12.7 s
+//   obs       the "Use in OBS" steps, open from capture 13.5 s (the tab is clicked at 13.4)
 // A rect is the part of the 1920 x 1080 capture the frame shows ([x, y, w, h]); `v` is the rect for the vertical and
 // square formats, whose boxes are nearly square.
 
@@ -65,8 +65,8 @@ export const scenes = [
     rects: [
       { at: 0, r: [0, 90, 1920, 560], v: [860, 90, 1060, 560] },
       { at: 1.2, r: [0, 90, 1920, 560], v: [860, 90, 1060, 560] },
-      { at: 2.1, r: [1180, 70, 740, 400], v: [1540, 60, 380, 320] },
-      { at: 2.9, r: [1180, 70, 740, 400], v: [1540, 60, 380, 320] },
+      { at: 2.1, r: [1180, 70, 740, 400], v: [1530, 96, 390, 330] },
+      { at: 2.9, r: [1180, 70, 740, 400], v: [1530, 96, 390, 330] },
       { at: 3.7, r: [0, 90, 1920, 560], v: [860, 90, 1060, 560] },
     ],
   },
@@ -104,12 +104,12 @@ export const scenes = [
     clip: 'output-obs',
     start: 20.5,
     end: 23,
-    src: 12.7,
+    src: 13.7,
     caption: '*OBS* picks it up.',
     accent: 'blue',
     rects: [
-      { at: 0, r: [1045, 652, 445, 378] },
-      { at: 2.5, r: [1050, 660, 430, 366] },
+      { at: 0, r: [780, 700, 632, 356], v: [790, 640, 620, 420] },
+      { at: 2.5, r: [792, 710, 608, 342], v: [800, 650, 600, 406] },
     ],
   },
   {
