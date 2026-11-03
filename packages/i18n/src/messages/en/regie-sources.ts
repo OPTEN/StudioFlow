@@ -61,7 +61,6 @@ export const regieSources = {
   'regie.sources.row.hideTitle': 'Hide on the output',
   'regie.sources.row.lock': 'Lock: {name}',
   'regie.sources.row.lockTitle': 'Lock: keep its place and size on the monitor',
-  'regie.sources.row.select': 'Select: {code} {name}',
   'regie.sources.row.selectTitle': 'Edit in Properties. Del removes it from the scene.',
   'regie.sources.row.show': 'Show: {name}',
   'regie.sources.row.showTitle': 'Show on the output',

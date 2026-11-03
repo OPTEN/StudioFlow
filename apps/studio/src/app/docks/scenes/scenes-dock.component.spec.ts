@@ -69,7 +69,8 @@ describe('ScenesDockComponent', () => {
     expect(text(first.querySelector('.c-tag--pgm'))).toBe('Live');
     expect(parts(first.querySelector('.c-scene__meta'))).toBe('Live K1');
     expect(first.getAttribute('aria-pressed')).toBe('true');
-    expect(first.getAttribute('aria-label')).toBe('Welcome, live on Program');
+    // The visible text is the accessible name (WCAG 2.5.3 Label in Name): no aria-label, the state is aria-pressed.
+    expect(first.hasAttribute('aria-label')).toBe(false);
     expect(first.getAttribute('aria-keyshortcuts')).toBe('1');
     expect(first.getAttribute('title')).toBeNull();
     expect(parts(second.querySelector('.c-scene__meta'))).toBe('S1 · K1');
@@ -91,7 +92,7 @@ describe('ScenesDockComponent', () => {
     const [first, second] = rows();
     expect(parts(first.querySelector('.c-scene__meta'))).toBe('Live K1 disrupted');
     expect(first.querySelector('.c-lamp')?.className).toContain('is-warn');
-    expect(first.getAttribute('aria-label')).toBe('Welcome, live on Program, K1 disrupted');
+    expect(first.hasAttribute('aria-label')).toBe(false);
     expect(parts(second.querySelector('.c-scene__meta'))).toBe('S1 disrupted');
     expect(second.querySelector('.c-lamp')?.className).toContain('is-bad');
   });

@@ -16,9 +16,6 @@ export const regieScenes: Translation<typeof en> = {
   'regie.scenes.name.copyNth': '{name} (Kopie {number})',
   'regie.scenes.name.new': 'Neue Szene {number}',
 
-  'regie.scenes.row.ariaDisrupted': '{code} gestört',
-  'regie.scenes.row.ariaPreview': 'in der Preview',
-  'regie.scenes.row.ariaProgram': 'live im Program',
   'regie.scenes.row.delete': 'Löschen …',
   'regie.scenes.row.deleteKey': 'Entf',
   'regie.scenes.row.deleteLabel': 'Szene löschen',

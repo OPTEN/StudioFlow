@@ -61,7 +61,6 @@ export const regieSources: Translation<typeof en> = {
   'regie.sources.row.hideTitle': 'Im Ausgang ausblenden',
   'regie.sources.row.lock': 'Sperren: {name}',
   'regie.sources.row.lockTitle': 'Sperren: Platz und Grösse im Monitor festhalten',
-  'regie.sources.row.select': 'Auswählen: {code} {name}',
   'regie.sources.row.selectTitle':
     'In den Eigenschaften bearbeiten. Entf entfernt es aus der Szene.',
   'regie.sources.row.show': 'Einblenden: {name}',

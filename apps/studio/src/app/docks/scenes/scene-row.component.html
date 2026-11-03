@@ -22,7 +22,6 @@
     [attr.aria-pressed]="view().pressed"
     [class.is-blocked]="blocked()"
     [attr.aria-keyshortcuts]="view().key"
-    [attr.aria-label]="view().ariaLabel"
     [attr.title]="rowTitle()"
     (click)="choose.emit(view().id)"
     [sfContextMenu]="menu"
