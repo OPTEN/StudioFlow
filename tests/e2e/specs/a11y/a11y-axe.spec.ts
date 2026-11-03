@@ -70,7 +70,7 @@ test.describe('axe scans: Regie', () => {
     await page.getByRole('button', { name: 'Cancel' }).first().click();
     // an element selected: the overlay box, the label tab and the handles (the first scene holds one)
     await regie.clickScene('Welcome');
-    await page.getByRole('button', { name: /^Select: / }).first().click();
+    await page.locator('sf-sources-dock .c-src__select').first().click();
     await expect(page.locator('.c-edit-box.is-sel')).toHaveCount(1);
     await scanner.scan('regie-element-selected');
     scanner.verify();
@@ -149,16 +149,15 @@ test.describe('axe scans: Regie', () => {
     void regie;
   });
 
-  test('E2E-DEV-15 [presence] the presence text counts the real number of operators: “One person”, “Two people”, then back', tags('p2'), async ({ regie, browser, api, onCleanup }) => {
+  test('E2E-DEV-15 [presence] the presence text counts the real number of operators: “One person”, “2 people”, then back', tags('p2'), async ({ regie, browser, api, onCleanup }) => {
     test.setTimeout(90_000);
-    knownBug('A11Y-08', 'the header says “2 people in the control room” for two operators; docs/testing.md DEV-15 pins “Two people in the control room” (one is spelled out, two is a numeral)');
     const { page } = regie;
     await expect(page.getByText('One person in the control room').first()).toBeAttached();
     const second = await newUiContext(browser, { context: { viewport: VIEWPORT } });
     onCleanup(() => second.close());
     await RegiePage.open(second, { login: 'api', cookie: api.cookie });
-    await expect(page.getByText(/^(Two|2) people in the control room$/).first(), 'the presence text counts both operators').toBeAttached();
-    expect(await page.locator('.c-header__presence .u-sr-only').textContent(), 'the text for assistive technology').toBe('Two people in the control room');
+    await expect(page.getByText('2 people in the control room').first(), 'the presence text counts both operators').toBeAttached();
+    expect(await page.locator('.c-header__presence .u-sr-only').textContent(), 'the text for assistive technology').toBe('2 people in the control room');
     await second.close();
     await expect(page.getByText('One person in the control room').first(), 'and drops back to one').toBeAttached({ timeout: 15_000 });
   });
@@ -349,10 +348,12 @@ test.describe('Regie semantics', () => {
     await expect(page.getByRole('switch', { name: 'Studio Mode' })).toBeChecked();
     await expect(page.getByRole('group', { name: 'Transition type' }).getByRole('button')).toHaveCount(2);
     await expect(page.getByRole('group', { name: 'Fade duration' }).getByRole('button')).toHaveCount(2);
-    // scene buttons: aria-pressed, tally and health text in the name
-    const program = page.getByRole('button', { name: 'Welcome, live on Program' });
+    // scene buttons: aria-pressed; the name is the visible text of the row with the tally and the health word (WCAG 2.5.3)
+    const program = regie.scene('Welcome');
+    await expect(program).toHaveAccessibleName(/^Welcome Live\b/);
     await expect(program).toHaveAttribute('aria-pressed', 'false');
-    const preview = page.getByRole('button', { name: /^Presentation, in Preview, K3 disrupted$/ });
+    const preview = regie.scene('Presentation');
+    await expect(preview).toHaveAccessibleName(/^Presentation Preview K3 disrupted$/);
     await expect(preview, 'the Preview scene is pressed and carries the tally and the health word').toHaveAttribute('aria-pressed', 'true');
     // sources: role=list with listitems
     await expect(page.getByRole('list', { name: 'Items of the scene' }).getByRole('listitem')).toHaveCount(2);

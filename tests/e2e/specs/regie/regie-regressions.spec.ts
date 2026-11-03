@@ -198,7 +198,7 @@ test.describe('REGIE regressions', () => {
         (scene) => scene.items[0]!.w === 1920 && scene.items[0]!.h === 1080,
         'the element is full canvas',
       );
-      const row = sourcesDock(page).getByRole('button', { name: /^Select: M\d Logo/ });
+      const row = sourcesDock(page).getByRole('button', { name: /^M\d Logo/ });
       const overlay = overlayOf(page, 'program');
 
       const toSceneInspector = async (way: string) => {

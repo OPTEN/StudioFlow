@@ -370,7 +370,7 @@ test.describe('Keyboard-only Regie', () => {
     // select an element of the Preview scene with the keyboard: the “Select” button of its Sources row
     await page.keyboard.press('2');
     await expect.poll(() => previewSceneId(regie, production.id)).toBe(seeded.scenes[1]!.id);
-    const pick = page.getByRole('button', { name: /^Select: / }).first();
+    const pick = page.locator('sf-sources-dock .c-src__select').first();
     await pick.focus();
     await page.keyboard.press('Enter');
     const selected = page.locator('.c-edit-box.is-sel');
@@ -420,7 +420,7 @@ test.describe('Keyboard-only Regie', () => {
     await expect.poll(() => previewSceneId(regie, production.id)).toBe(seeded.scenes[1]!.id);
     const sceneId = seeded.scenes[1]!.id;
     const items = async () => (await api.getSnapshot(production.id)).body.scenes.find((scene) => scene.id === sceneId)!.items;
-    const row = page.getByRole('button', { name: /^Select: / }).first();
+    const row = page.locator('sf-sources-dock .c-src__select').first();
     await row.focus();
     await page.keyboard.press('Space');
     await expect(page.locator('.c-edit-box.is-sel')).toHaveCount(1);

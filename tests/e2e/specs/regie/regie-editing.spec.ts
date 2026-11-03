@@ -270,7 +270,7 @@ test.describe('REGIE editing: templates', () => {
         for (const slotIndex of [0, placed.length - 1]) {
           const code = placed[slotIndex]!.code;
           const row = sourcesDock(page).getByRole('button', {
-            name: new RegExp(`^Select: ${code} `),
+            name: new RegExp(`^${code} `),
           });
           await row.click();
           await expect(inspectorTitle(page)).toHaveAttribute('data-view', 'item');
@@ -1046,7 +1046,7 @@ test.describe('REGIE editing: undo, layers, hide, lock, remove, look', () => {
       // Redo once more, then a new edit clears the redo stack.
       await page.keyboard.press('Control+Shift+z');
       await expect.poll(items).toBe(states[3]);
-      await sourceRow(page, /^Select: K1 /).click();
+      await sourceRow(page, /^K1 /).click();
       await field(page, 'x').fill('123');
       await field(page, 'x').blur();
       await expect.poll(items).not.toBe(states[3]);
@@ -1147,7 +1147,7 @@ test.describe('REGIE editing: undo, layers, hide, lock, remove, look', () => {
       await expect
         .poll(async () => (await colorAtOverlap()).blue, { message: 'blue is in front first' })
         .toBeGreaterThan(0.9);
-      await selectViaRow(page, /^Select: M\d Green/);
+      await selectViaRow(page, /^M\d Green/);
       const front = inspector(page).getByRole('button', { name: 'Bring forward', exact: true });
       const back = inspector(page).getByRole('button', { name: 'Send backward', exact: true });
       await front.click();
@@ -1157,10 +1157,8 @@ test.describe('REGIE editing: undo, layers, hide, lock, remove, look', () => {
       await expect
         .poll(() =>
           sourcesDock(page)
-            .locator('.c-src__select')
-            .evaluateAll((rows) =>
-              rows.map((row) => row.getAttribute('aria-label')?.split(' ').pop()),
-            ),
+            .locator('.c-src__name')
+            .evaluateAll((names) => names.map((name) => name.textContent?.trim().split(' ').pop())),
         )
         .toEqual(['Green', 'Blue', 'Red']);
       await expect
@@ -1239,7 +1237,7 @@ test.describe('REGIE editing: undo, layers, hide, lock, remove, look', () => {
         ).toHaveCount(0);
         // The row is greyed and not selectable.
         const hiddenRow = sourcesDock(page).getByRole('button', {
-          name: 'Select: K1 Phone One',
+          name: /^K1 Phone One\b/,
         });
         await expect(hiddenRow).toHaveAttribute('aria-disabled', 'true');
         await hiddenRow.click({ force: true });
@@ -1320,7 +1318,7 @@ test.describe('REGIE editing: undo, layers, hide, lock, remove, look', () => {
         item('itm_removec', blue.id, { x: 500, y: 300, w: 600, h: 338 }),
       ]);
       await regie.waitForConvergence(production.id);
-      await selectViaRow(page, /^Select: M\d Green/);
+      await selectViaRow(page, /^M\d Green/);
       await inspector(page).getByRole('button', { name: 'Remove from scene' }).click();
       await expectToast(page, /M\d removed from “Scene A”/);
       await expectScene(
@@ -1357,7 +1355,7 @@ test.describe('REGIE editing: undo, layers, hide, lock, remove, look', () => {
       await regie.waitForConvergence(production.id);
       const output = await openOutput(production);
       await output.stage();
-      await selectViaRow(page, /^Select: M1 Red/);
+      await selectViaRow(page, /^M1 Red/);
       const itemApi = async () => (await getScene(api, production, sceneA)).items[0]!;
       const outputItem = async () =>
         (await renderedItems(output.page, '#output')).find((entry) => entry.id === 'itm_look1');

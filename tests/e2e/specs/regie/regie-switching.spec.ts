@@ -101,7 +101,7 @@ test.describe('REGIE switching', () => {
       await expect(regie.statusLine()).toContainText('Scene “Scene B” is live');
       const row = regie.scene('Scene B');
       await expect(row).toHaveAttribute('aria-pressed', 'true');
-      await expect(row).toHaveAccessibleName(/, live on Program$/);
+      await expect(row).toHaveAccessibleName(/^Scene B Live\b/);
       await expect(page.locator('sf-scene-row.is-program .c-tag--pgm')).toHaveText('Live');
       await expect(regie.scene('Scene A')).toHaveAttribute('aria-pressed', 'false');
       expect(await programId(api, production)).toBe(b);
@@ -434,7 +434,7 @@ test.describe('REGIE switching', () => {
       // The preview defaults to the scene after the program.
       await expect.poll(() => previewId(api, production)).toBe(b);
       await expect(regie.scene('Scene B')).toHaveAttribute('aria-pressed', 'true');
-      await expect(regie.scene('Scene B')).toHaveAccessibleName(/, in Preview$/);
+      await expect(regie.scene('Scene B')).toHaveAccessibleName(/^Scene B Preview\b/);
       await expect(page.locator('sf-scene-row.is-preview .c-tag--pvw')).toHaveText('Preview');
       expect(await page.evaluate(() => localStorage.getItem('studioflow.studio'))).toBe('1');
 

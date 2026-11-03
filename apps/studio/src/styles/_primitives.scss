@@ -298,7 +298,9 @@
 
 .c-tag--pvw {
   background: var(--green-wash);
-  color: var(--green);
+  // A step deeper than the state hue (like blue-ink): in the light theme the tag sits on the wash of a pressed row and
+  // the plain green would be 4.46:1 there; green-ink keeps it AA (issue #92).
+  color: var(--green-ink);
 }
 
 // "CPU at limit": a computer lowers the picture (orange = attention, not a failure)

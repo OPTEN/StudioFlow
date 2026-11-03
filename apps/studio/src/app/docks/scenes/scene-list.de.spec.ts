@@ -7,7 +7,7 @@ const K1 = 'dev_aaaaaaaaaaaaaaaa/camera';
 describe('scene list helpers in German', () => {
   beforeEach(() => resetLocaleForTests('de-CH'));
 
-  it('words the row labels like the German UI', () => {
+  it('words the row texts like the German UI', () => {
     const scene = sceneFixture('scn_b', 'Lea präsentiert', 2, [itemFixture('itm_1', K1)]);
     const base = {
       programSceneId: 'scn_b',
@@ -16,9 +16,6 @@ describe('scene list helpers in German', () => {
       health: { code: 'K2', bad: false },
       codeOf: () => 'K1',
     };
-    expect(sceneRowView(scene, 0, base).ariaLabel).toBe(
-      'Lea präsentiert, live im Program, in der Preview, K2 gestört',
-    );
     expect(
       sceneRowView(sceneFixture('scn_x', 'Pause', 1), 1, { ...base, health: null }).codes,
     ).toBe('Keine Quellen');

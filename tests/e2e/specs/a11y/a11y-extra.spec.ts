@@ -41,7 +41,7 @@ test.describe('Forced colours and zoom', () => {
     await saveScreen(page, 'regie-1440x900-forced-colors');
     // the outage is named in words in the activity bar, on the scene row and on the station row (not only by a lamp colour)
     await expect(page.getByRole('region', { name: 'Activity' })).toContainText('reconnecting');
-    await expect(page.getByRole('button', { name: /^Presentation, in Preview, K3 disrupted$/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Presentation Preview K3 disrupted$/ })).toBeVisible();
     // the Devices dock keeps its order (by code): the device with the outage is the one with the amber wash
     await expect(page.locator('.c-st.is-warn .c-st__row').first()).toHaveAccessibleName(/reconnecting/);
     await expect(page.locator('.c-st.is-warn .c-st__l2').first()).toContainText('reconnecting');

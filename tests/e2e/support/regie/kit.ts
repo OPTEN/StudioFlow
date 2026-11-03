@@ -3,6 +3,7 @@ import type { AdminApi, AssetDto, SceneDto, SceneItemDto } from '../api';
 import { makePng } from '../media-samples';
 import type { Production } from '../production';
 import { PixelImage, type Rect } from '../ui/pixels';
+import { escapeRegExp } from '../ui/regie';
 
 /**
  * Local helpers of the Regie specs (specs/regie): seeding scenes and sources through the API, reading the monitor DOM
@@ -540,11 +541,21 @@ export async function chooseLanguage(page: Page, tag: 'en' | 'de-CH' | 'auto'): 
   await backToControlRoom(page);
 }
 
-/** A row of the Sources dock by the accessible name of its select button, e.g. `K1 Phone One`. */
+/**
+ * A row of the Sources dock by the accessible name of its select button, e.g. `K1 Phone One`: the name is the visible
+ * text of the row (code, name, then a state like “reconnecting 00:03”; WCAG 2.5.3), so a string matches its start.
+ */
 export const sourceRow = (page: Page, codeAndName: string | RegExp): Locator =>
-  sourcesDock(page).getByRole('button', {
-    name: typeof codeAndName === 'string' ? `Select: ${codeAndName}` : codeAndName,
-  });
+  sourcesDock(page)
+    .locator('.c-src__select')
+    .and(
+      sourcesDock(page).getByRole('button', {
+        name:
+          typeof codeAndName === 'string'
+            ? new RegExp(`^${escapeRegExp(codeAndName)}(\\s|$)`)
+            : codeAndName,
+      }),
+    );
 
 /** A number field of the element inspector: `x`, `y`, `w`, `h`. */
 export const field = (page: Page, key: 'x' | 'y' | 'w' | 'h'): Locator =>

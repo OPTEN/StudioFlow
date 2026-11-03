@@ -105,7 +105,7 @@ test.describe('CSP and external hosts', () => {
     await regie.openPairing('link');
     await regie.closePairing();
     await page.locator('.c-st__row').first().click();
-    await page.getByRole('button', { name: /Select: / }).first().click();
+    await page.locator('sf-sources-dock .c-src__select').first().click();
     await page.getByRole('button', { name: 'Start broadcast' }).click();
     await page.getByRole('dialog', { name: 'Start the broadcast?' }).getByRole('button', { name: 'Start broadcast' }).click();
     await expect(page.getByRole('button', { name: 'End broadcast' }).first()).toBeVisible();
