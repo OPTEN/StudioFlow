@@ -162,14 +162,14 @@ em {
   width: 1920px;
   height: 1080px;
 }
-/* The pairing QR tile of the capture: 168 px white, rounded, at x 450, y 824. */
+/* The pairing QR tile of the capture: 200 px white, rounded, at x 450, y 758 (the code starts 18 px inside). */
 .qr {
   position: absolute;
   left: 450px;
-  top: 824px;
-  width: 168px;
-  height: 168px;
-  padding: 14px;
+  top: 758px;
+  width: 200px;
+  height: 200px;
+  padding: 18px;
   border-radius: 4px;
   background: #ffffff;
   display: none;

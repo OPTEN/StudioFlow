@@ -22,7 +22,7 @@ StudioFlow is a web-based Regie (control room) modelled on OBS and made for webi
 - The output is a 16:9 web page. A streaming proxy embeds it as an iframe and distributes the picture to the audience.
 - Everything runs in one Docker Compose stack on your own server. There are no cloud services.
 
-![The Regie in Studio Mode: preview, program, scenes, sources, stations and audio docks](docs/assets/screenshot-regie.png)
+![The Regie in Studio Mode: preview, program, the control column and the scenes, sources, properties, devices and audio docks](docs/assets/screenshot-regie.png)
 
 <p align="center">
   <img alt="The sender page on a phone, with the red tally frame while the camera is on air" src="docs/assets/screenshot-sender.png" height="420">

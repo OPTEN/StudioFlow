@@ -21,13 +21,13 @@ and the Pages workflow publishes them with the site. The square format and the p
 | 10.0-15.0 | take | Studio Mode, zoom to Take, pressed at 12.5, fade to program (`regie-take`) | Preview. Take. On air. |
 | 15.0-18.0 | layout | "Side by side" applied at 16.0 (`regie-layout`) | Layouts in one click. |
 | 18.0-20.5 | output | the output page fading to the next scene at 18.5 (`output`) | The program is a web page. |
-| 20.5-23.0 | obs | the output popover's "Use as camera" steps (`output-obs`) | OBS picks it up. |
+| 20.5-23.0 | obs | the "Use in OBS" steps of an output link in the settings (`output-obs`) | OBS picks it up. |
 | 23.0-25.0 | facts | type, one line per beat | Self-hosted. One docker compose. On your network. Open source, MIT. |
 | 25.0-28.0 | end card | logo, claim, link, licence, Sponsored by OPTEN | Go live from any phone. opten.github.io/StudioFlow |
 
 What is covered or left out on purpose: the pairing QR of the recording holds a test pairing token, so the composition
 lays a QR for https://opten.github.io/StudioFlow/ over it (same tile, same place; `coverQr` in `scenes.mjs`). The
-output popover is framed on its "Use as camera" steps only, so the test stack's addresses (172.31.x, localhost:8495)
+"Use in OBS" tab of the output link is framed on its steps only, so the test stack's addresses (172.31.x, localhost:8495)
 and its headless-browser frame statistics never show.
 
 ## Build
