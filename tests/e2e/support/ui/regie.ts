@@ -268,11 +268,15 @@ export class RegiePage {
 
   // --- scenes and switching ----------------------------------------------------------------------------------------
 
-  /** A scene button (“Presentation”, aria-pressed; the accessible name may add “, live on Program” etc.). */
+  /**
+   * A scene button (“Presentation”, aria-pressed), found by its name text: the accessible name is the visible text of the
+   * row (“Presentation Live K1”, WCAG 2.5.3), so a name prefix would also match “Presentation 2”.
+   */
   scene(name: string): Locator {
     return this.page
-      .getByRole('button', { name: new RegExp(`^${escapeRegExp(name)}(,|$)`) })
-      .and(this.page.locator('[aria-pressed]'));
+      .getByRole('button')
+      .and(this.page.locator('[aria-pressed]'))
+      .filter({ has: this.page.locator('.c-scene__name').getByText(name, { exact: true }) });
   }
 
   async clickScene(name: string): Promise<void> {

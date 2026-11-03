@@ -55,7 +55,7 @@
       "fix": "display: none for .c-stage__split in the stacked mixin, or tabindex -1 and aria-hidden while splitterDisabled()."
     },
     "A11Y-06": {
-      "status": "open",
+      "status": "fixed",
       "severity": "low",
       "area": "A11Y",
       "title": "Accessible names of scene rows, source rows, station rows and incident targets do not contain their visible text (WCAG 2.5.3 Label in Name, axe label-content-name-mismatch, serious)",
@@ -64,7 +64,8 @@
       "expected": "The accessible name contains the visible label text, so voice control (“Click Phone Entrance”) finds the control.",
       "actual": "Incident target: visible “K3 Phone Entrance”, aria-label “Show K3 in Stations”. Scene row: visible “Break empty” with keycap, aria-label “Break”. Station row: visible “K3 Phone Entrance PVW reconnecting 00:03 freeze frame”, aria-label “K3 Phone Entrance, in Preview, reconnecting”. Source row: visible “K3 Phone Entrance reconnecting 00:03”, aria-label “Select: K3 Phone Entrance”. The key part of the label is in the name for the rows, but not for the incident target (the device name is missing).",
       "evidence": "tests/e2e/.output/sf-e2e-4/a11y/axe/regie-label-in-name.json (nodes and html)",
-      "fix": "Incident target: aria-label “Show K3 Phone Entrance in Stations” (contains the visible text); rows: keep the visible text first in the name, then add the state."
+      "fix": "Incident target: aria-label “Show K3 Phone Entrance in Stations” (contains the visible text); rows: keep the visible text first in the name, then add the state.",
+      "resolution": "2026-11-03 (issue #92): fixed on 2026-10-29, then the UI redesign (#95) brought the aria-labels of scene rows (\"Welcome, live on Program\") and source rows (\"Select: K1 Phone One\") back. Again the rows have no aria-label: their visible text is their accessible name (\"Welcome Live K1\", \"K3 Phone Entrance reconnecting 00:03\"), the state stays in aria-pressed; the incident target is a button whose content \"K3 Phone Entrance\" is its name, the action is in its title. E2E selectors find rows by their name text. The E2E-DEV-15 [axe, label in name] scan is a regression guard now."
     },
     "A11Y-07": {
       "status": "fixed",
@@ -145,7 +146,7 @@
       "resolution": "2026-10-29: the dock SplitterBehavior of the workspace converts pixels with the content size of the docks (without padding and border) instead of the border-box size, so edge seams move exactly 16 px (Shift 64 px)."
     },
     "A11Y-08": {
-      "status": "open",
+      "status": "fixed",
       "severity": "info",
       "area": "A11Y",
       "title": "Presence text: “2 people in the control room” (numeral) where docs/testing.md DEV-15 pins “Two people in the control room”; one person is spelled out (“One person”)",
@@ -154,7 +155,8 @@
       "expected": "“Two people in the control room” (docs/testing.md DEV-15).",
       "actual": "“2 people in the control room” (header.component.ts presenceText); the visible label and the screen-reader text both use the numeral for >= 2.",
       "evidence": "tests/e2e/specs/a11y/a11y-axe.spec.ts (assertion), apps/studio/src/app/shell/header/header.component.ts",
-      "fix": "Either spell out small numbers in presenceText or change the plan to the numeral (documentation difference)."
+      "fix": "Either spell out small numbers in presenceText or change the plan to the numeral (documentation difference).",
+      "resolution": "2026-11-03 (issue #92): a plan difference, settled for the numeral. Since the UI redesign (#95) the plan (docs/testing.md E2E-AUTH-25 and E2E-DEV-15) pins “2 people in the control room” as the product says it, for the visible label and the text for assistive technology alike (one operator: “One person in the control room”); the E2E-DEV-15 [presence] test asserts that."
     }
   }
 }
