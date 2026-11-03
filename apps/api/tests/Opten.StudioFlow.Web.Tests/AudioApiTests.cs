@@ -179,11 +179,13 @@ public sealed class AudioMixerApiTests(StudioFlowApp app) : IClassFixture<Studio
         outputEvents.Clear();
 
         await SetAsync(admin, false, new AudioChannelDto(mic, -6, false, AudioMode.Always, 0)).ExpectAsync(HttpStatusCode.OK);
-        var fromStudio = await studioEvents.NextAsync(e => e is AudioChannelsChangedEvent);
-        var fromOutput = await outputEvents.NextAsync(e => e is AudioChannelsChangedEvent);
+        // Match the events by their content: a mixer event of the station's own setup can still be on its way to one of
+        // the hubs after Clear(), and the first event of the type would then be that one (CI, PR #107).
+        var fromStudio = await studioEvents.NextAsync(e => e is AudioChannelsChangedEvent changed && changed.Channels.Any(channel => channel.GainDb == -6));
+        var fromOutput = await outputEvents.NextAsync(e => e is AudioChannelsChangedEvent && e.Revision == fromStudio.Revision);
         await SetAsync(admin, false, new AudioChannelDto(mic, -6, false, AudioMode.Always, 0)).ExpectAsync(HttpStatusCode.OK);
         await SetAsync(admin, false, new AudioChannelDto(mic, -9, true, AudioMode.Always, 0)).ExpectAsync(HttpStatusCode.OK);
-        var next = await studioEvents.NextAsync(e => e is AudioChannelsChangedEvent);
+        var next = await studioEvents.NextAsync(e => e is AudioChannelsChangedEvent changed && changed.Channels.Any(channel => channel.GainDb == -9));
 
         Assert.Equal(-6, ((AudioChannelsChangedEvent)fromStudio).Channels.Single().GainDb);
         Assert.Equal(fromStudio.Revision, fromOutput.Revision);
