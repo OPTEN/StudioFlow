@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/OPTEN/StudioFlow/compare/v0.2.1...v0.2.2) (2026-11-05)
+
+
+### Bug Fixes
+
+* **release:** sign kept images that have no signature and verify all before tagging ([#118](https://github.com/OPTEN/StudioFlow/issues/118)) ([2367bd8](https://github.com/OPTEN/StudioFlow/commit/2367bd81ee1a3e4746f3bb3987d0b39fe2e151ec))
+
 ## [0.2.1](https://github.com/OPTEN/StudioFlow/compare/v0.2.0...v0.2.1) (2026-11-03)
 
 
