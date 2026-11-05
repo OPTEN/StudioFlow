@@ -23,8 +23,10 @@
 # a second time. The cost is that this file only takes effect on the default branch, and that it must use head_sha
 # instead of GITHUB_SHA (which is the tip of main, not the tested commit).
 #
-# Every step can be repeated: a sha tag is never rebuilt, re-tagging copies the same manifest, uploads use --clobber.
-# After a failure use "Re-run failed jobs" (or "Re-run all jobs": the work already done is skipped).
+# Every step can be repeated: a sha tag is never rebuilt (but signed if it is not), re-tagging copies the same manifest,
+# uploads use --clobber. After a failure use "Re-run failed jobs" (or "Re-run all jobs": the work already done is skipped).
+# A re-run uses this file as it was at the original run; to get a fix of this file, re-run the CI run of the commit
+# instead: its completion starts a new Release run with the file of main.
 # Every action is pinned by commit SHA; the comment names the release.
 
 name: Release
@@ -196,13 +198,30 @@ jobs:
           provenance: mode=max
           # CI writes these caches (same Dockerfiles), so the layers are almost always found; only read here.
           cache-from: type=gha,scope=${{ matrix.cache }}
-      - if: steps.exists.outputs.built != 'true'
-        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+      # Also for a kept image: "the tag exists" does not mean "the image is signed". A run that pushed the image and then
+      # failed to sign it (v0.2.1: Rekor answered 409 and no signature reached the registry) would otherwise leave it
+      # unsigned for every re-run, and the release job refuses to promote it.
       - name: Sign the image (keyless)
-        if: steps.exists.outputs.built != 'true'
         env:
-          DIGEST: ${{ steps.build.outputs.digest }}
-        run: cosign sign --yes "$REPOSITORY@$DIGEST"
+          BUILT_DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          digest="${BUILT_DIGEST:-$(docker buildx imagetools inspect "$REPOSITORY:$TAG" --format '{{json .Manifest}}' | jq -r .digest)}"
+          verify() {
+            cosign verify "$REPOSITORY@$digest" \
+              --certificate-identity "https://github.com/${GITHUB_WORKFLOW_REF}" \
+              --certificate-oidc-issuer https://token.actions.githubusercontent.com > /dev/null 2>&1
+          }
+          if verify; then echo "$REPOSITORY@$digest is signed by this workflow already."; exit 0; fi
+          # A signing call can fail after the transparency log accepted the entry (409 on the retry); every new call
+          # uses a fresh keyless certificate, so trying again is safe. The verification decides.
+          for attempt in 1 2 3; do
+            cosign sign --yes "$REPOSITORY@$digest" && verify && { echo "Signed $REPOSITORY@$digest."; exit 0; }
+            echo "::warning::Signing attempt $attempt of $REPOSITORY@$digest did not produce a verifiable signature."
+            sleep $((attempt * 10))
+          done
+          echo "::error::$REPOSITORY@$digest could not be signed."
+          exit 1
 
   # The E2E smoke set against the images that were just pushed, not against images built in the job: what is tested
   # here is what a server pulls.
@@ -452,6 +471,15 @@ jobs:
           fi
           echo "Tags: ${tags[*]}"
           digest() { docker buildx imagetools inspect "$1" --format '{{json .Manifest}}' | jq -r .digest; }
+          # Never promote an image that is not signed by this workflow, and check all four before the first tag moves:
+          # a failure in the middle of the loop below would leave :latest pointing at a mix of two releases (v0.2.1).
+          for image in api web livekit backup; do
+            source="$REGISTRY/studioflow-$image"
+            cosign verify "$source@$(digest "$source:$TAG")" \
+              --certificate-identity "https://github.com/${GITHUB_WORKFLOW_REF}" \
+              --certificate-oidc-issuer https://token.actions.githubusercontent.com > /dev/null ||
+              { echo "::error::$source:$TAG is not signed by this workflow; no tag was moved."; exit 1; }
+          done
           for image in api web livekit backup; do
             source="$REGISTRY/studioflow-$image"
             args=()
@@ -460,10 +488,6 @@ jobs:
             for tag in "${tags[@]}"; do
               [ "$(digest "$source:$tag")" = "$(digest "$source:$TAG")" ] || { echo "::error::$source:$tag is not the image of $TAG."; exit 1; }
             done
-            # Never promote an image that is not signed by this workflow.
-            cosign verify "$source:$VERSION" \
-              --certificate-identity "https://github.com/${GITHUB_WORKFLOW_REF}" \
-              --certificate-oidc-issuer https://token.actions.githubusercontent.com > /dev/null
             echo "$source: ${tags[*]} -> $(digest "$source:$VERSION")"
           done
       - name: Build the release files
