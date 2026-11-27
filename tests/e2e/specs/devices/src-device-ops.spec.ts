@@ -524,21 +524,24 @@ test.describe('SRC device operations', () => {
       await expect.poll(async () => (await wakeLockState(page))!.requests, { message: 'requested again after becoming visible' }).toBeGreaterThan(before);
       expect((await wakeLockState(page))!.active).toBe(1);
 
-      // 1080p: stored, published (station “Resolution”), kept over a reload which starts the camera by itself.
-      await k1.phone.setResolution(1080);
+      // A phone starts at 1080p (“High”). 720p: stored, published (station “Resolution”), kept over a reload which
+      // starts the camera by itself; then back to 1080p.
       const row = await openStation(regie, k1.device.id);
+      expect(await k1.phone.resolution(), 'a phone starts with quality “High” (1080p)').toBe(1080);
       await expect(row.locator('.c-st__kv'), 'published resolution 1080p').toContainText(/Resolution\s*1080p/, { timeout: 30_000 });
+      await k1.phone.setResolution(720);
+      await expect(row.locator('.c-st__kv'), 'published resolution 720p').toContainText(/Resolution\s*720p/, { timeout: 30_000 });
       const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('studioflow.sender.settings') ?? '{}'));
-      expect(stored.resolution).toBe(1080);
+      expect(stored.resolution).toBe(720);
       expect(stored.cameraOn).toBe(true);
       await page.reload();
       await k1.phone.waitConnected();
       await k1.phone.waitForCamera('live', 45_000);
       expect(page.url(), 'a reload resumes into the station').toContain('/join/station');
-      expect(await k1.phone.resolution(), 'quality “High” (1080p) after the reload').toBe(1080);
-      await expect(row.locator('.c-st__kv')).toContainText(/Resolution\s*1080p/, { timeout: 30_000 });
-      await k1.phone.setResolution(720);
-      await expect(row.locator('.c-st__kv'), 'published resolution 720p').toContainText(/Resolution\s*720p/, { timeout: 30_000 });
+      expect(await k1.phone.resolution(), 'quality “Standard” (720p) after the reload').toBe(720);
+      await expect(row.locator('.c-st__kv')).toContainText(/Resolution\s*720p/, { timeout: 30_000 });
+      await k1.phone.setResolution(1080);
+      await expect(row.locator('.c-st__kv'), 'published resolution 1080p').toContainText(/Resolution\s*1080p/, { timeout: 30_000 });
 
       // Screen off (formerly dark mode): black screen with a thin tally frame in the tally colour (K1 is in the program scene).
       await k1.phone.waitForTally('program');

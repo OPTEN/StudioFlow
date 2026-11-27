@@ -48,7 +48,8 @@ test.describe('SRC outage, phone', () => {
       await expect(details).toContainText('Device');
       await expect(details, 'platform text of the Pixel 7 profile (Chrome reduces the user agent: no model)').toContainText(/(Android|Pixel 7) · Chrome/);
       await expect(details).toContainText('Resolution');
-      await expect(details, 'published resolution').toContainText(/720p/, { timeout: 15_000 });
+      // Phones start at 1080p. A weak runner may show a lower simulcast layer for a moment while the encoder ramps up.
+      await expect(details, 'published resolution').toContainText(/1080p/, { timeout: 15_000 });
       await expect(details).toContainText(/Paired\s*today \d\d:\d\d/);
       await expect(details).toContainText(/Packet loss\s*\d+\.\d%/, { timeout: 15_000 });
       const hasBattery = await k1.phone.page.evaluate(() => typeof (navigator as unknown as { getBattery?: unknown }).getBattery === 'function');
