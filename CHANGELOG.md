@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/OPTEN/StudioFlow/compare/v0.3.0...v0.4.0) (2026-11-27)
+
+
+### Features
+
+* media route via public relay, sharper phone cameras and upright pictures ([#122](https://github.com/OPTEN/StudioFlow/issues/122)) ([6b9b4d6](https://github.com/OPTEN/StudioFlow/commit/6b9b4d6830665d893b90f1e86d584fd82a878807))
+
 ## [0.3.0](https://github.com/OPTEN/StudioFlow/compare/v0.2.2...v0.3.0) (2026-11-27)
 
 
