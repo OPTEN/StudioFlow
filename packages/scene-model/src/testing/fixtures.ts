@@ -123,6 +123,7 @@ export function deviceSourceFixture(
     status,
     statusSince: null,
     text: null,
+    rotation: 0,
     ...overrides,
   };
 }
@@ -144,6 +145,7 @@ export function assetSourceFixture(
     status: 'ok',
     statusSince: null,
     text: null,
+    rotation: 0,
   };
 }
 

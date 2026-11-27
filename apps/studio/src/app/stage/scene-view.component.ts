@@ -226,6 +226,7 @@ export class SceneViewComponent {
       codeOf: (sourceId) => this.store.codeOf(sourceId),
       assetKindOf: (assetId) => this.assetKind(assetId),
       textOf: (sourceId) => this.store.textOf(sourceId),
+      rotationOf: (sourceId) => this.store.rotationOf(sourceId),
       textTheme: () => this.store.textTheme(),
       reducedMotion,
       label: this.ariaLabel(),

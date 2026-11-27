@@ -141,6 +141,11 @@ export class SourcesDockComponent {
     inject(DestroyRef).onDestroy(() => unregister?.());
   }
 
+  /** Rotation of the thumbnail picture (a phone camera turned upright). */
+  protected rotationOf(sourceId: string): number | undefined {
+    return this.store.rotationOf(sourceId);
+  }
+
   protected toneClass(tone: StateTone): string {
     return toneClass(tone);
   }

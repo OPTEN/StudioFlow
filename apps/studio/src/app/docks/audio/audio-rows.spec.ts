@@ -62,6 +62,7 @@ function state(broadcast: 'live' | 'standby' = 'live') {
           status: 'ok',
           statusSince: null,
           text: null,
+          rotation: 0,
         },
         {
           id: SILENT_CLIP,
@@ -74,6 +75,7 @@ function state(broadcast: 'live' | 'standby' = 'live') {
           status: 'ok',
           statusSince: null,
           text: null,
+          rotation: 0,
         },
       ],
       audioChannels: [

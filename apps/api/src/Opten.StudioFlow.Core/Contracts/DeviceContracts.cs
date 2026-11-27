@@ -13,6 +13,10 @@ namespace Opten.StudioFlow.Core.Contracts;
 /// <param name="ConnectionSince">Time of the last connection change.</param>
 /// <param name="TechCheck">Last technical check result.</param>
 /// <param name="Telemetry">Last telemetry (also streamed separately).</param>
+/// <param name="CameraRotation">
+/// Rotation of the camera picture set in the Regie (0, 90, 180 or 270, clockwise); null for automatic (what the phone
+/// reports in <see cref="CameraSettingsDto.Rotation"/>).
+/// </param>
 public sealed record DeviceDto(
     string Id,
     string Name,
@@ -25,7 +29,8 @@ public sealed record DeviceDto(
     DeviceConnection Connection,
     DateTimeOffset? ConnectionSince,
     TechCheckDto? TechCheck,
-    DeviceTelemetryDto? Telemetry);
+    DeviceTelemetryDto? Telemetry,
+    int? CameraRotation = null);
 
 /// <summary>Telemetry of a device, reported about every two seconds.</summary>
 /// <param name="At">Server receive time.</param>
@@ -87,6 +92,10 @@ public sealed record DeviceTelemetryMessage(string DeviceId, DeviceTelemetryDto 
 
 /// <summary>Renames a device.</summary>
 public sealed record RenameDeviceRequest(string Name);
+
+/// <summary>Sets how the camera picture of a device is turned upright.</summary>
+/// <param name="Rotation">0, 90, 180 or 270 (clockwise) to fix it; null for automatic (what the phone reports).</param>
+public sealed record SetCameraRotationRequest(int? Rotation);
 
 /// <summary>Sends a remote command to a device.</summary>
 /// <param name="Kind">Command kind.</param>

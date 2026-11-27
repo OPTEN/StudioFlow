@@ -15,8 +15,8 @@ public sealed class CameraControlRulesTests
         new CameraRangeDto(-2, 2, 0.5),
         Torch: true);
 
-    private static CameraControlDto Command(double? zoom = null, double? exposure = null, double? distance = null, string? lens = null, CameraFocusMode? focus = null, bool? torch = null, bool? reset = null, int v = 1) =>
-        new(v, lens, zoom, focus, distance, exposure, torch, reset);
+    private static CameraControlDto Command(double? zoom = null, double? exposure = null, double? distance = null, string? lens = null, CameraFocusMode? focus = null, bool? torch = null, bool? reset = null, int v = 1, int? resolution = null) =>
+        new(v, lens, zoom, focus, distance, exposure, torch, reset, resolution);
 
     private static CameraStateDto State(CameraCapabilitiesDto? capabilities = null, string? problem = null, int v = 1) =>
         new(v, capabilities ?? Android, new CameraSettingsDto("back-main", 1, CameraFocusMode.Auto, null, 0, false), problem);
@@ -193,6 +193,69 @@ public sealed class CameraControlRulesTests
         var command = CameraControlRules.Prepare(Command(reset: true), bare);
 
         Assert.True(command.Reset);
+    }
+
+    [Theory]
+    [InlineData(720)]
+    [InlineData(1080)]
+    public void Prepare_ResolutionAlone_IsValidEvenForACameraWithoutControls(int resolution)
+    {
+        var bare = new CameraCapabilitiesDto([], null, [], null, null, Torch: false);
+
+        var command = CameraControlRules.Prepare(Command(resolution: resolution), bare);
+
+        Assert.Equal(resolution, command.Resolution);
+    }
+
+    [Theory]
+    [InlineData(480)]
+    [InlineData(2160)]
+    [InlineData(0)]
+    public void Prepare_OtherResolution_IsRefused(int resolution) =>
+        AssertInvalid(() => CameraControlRules.Prepare(Command(resolution: resolution), Android), "camera.resolution");
+
+    [Fact]
+    public void Sanitize_Resolution_KeepsOnlyTheKnownHeights()
+    {
+        var kept = CameraControlRules.Sanitize(State() with { Settings = new CameraSettingsDto("back-main", 1, CameraFocusMode.Auto, null, 0, false, 1080) })!;
+        var dropped = CameraControlRules.Sanitize(State() with { Settings = new CameraSettingsDto("back-main", 1, CameraFocusMode.Auto, null, 0, false, 999) })!;
+
+        Assert.Equal(1080, kept.Settings.Resolution);
+        Assert.Null(dropped.Settings.Resolution);
+    }
+
+    [Theory]
+    [InlineData(0, 0)]
+    [InlineData(90, 90)]
+    [InlineData(180, 180)]
+    [InlineData(270, 270)]
+    [InlineData(45, null)]
+    [InlineData(-90, null)]
+    [InlineData(360, null)]
+    [InlineData(null, null)]
+    public void Sanitize_Rotation_KeepsOnlyQuarterTurns(int? reported, int? expected)
+    {
+        var state = CameraControlRules.Sanitize(State() with { Settings = new CameraSettingsDto("back-main", 1, CameraFocusMode.Auto, null, 0, false, 1080, reported) })!;
+
+        Assert.Equal(expected, state.Settings.Rotation);
+        Assert.Equal(1080, state.Settings.Resolution);
+    }
+
+    [Fact]
+    public void SameState_SeesARotationChange()
+    {
+        var upright = CameraControlRules.Sanitize(State() with { Settings = new CameraSettingsDto("back-main", 1, CameraFocusMode.Auto, null, 0, false, 1080, 0) });
+        var sideways = CameraControlRules.Sanitize(State() with { Settings = new CameraSettingsDto("back-main", 1, CameraFocusMode.Auto, null, 0, false, 1080, 90) });
+
+        Assert.False(CameraControlRules.SameState(upright, sideways));
+    }
+
+    [Fact]
+    public void Merge_Resolution_NewerWinsAndAResetKeepsIt()
+    {
+        Assert.Equal(1080, CameraControlRules.Merge(Command(resolution: 720), Command(resolution: 1080)).Resolution);
+        Assert.Equal(720, CameraControlRules.Merge(Command(resolution: 720), Command(zoom: 2)).Resolution);
+        Assert.Equal(720, CameraControlRules.Merge(Command(resolution: 720), Command(reset: true)).Resolution);
     }
 
     [Fact]

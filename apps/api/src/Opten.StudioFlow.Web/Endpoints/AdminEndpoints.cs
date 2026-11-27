@@ -286,6 +286,9 @@ internal static class DeviceAdminEndpoints
     public static async Task<IResult> RenameAsync(string productionId, string deviceId, [FromBody] RenameDeviceRequest body, DeviceAdminService devices, CancellationToken cancellationToken) =>
         TypedResults.Ok(await devices.RenameAsync(productionId, deviceId, body, cancellationToken));
 
+    public static async Task<IResult> SetCameraRotationAsync(string productionId, string deviceId, [FromBody] SetCameraRotationRequest body, DeviceAdminService devices, CancellationToken cancellationToken) =>
+        TypedResults.Ok(await devices.SetCameraRotationAsync(productionId, deviceId, body, cancellationToken));
+
     public static async Task<IResult> BlockAsync(string productionId, string deviceId, DeviceAdminService devices, CancellationToken cancellationToken) =>
         TypedResults.Ok(await devices.BlockAsync(productionId, deviceId, cancellationToken));
 

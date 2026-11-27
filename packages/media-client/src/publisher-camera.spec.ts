@@ -167,6 +167,7 @@ describe('Publisher camera control', () => {
         focusDistance: 0.8,
         exposureCompensation: 0,
         torch: false,
+        resolution: 720,
       },
       problem: null,
     });

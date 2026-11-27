@@ -142,7 +142,11 @@ export function mergeCameraControl(
   newer: CameraControlDto,
 ): CameraControlDto {
   if (newer.reset === true) {
-    return { ...newer, lensId: newer.lensId ?? older.lensId };
+    return {
+      ...newer,
+      lensId: newer.lensId ?? older.lensId,
+      resolution: newer.resolution ?? older.resolution,
+    };
   }
   return {
     v: CAMERA_PROTOCOL_VERSION,
@@ -153,7 +157,21 @@ export function mergeCameraControl(
     exposureCompensation: newer.exposureCompensation ?? older.exposureCompensation,
     torch: newer.torch ?? older.torch,
     reset: older.reset,
+    resolution: newer.resolution ?? older.resolution,
   };
+}
+
+/** True when a command changes the lens or the image (zoom, focus, brightness, light, reset); the resolution aside. */
+export function hasCameraChange(command: Omit<CameraControlDto, 'resolution'>): boolean {
+  return (
+    command.reset === true ||
+    command.lensId != null ||
+    command.zoom != null ||
+    command.focusMode != null ||
+    command.focusDistance != null ||
+    command.exposureCompensation != null ||
+    command.torch != null
+  );
 }
 
 /** The image settings after a command: a reset starts from nothing, set fields override. */
@@ -298,7 +316,8 @@ export function isCameraControl(value: unknown): value is CameraControlDto {
     optionalNumber(command.exposureCompensation) &&
     (command.focusMode == null || command.focusMode === 'auto' || command.focusMode === 'manual') &&
     optionalBoolean(command.torch) &&
-    optionalBoolean(command.reset)
+    optionalBoolean(command.reset) &&
+    (command.resolution == null || command.resolution === 720 || command.resolution === 1080)
   );
 }
 

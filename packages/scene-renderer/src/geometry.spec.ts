@@ -1,6 +1,7 @@
 import { isHexColor } from '@studioflow/scene-model';
 import {
   clampNumber,
+  composeRotation,
   cropBox,
   desiredPixelSize,
   heldBlurPx,
@@ -53,6 +54,37 @@ describe('mediaBox', () => {
     // Rotated around its centre the box covers exactly the 800 × 450 crop box.
     expect(box.left + box.width / 2).toBe(400);
     expect(box.top + box.height / 2).toBe(225);
+  });
+});
+
+describe('composeRotation', () => {
+  it.each([
+    [0, 0, 0],
+    [90, 0, 90],
+    [0, 90, 90],
+    [90, 90, 180],
+    [180, 270, 90],
+    [270, 90, 0],
+    [270, 270, 180],
+    [-90, 90, 0],
+    [Number.NaN, 90, 90],
+  ])('item %s° and source %s° turn the picture by %s°', (item, source, expected) => {
+    expect(composeRotation(item, source)).toBe(expected);
+  });
+
+  it('swaps the media box only when the composed turn is a quarter turn', () => {
+    expect(mediaBox(800, 450, composeRotation(90, 90))).toEqual({
+      left: 0,
+      top: 0,
+      width: 800,
+      height: 450,
+    });
+    expect(mediaBox(800, 450, composeRotation(0, 270))).toEqual({
+      left: 175,
+      top: -175,
+      width: 450,
+      height: 800,
+    });
   });
 });
 

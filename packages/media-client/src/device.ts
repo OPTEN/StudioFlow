@@ -1,6 +1,7 @@
 /**
  * `@studioflow/media-client/device`: the livekit-free part of the package – device facts (platform label, phone
- * detection, screen-share capability, battery, network type), the screen wake lock, the technical check, the slot
+ * detection, screen-share capability, battery, network type), how a phone camera is held (automatic rotation), the
+ * screen wake lock, the technical check, the slot
  * failure codes, the rules of the remote camera control (shared with the Regie) and the Web Audio mix of the output page
  * and the Regie. Pages that do not publish (the
  * sender's pairing screens) import this entry, so they do not load livekit-client (~150 KB gzip). The main entry
@@ -9,11 +10,27 @@
 export {
   CAMERA_PROTOCOL_VERSION,
   clampToRange,
+  hasCameraChange,
   isCameraControl,
   mergeCameraControl,
   type CameraImageSettings,
   type CameraProblem,
 } from './camera-control';
+export {
+  CameraOrientation,
+  HoldTracker,
+  ORIENTATION_STABLE_MS,
+  browserOrientationEnvironment,
+  cameraRotation,
+  quarterTurn,
+  readHold,
+  upVector,
+  type CameraFacing,
+  type CameraOrientationEnvironment,
+  type DeviceTilt,
+  type HoldReading,
+  type MotionPermission,
+} from './camera-orientation';
 export { battery, canShareScreen, isLikelyPhone, networkType, platformLabel } from './device-info';
 export {
   type MicFailure,

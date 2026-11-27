@@ -1,11 +1,13 @@
 import { formatNumber, t, type PlainMessageKey } from '@studioflow/i18n';
-import type {
-  CameraFocusMode,
-  CameraLensDto,
-  CameraLensKind,
-  CameraRangeDto,
-  CameraStateDto,
-  DeviceDto,
+import {
+  ROTATIONS,
+  type CameraFocusMode,
+  type CameraLensDto,
+  type CameraLensKind,
+  type CameraRangeDto,
+  type CameraStateDto,
+  type DeviceDto,
+  type Rotation,
 } from '@studioflow/scene-model';
 
 /**
@@ -45,6 +47,8 @@ export interface CameraControlsView {
   } | null;
   readonly brightness: SliderView | null;
   readonly torch: { readonly on: boolean } | null;
+  /** The picture height the phone sends (720 or 1080); null when an older phone does not report it. */
+  readonly resolution: 720 | 1080 | null;
   /** Message about the last command the phone refused, or null. */
   readonly problem: string | null;
 }
@@ -151,6 +155,8 @@ function controls(state: CameraStateDto): CameraControlsView {
       brightnessText,
     ),
     torch: capabilities.torch ? { on: settings.torch === true } : null,
+    resolution:
+      settings.resolution === 720 || settings.resolution === 1080 ? settings.resolution : null,
     problem: problemText(state.problem),
   };
 }
@@ -161,8 +167,67 @@ function hasAnyControl(view: CameraControlsView): boolean {
     view.zoom !== null ||
     view.focus !== null ||
     view.brightness !== null ||
-    view.torch !== null
+    view.torch !== null ||
+    view.resolution !== null
   );
+}
+
+/** How the picture of a camera is turned upright: automatically (what the phone reports) or by a fixed angle. */
+export type RotationMode = 'auto' | Rotation;
+
+/** One button of the rotation control. */
+export interface RotationOption {
+  readonly mode: RotationMode;
+  readonly label: string;
+  readonly active: boolean;
+}
+
+/** The rotation control of a phone camera. */
+export interface RotationView {
+  readonly mode: RotationMode;
+  /** What the phone reports (0/90/180/270), null when it cannot tell (no sensor, no permission, older phone). */
+  readonly reported: Rotation | null;
+  /** “Automatic” (with the reported angle, “Automatic (90°)”), 0°, 90°, 180°, 270°. */
+  readonly options: readonly RotationOption[];
+}
+
+function asRotation(value: number | null | undefined): Rotation | null {
+  return (ROTATIONS as readonly number[]).includes(value as number) ? (value as Rotation) : null;
+}
+
+/** "90°". */
+export function rotationText(rotation: Rotation): string {
+  return t('regie.camera.rotation.value', { angle: rotation });
+}
+
+/**
+ * The rotation control: the mode set in the Regie (`cameraRotation`, null for automatic) and what the phone reports
+ * (`telemetry.camera.settings.rotation`). Offered in every state of the panel, because the Regie and the output turn
+ * the picture themselves.
+ */
+export function rotationView(device: DeviceDto): RotationView {
+  const manual = asRotation(device.cameraRotation);
+  const reported = asRotation(device.telemetry?.camera?.settings.rotation);
+  const mode: RotationMode = manual ?? 'auto';
+  return {
+    mode,
+    reported,
+    options: [
+      {
+        mode: 'auto',
+        label:
+          reported === null
+            ? t('regie.camera.rotation.auto')
+            : t('regie.camera.rotation.autoWith', { angle: rotationText(reported) }),
+        active: mode === 'auto',
+      },
+      ...ROTATIONS.map((rotation) => ({
+        mode: rotation,
+        label: rotationText(rotation),
+        active: mode === rotation,
+      })),
+    ],
+  };
 }
 
 /**

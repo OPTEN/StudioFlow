@@ -435,6 +435,20 @@ export class StudioApiService {
     );
   }
 
+  /** `PUT …/devices/{deviceId}/camera-rotation`: turns the camera picture (0/90/180/270) or back to automatic (null). */
+  setCameraRotation(
+    productionId: string,
+    deviceId: string,
+    body: ApiBody<'setCameraRotation'>,
+  ): Promise<ApiResult<'setCameraRotation'>> {
+    return this.call(
+      this.http.put<ApiResult<'setCameraRotation'>>(
+        this.device(productionId, deviceId, '/camera-rotation'),
+        body,
+      ),
+    );
+  }
+
   /** `POST …/devices/{deviceId}/block`: disconnects the device immediately. */
   blockDevice(productionId: string, deviceId: string): Promise<ApiResult<'blockDevice'>> {
     return this.post<ApiResult<'blockDevice'>>(this.device(productionId, deviceId, '/block'));
@@ -700,7 +714,10 @@ export class StudioApiService {
     return this.call(this.http.get<ApiResult<'getServerSettingsStatus'>>('/api/settings/status'));
   }
 
-  /** `PUT /api/settings/media`: saves the media address. 400 `media_address_invalid`, 409 `broadcast_live`. */
+  /**
+   * `PUT /api/settings/media`: saves the media address and the media route. 400 `media_address_invalid` /
+   * `public_media_address_required`, 409 `broadcast_live`.
+   */
   updateMediaSettings(
     body: ApiBody<'updateMediaSettings'>,
   ): Promise<ApiResult<'updateMediaSettings'>> {

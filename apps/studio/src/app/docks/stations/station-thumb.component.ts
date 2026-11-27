@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
+  computed,
   ElementRef,
   effect,
   inject,
@@ -10,6 +11,7 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
+import { snapRotation } from '@studioflow/scene-model';
 import { requestPixelRatio, watchVisibility } from '@studioflow/scene-renderer';
 import { StudioMediaService } from '../../core/media/studio-media.service';
 
@@ -37,6 +39,8 @@ function toLayerPixels(cssPixels: number, ratio: number): number {
     <video
       #video
       class="c-station-thumb__video"
+      [class.is-sideways]="turn() === 90 || turn() === 270"
+      [style.transform]="turn() === 0 ? null : 'rotate(' + turn() + 'deg)'"
       autoplay
       playsinline
       disablepictureinpicture
@@ -63,6 +67,15 @@ function toLayerPixels(cssPixels: number, ratio: number): number {
       width: 100%;
     }
 
+    /* A quarter turn: the video box is 9:16 around the centre, so the turned picture covers the 16:9 thumbnail. */
+    .c-station-thumb__video.is-sideways {
+      height: 177.78%;
+      left: 21.875%;
+      position: absolute;
+      top: -38.89%;
+      width: 56.25%;
+    }
+
     .c-station-thumb__dim {
       background: color-mix(in srgb, var(--well) 50%, transparent);
       inset: 0;
@@ -79,6 +92,10 @@ export class StationThumbComponent {
   readonly sourceId = input<string | null>(null);
   /** Dim the picture (source down). */
   readonly dimmed = input(false);
+  /** Clockwise rotation of the picture (`SourceDto.rotation`: a phone camera turned upright). */
+  readonly rotation = input<number | null | undefined>(0);
+
+  protected readonly turn = computed(() => snapRotation(this.rotation() ?? 0));
 
   private readonly media = inject(StudioMediaService);
   private readonly video = viewChild.required<ElementRef<HTMLVideoElement>>('video');

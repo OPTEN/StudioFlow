@@ -223,8 +223,12 @@ public sealed class DeviceSessionService(
                 }
 
                 var live = context.Runtime.Device(device.Id);
+                var rotationBefore = SourceMonitor.CameraRotationOf(context.Runtime, device);
                 var (_, techCheckChanged, cameraChanged) = live.ApplyReport(report, [.. device.Slots.Select(s => s.Slot)], context.Now);
                 SourceMonitor.Reevaluate(context, device);
+
+                // The phone was turned (automatic rotation): the Regie and the output turn the picture; only on a change.
+                SourceMonitor.PublishCameraRotation(context, device, rotationBefore);
                 if (techCheckChanged)
                 {
                     DeviceEvents.EmitDevice(context, device);

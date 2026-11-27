@@ -399,6 +399,11 @@ export class ProductionStoreService {
     return this.sources().get(sourceId)?.text ?? undefined;
   }
 
+  /** Rotation of the picture of a source (a phone camera turned upright), or undefined for unknown sources. */
+  rotationOf(sourceId: string): number | undefined {
+    return this.sources().get(sourceId)?.rotation;
+  }
+
   /** The placeholder an item points to (a device source of the original production), or null. */
   placeholderOf(sourceId: string | null | undefined): SourcePlaceholderDto | null {
     return sourceId ? (this.placeholders().find((p) => p.sourceId === sourceId) ?? null) : null;

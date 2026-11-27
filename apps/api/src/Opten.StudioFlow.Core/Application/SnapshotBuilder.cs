@@ -26,7 +26,7 @@ public sealed class SnapshotBuilder(PairingRequestStore pairingRequests, StudioF
             context.Now,
             Dtos.Production(production),
             [.. production.OrderedScenes.Select(Dtos.Scene)],
-            [.. catalog.All.Select(e => Dtos.Source(e, runtime.Sources.GetValueOrDefault(e.Id)))],
+            [.. catalog.All.Select(e => Dtos.Source(e, runtime.Sources.GetValueOrDefault(e.Id), RotationOf(runtime, e)))],
             production.Placeholders,
             production.AudioChannels,
             [.. devices.Select(d => Dtos.Device(d, runtime.FindDevice(d.Id)))],
@@ -50,7 +50,7 @@ public sealed class SnapshotBuilder(PairingRequestStore pairingRequests, StudioF
             context.Now,
             Dtos.Production(production),
             [.. production.OrderedScenes.Select(Dtos.Scene)],
-            [.. catalog.All.Select(e => OutputView.WithoutHealth(Dtos.Source(e, null)))],
+            [.. catalog.All.Select(e => OutputView.WithoutHealth(Dtos.Source(e, null, RotationOf(context.Runtime, e))))],
             production.AudioChannels,
             [.. assets.Select(Dtos.Asset)]);
     }
@@ -86,6 +86,9 @@ public sealed class SnapshotBuilder(PairingRequestStore pairingRequests, StudioF
         var snapshot = await BuildOutputAsync(context, cancellationToken);
         return new OutputChangesDto(snapshot.Revision, null, snapshot);
     }
+
+    private static int RotationOf(ProductionRuntime runtime, SourceEntry entry) =>
+        Dtos.RotationOf(entry, entry.Device is { } device ? runtime.FindDevice(device.Id) : null);
 
     private static void EnsureValid(long? sinceRevision)
     {

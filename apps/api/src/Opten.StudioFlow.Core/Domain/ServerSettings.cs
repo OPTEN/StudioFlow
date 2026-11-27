@@ -27,6 +27,18 @@ public sealed class ServerSettings
     /// </summary>
     public string? MediaAddress { get; private set; }
 
+    /// <summary>
+    /// The public IPv4 address of a relay (a proxy that forwards LiveKit's media ports to this server) that LiveKit can
+    /// announce instead of <see cref="MediaAddress"/>; null: none. It takes effect only while <see cref="UsePublicMediaAddress"/> is on.
+    /// </summary>
+    public string? PublicMediaAddress { get; private set; }
+
+    /// <summary>
+    /// True: LiveKit announces only <see cref="PublicMediaAddress"/>, so devices send media through the relay and also
+    /// work outside the LAN. False: devices send media directly to <see cref="MediaAddress"/>.
+    /// </summary>
+    public bool UsePublicMediaAddress { get; private set; }
+
     /// <summary>Certificate mode, see <see cref="TlsModes"/>.</summary>
     public string TlsMode { get; private set; } = TlsModes.Internal;
 
@@ -87,6 +99,9 @@ public sealed class ServerSettings
     /// <summary>True once the wizard saved the media address: the installation can serve devices.</summary>
     public bool IsConfigured => !string.IsNullOrEmpty(MediaAddress);
 
+    /// <summary>The address LiveKit announces: the public one while the public route is on and one is set, otherwise <see cref="MediaAddress"/>.</summary>
+    public string? EffectiveMediaAddress => UsePublicMediaAddress && !string.IsNullOrEmpty(PublicMediaAddress) ? PublicMediaAddress : MediaAddress;
+
     /// <summary>The origins allowed to embed the output as a list.</summary>
     public IReadOnlyList<string> FrameAncestorList => FrameAncestors.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
@@ -100,6 +115,15 @@ public sealed class ServerSettings
     public void ChangeMediaAddress(string address, DateTimeOffset now)
     {
         MediaAddress = address;
+        Touch(now);
+    }
+
+    /// <summary>Sets the media address, the public address of the relay and whether media takes the public route.</summary>
+    public void ChangeMediaRoute(string address, string? publicAddress, bool usePublicAddress, DateTimeOffset now)
+    {
+        MediaAddress = address;
+        PublicMediaAddress = publicAddress;
+        UsePublicMediaAddress = usePublicAddress;
         Touch(now);
     }
 

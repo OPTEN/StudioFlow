@@ -23,7 +23,7 @@ export function serverSettingsFixture(
     configured: overrides.configured ?? false,
     baseUrl: overrides.baseUrl ?? 'https://localhost:8443',
     httpsPort: overrides.httpsPort ?? 8443,
-    media: { address: null, ...overrides.media },
+    media: { address: null, publicAddress: null, usePublicAddress: false, ...overrides.media },
     address: {
       tlsMode: 'internal',
       domain: null,
@@ -55,7 +55,7 @@ export function configuredSettingsFixture(
 ): ServerSettingsDto {
   return serverSettingsFixture({
     configured: true,
-    media: { address: '192.168.1.50' },
+    media: { address: '192.168.1.50', publicAddress: null, usePublicAddress: false },
     ...overrides,
   });
 }

@@ -30,21 +30,39 @@ public sealed class ServerSettingsService(
     public ApplyStatusDto GetApplyStatus() => applier.Status;
 
     /// <summary>
-    /// Saves the media address. Refused (409 <c>broadcast_live</c>) while a broadcast is live and the address changes,
-    /// because LiveKit restarts to announce it.
+    /// Saves the media address and the media route: directly to the LAN address, or only through the public address of a
+    /// relay. A public address or route that is left out stays as it is; an empty public address removes it. Refused
+    /// (409 <c>broadcast_live</c>) while a broadcast is live and the address LiveKit announces changes, because LiveKit
+    /// restarts to announce it.
     /// </summary>
     public async Task<ServerSettingsDto> UpdateMediaAsync(UpdateMediaRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
         var errors = new ValidationErrors();
         var address = ServerSettingsRules.ValidateMediaAddress(request.Address, "address", errors);
+        var publicGiven = !string.IsNullOrWhiteSpace(request.PublicAddress);
+        var publicAddress = request.PublicAddress is null
+            ? state.Row?.PublicMediaAddress
+            : publicGiven ? ServerSettingsRules.ValidateMediaAddress(request.PublicAddress, "publicAddress", errors) : null;
+        var usePublic = request.UsePublicAddress ?? state.Row?.UsePublicMediaAddress ?? false;
+        if (usePublic && publicAddress is null && !publicGiven)
+        {
+            errors.Add("publicAddress", SettingsFieldErrors.PublicMediaAddressRequired);
+        }
+
         errors.ThrowIfAny();
-        if (!string.Equals(address, state.Row?.MediaAddress, StringComparison.Ordinal) && !string.Equals(address, applier.TrialAddress, StringComparison.Ordinal))
+        var effective = usePublic ? publicAddress! : address!;
+        if (!string.Equals(effective, state.Row?.EffectiveMediaAddress, StringComparison.Ordinal) && !string.Equals(effective, applier.TrialAddress, StringComparison.Ordinal))
         {
             await EnsureNoBroadcastAsync(cancellationToken);
         }
 
-        var row = await SaveAsync(AuditActions.SettingsMediaChanged, new Dictionary<string, string>(StringComparer.Ordinal) { [AuditDetails.Address] = address! }, settings => settings.ChangeMediaAddress(address!, clock.StorageNow()), cancellationToken);
+        var details = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            [AuditDetails.Address] = effective,
+            [AuditDetails.Route] = usePublic ? AuditMediaRoutes.Public : AuditMediaRoutes.Lan,
+        };
+        var row = await SaveAsync(AuditActions.SettingsMediaChanged, details, settings => settings.ChangeMediaRoute(address!, publicAddress, usePublic, clock.StorageNow()), cancellationToken);
         applier.EndTrial();
         await applier.ApplyAsync(cancellationToken);
         return ToDto(row);
@@ -202,7 +220,7 @@ public sealed class ServerSettingsService(
         var errors = new ValidationErrors();
         var address = ServerSettingsRules.ValidateMediaAddress(request.Address, "address", errors);
         errors.ThrowIfAny();
-        if (!string.Equals(address, state.Row?.MediaAddress, StringComparison.Ordinal))
+        if (!string.Equals(address, state.Row?.EffectiveMediaAddress, StringComparison.Ordinal))
         {
             await EnsureNoBroadcastAsync(cancellationToken);
         }
@@ -305,7 +323,7 @@ public sealed class ServerSettingsService(
             row?.IsConfigured == true,
             state.BaseUrl,
             state.HttpsPort,
-            new MediaSettingsDto(row?.MediaAddress),
+            new MediaSettingsDto(row?.MediaAddress, row?.PublicMediaAddress, row?.UsePublicMediaAddress ?? false),
             new AddressSettingsDto(row?.TlsMode ?? TlsModes.Internal, row?.Domain, row?.AcmeEmail, row?.DnsChallengeDomain, fields, CertificateRules.Describe(row?.CertificatePem)),
             new EmbeddingSettingsDto(row?.FrameAncestorList ?? []),
             new BackupSettingsDto(

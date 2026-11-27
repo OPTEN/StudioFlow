@@ -612,6 +612,22 @@ export interface paths {
         patch: operations["renameDevice"];
         trace?: never;
     };
+    "/api/productions/{productionId}/devices/{deviceId}/camera-rotation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["setCameraRotation"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/productions/{productionId}/devices/{deviceId}/block": {
         parameters: {
             query?: never;
@@ -1636,8 +1652,13 @@ export interface components {
             exposureCompensation: null | number;
             /** @description Light on or off. */
             torch: null | boolean;
-            /** @description Back to automatic: zoom out, automatic focus, no brightness shift, light off. The lens stays. */
+            /** @description Back to automatic: zoom out, automatic focus, no brightness shift, light off. The lens and the resolution stay. */
             reset: null | boolean;
+            /**
+             * Format: int32
+             * @description Send in this picture height: 720 or 1080 (changed in place, the picture freezes briefly).
+             */
+            resolution?: null | number;
         };
         /**
          * @description Focus behaviour of a camera.
@@ -1698,6 +1719,18 @@ export interface components {
             exposureCompensation: null | number;
             /** @description The light is on. */
             torch: null | boolean;
+            /**
+             * Format: int32
+             * @description The picture height the device sends: 720 or 1080; null from an older sender.
+             */
+            resolution?: null | number;
+            /**
+             * Format: int32
+             * @description Clockwise rotation (0, 90, 180 or 270) that makes the delivered picture upright, measured by the phone from how it is
+             *     held and how its screen is turned (a phone held sideways with its screen locked upright sends a sideways picture);
+             *     null when the phone cannot tell (no motion sensor, permission denied, lying flat since the start, older sender).
+             */
+            rotation?: null | number;
         };
         /** @description Camera section of a device report (and of the telemetry the Regie gets). */
         CameraStateDto: {
@@ -1905,6 +1938,12 @@ export interface components {
             connectionSince: null | string;
             techCheck: null | components["schemas"]["TechCheckDto"];
             telemetry: null | components["schemas"]["DeviceTelemetryDto"];
+            /**
+             * Format: int32
+             * @description Rotation of the camera picture set in the Regie (0, 90, 180 or 270, clockwise); null for automatic (what the phone
+             *     reports in int? CameraSettingsDto.Rotation).
+             */
+            cameraRotation?: null | number;
         };
         /** @description First message of a device after connecting to the device hub. */
         DeviceHelloDto: {
@@ -2164,7 +2203,7 @@ export interface components {
          *     entry; the English text of the entry is the fallback for clients that do not know the code yet.
          * @enum {unknown}
          */
-        LogCode: "sceneLive" | "sceneCreated" | "sceneDeleted" | "broadcastStarted" | "broadcastEnded" | "devicePaired" | "deviceBlocked" | "deviceUnblocked" | "deviceRemoved" | "pairingDenied" | "inviteLinkCreated" | "inviteLinkRevoked" | "outputLinkCreated" | "outputLinkRenamed" | "outputLinkRevoked" | "outputLinkRegenerated" | "outputAccessChanged" | "assetUploaded" | "assetDeleted" | "sourceReconnecting" | "cameraEnded" | "screenEnded" | "sourceLost" | "sourceRecovered" | "accountSetUp" | "passwordChanged" | "accountReset" | "textCreated" | "textDeleted" | "textShown" | "textHidden" | "loginSucceeded" | "loginFailed" | "loginFailedUnknownUser" | "loginLocked" | "loggedOut" | "productionCreated" | "productionRenamed" | "canvasChanged" | "productionDuplicated" | "productionExported" | "productionImported" | "placeholderAssigned" | "placeholderRemoved" | "productionActivated" | "broadcastReset" | "standbySlateChanged" | "endSlateChanged" | "incidentAcknowledged" | "deviceRenamed" | "cameraLensSwitched" | "auditExported" | "auditRetention" | "settingsMediaChanged" | "settingsAddressChanged" | "settingsEmbeddingChanged" | "settingsBackupChanged" | "backupRequested" | "audioEnded" | "audioLost" | "audioMuted" | "audioUnmuted" | "audioGainChanged" | "audioModeChanged" | "audioSyncOffsetChanged";
+        LogCode: "sceneLive" | "sceneCreated" | "sceneDeleted" | "broadcastStarted" | "broadcastEnded" | "devicePaired" | "deviceBlocked" | "deviceUnblocked" | "deviceRemoved" | "pairingDenied" | "inviteLinkCreated" | "inviteLinkRevoked" | "outputLinkCreated" | "outputLinkRenamed" | "outputLinkRevoked" | "outputLinkRegenerated" | "outputAccessChanged" | "assetUploaded" | "assetDeleted" | "sourceReconnecting" | "cameraEnded" | "screenEnded" | "sourceLost" | "sourceRecovered" | "accountSetUp" | "passwordChanged" | "accountReset" | "textCreated" | "textDeleted" | "textShown" | "textHidden" | "loginSucceeded" | "loginFailed" | "loginFailedUnknownUser" | "loginLocked" | "loggedOut" | "productionCreated" | "productionRenamed" | "canvasChanged" | "productionDuplicated" | "productionExported" | "productionImported" | "placeholderAssigned" | "placeholderRemoved" | "productionActivated" | "broadcastReset" | "standbySlateChanged" | "endSlateChanged" | "incidentAcknowledged" | "deviceRenamed" | "cameraLensSwitched" | "cameraRotationChanged" | "auditExported" | "auditRetention" | "settingsMediaChanged" | "settingsAddressChanged" | "settingsEmbeddingChanged" | "settingsBackupChanged" | "backupRequested" | "audioEnded" | "audioLost" | "audioMuted" | "audioUnmuted" | "audioGainChanged" | "audioModeChanged" | "audioSyncOffsetChanged";
         /** @description An entry of "Recent events", derived from the audit log. */
         LogEntryDto: {
             /**
@@ -2196,10 +2235,17 @@ export interface components {
             /** @description Optional replacement source reference (e.g. a pause slate image). */
             fallbackSource: null | string;
         };
-        /** @description The media address. */
+        /** @description The media address and the route media takes. */
         MediaSettingsDto: {
-            /** @description The IPv4 address LiveKit announces; null until the wizard saved it. */
+            /** @description The IPv4 address of the server in the LAN; null until the wizard saved it. */
             address: null | string;
+            /** @description The public IPv4 address of a relay that forwards the media ports to the server; null: none. */
+            publicAddress: null | string;
+            /**
+             * @description True: LiveKit announces only PublicAddress (devices send media through the relay, also from outside
+             *     the LAN). False: LiveKit announces Address (devices send media directly, only inside the LAN).
+             */
+            usePublicAddress: boolean;
         };
         /** @description Where the media address could come from. */
         MediaSuggestionsDto: {
@@ -3071,6 +3117,14 @@ export interface components {
              */
             adjusting: boolean;
         };
+        /** @description Sets how the camera picture of a device is turned upright. */
+        SetCameraRotationRequest: {
+            /**
+             * Format: int32
+             * @description 0, 90, 180 or 270 (clockwise) to fix it; null for automatic (what the phone reports).
+             */
+            rotation: null | number;
+        };
         /** @description Sets or clears the preview scene. */
         SetPreviewRequest: {
             sceneId: null | string;
@@ -3167,6 +3221,13 @@ export interface components {
              */
             statusSince: null | string;
             text: null | components["schemas"]["TextSourceDto"];
+            /**
+             * Format: int32
+             * @description Clockwise rotation (0, 90, 180 or 270) the renderers apply to the picture of the source before the rotation of the
+             *     scene item: the rotation set in the Regie for the camera, else the one the phone reports, else 0.
+             * @default 0
+             */
+            rotation: number;
         };
         /**
          * @description Kind of a source.
@@ -3345,10 +3406,14 @@ export interface components {
             /** @description Origins such as `https://proxy.example.ch` or `https://*.example.com`. */
             origins: string[];
         };
-        /** @description Sets the media address. */
+        /** @description Sets the media address and the route media takes. */
         UpdateMediaRequest: {
-            /** @description The IPv4 address LiveKit announces to the devices. */
+            /** @description The IPv4 address of the server in the LAN. */
             address: string;
+            /** @description The public IPv4 address of the relay; omitted: the stored one stays; empty: none (only while the public route is off). */
+            publicAddress?: null | string;
+            /** @description Whether LiveKit announces only the public address; omitted: the stored choice stays. */
+            usePublicAddress?: null | boolean;
         };
         /** @description Sets the IP restriction of an output link. */
         UpdateOutputAccessRequest: {
@@ -3535,6 +3600,7 @@ export type SceneLayoutMode = components['schemas']['SceneLayoutMode'];
 export type ServerSettingsDto = components['schemas']['ServerSettingsDto'];
 export type SessionDto = components['schemas']['SessionDto'];
 export type SetAudioChannelsRequest = components['schemas']['SetAudioChannelsRequest'];
+export type SetCameraRotationRequest = components['schemas']['SetCameraRotationRequest'];
 export type SetPreviewRequest = components['schemas']['SetPreviewRequest'];
 export type SetupRequest = components['schemas']['SetupRequest'];
 export type SetupStatusDto = components['schemas']['SetupStatusDto'];
@@ -5252,6 +5318,51 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["RenameDeviceRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    setCameraRotation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                productionId: string;
+                deviceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetCameraRotationRequest"];
             };
         };
         responses: {

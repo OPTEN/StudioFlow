@@ -37,6 +37,7 @@ const M1: SourceDto = {
   status: 'ok',
   statusSince: null,
   text: null,
+  rotation: 0,
 };
 const sources = new Map([K1, K2, K3, S1, M1].map((source) => [source.id, source]));
 

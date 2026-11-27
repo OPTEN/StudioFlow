@@ -526,6 +526,12 @@ public enum LogCode
     /// <summary>The lens of a phone camera was switched. Params: <c>subject</c>, <c>lens</c> (<see cref="CameraLensKind"/>, camelCase).</summary>
     CameraLensSwitched,
 
+    /// <summary>
+    /// The rotation of a camera picture was set. Params: <c>subject</c>, <c>rotation</c> (<c>auto</c> or the angle
+    /// <c>0</c>, <c>90</c>, <c>180</c>, <c>270</c>).
+    /// </summary>
+    CameraRotationChanged,
+
     /// <summary>The audit log was exported. Params: <c>format</c>, <c>rows</c>.</summary>
     AuditExported,
 

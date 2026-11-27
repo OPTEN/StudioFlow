@@ -206,7 +206,8 @@ public sealed class ServerConfigApplier(
             return new ApplyTargetDto(true, null);
         }
 
-        var nodeIp = TrialAddress ?? settings?.MediaAddress;
+        // With the public route on, LiveKit announces only the relay's address: devices never send to the LAN address.
+        var nodeIp = TrialAddress ?? settings?.EffectiveMediaAddress;
         var yaml = LiveKitConfigRenderer.Render(keys.ApiKey, keys.ApiSecret, nodeIp, install);
         try
         {

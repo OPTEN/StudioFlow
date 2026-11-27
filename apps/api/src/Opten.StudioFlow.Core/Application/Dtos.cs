@@ -75,7 +75,8 @@ public static class Dtos
             live?.PublishedConnection ?? DeviceConnection.Offline,
             live?.ConnectionSince,
             live?.TechCheck,
-            live?.Telemetry);
+            live?.Telemetry,
+            device.FindSlot(DeviceSlots.Camera)?.Rotation);
     }
 
     /// <summary>What a device learns about itself.</summary>
@@ -92,8 +93,21 @@ public static class Dtos
             [.. device.Slots.Select(s => new DeviceSlotDto(s.Slot, s.Code, s.Kind))]);
     }
 
-    /// <summary>A source with its health (device slots) or always ok (media and texts).</summary>
-    public static SourceDto Source(SourceEntry entry, SourceHealth? health)
+    /// <summary>
+    /// The rotation the renderers apply to the picture of a source: for a camera slot the one set in the Regie, else the
+    /// one its device reported last (<paramref name="live"/>), else 0; 0 for every other source.
+    /// </summary>
+    public static int RotationOf(SourceEntry entry, DeviceRuntime? live)
+    {
+        ArgumentNullException.ThrowIfNull(entry);
+        return entry.Slot is { Kind: SourceKind.Camera } slot ? CameraRotations.Effective(slot.Rotation, live?.ReportedRotation) : 0;
+    }
+
+    /// <summary>
+    /// A source with its health (device slots) or always ok (media and texts), and the rotation of its picture (see
+    /// <see cref="RotationOf"/>).
+    /// </summary>
+    public static SourceDto Source(SourceEntry entry, SourceHealth? health, int rotation = 0)
     {
         ArgumentNullException.ThrowIfNull(entry);
         SourceStatus status;
@@ -112,6 +126,6 @@ public static class Dtos
             status = entry.Device!.IsBlocked ? SourceStatus.Blocked : SourceStatus.Offline;
         }
 
-        return new SourceDto(entry.Id, entry.Code, entry.Kind, entry.Label, entry.Device?.Id, entry.Slot?.Slot, entry.Asset?.Id, status, since, entry.Text);
+        return new SourceDto(entry.Id, entry.Code, entry.Kind, entry.Label, entry.Device?.Id, entry.Slot?.Slot, entry.Asset?.Id, status, since, entry.Text, rotation);
     }
 }

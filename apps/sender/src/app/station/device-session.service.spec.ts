@@ -40,10 +40,53 @@ import {
 } from './device-session.service';
 import {
   DEVICE_HUB_FACTORY,
+  ORIENTATION_FACTORY,
   SENDER_MEDIA_FACTORY,
   TECH_CHECK_RUNNER,
   WAKE_LOCK_FACTORY,
+  type StationOrientation,
 } from './station-ports';
+
+/** The orientation watcher: the test sets the correction per facing and fires the change. */
+class FakeOrientation implements StationOrientation {
+  needsPermission = false;
+  started = 0;
+  disposed = false;
+  rotation: Record<'user' | 'environment', 0 | 90 | 180 | 270 | null> = {
+    user: null,
+    environment: null,
+  };
+  readonly requestPermission = vi.fn(() => {
+    this.needsPermission = false;
+    return Promise.resolve('granted' as const);
+  });
+  private readonly listeners = new Set<() => void>();
+
+  start(): void {
+    this.started += 1;
+  }
+
+  onChange(listener: () => void): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+
+  correction(facing: 'user' | 'environment'): 0 | 90 | 180 | 270 | null {
+    return this.rotation[facing];
+  }
+
+  dispose(): void {
+    this.disposed = true;
+  }
+
+  /** The phone was turned. */
+  turn(environment: 0 | 90 | 180 | 270 | null, user = environment): void {
+    this.rotation = { environment, user };
+    for (const listener of [...this.listeners]) {
+      listener();
+    }
+  }
+}
 
 /** The check as the report carries it: the problems stay on the device. */
 const { problems: _problems, ...TECH_CHECK_WIRE } = TECH_CHECK_OK;
@@ -78,6 +121,7 @@ describe('DeviceSessionService', () => {
     bandwidthTest: ReturnType<typeof vi.fn>;
   };
   let techCheck: ReturnType<typeof vi.fn>;
+  let orientation: FakeOrientation;
 
   function setup(options: Setup = {}): DeviceSessionService {
     vi.useFakeTimers();
@@ -105,6 +149,7 @@ describe('DeviceSessionService', () => {
       bandwidthTest: vi.fn(() => Promise.resolve({ bytes: 1_000_000, serverMs: 80 })),
     };
     techCheck = vi.fn(() => Promise.resolve(TECH_CHECK_OK));
+    orientation = new FakeOrientation();
     TestBed.configureTestingModule({
       providers: [
         DeviceSessionService,
@@ -127,6 +172,7 @@ describe('DeviceSessionService', () => {
           },
         },
         { provide: WAKE_LOCK_FACTORY, useValue: () => wakeLock },
+        { provide: ORIENTATION_FACTORY, useValue: () => orientation },
         { provide: TECH_CHECK_RUNNER, useValue: techCheck },
       ],
     });
@@ -185,12 +231,12 @@ describe('DeviceSessionService', () => {
     expect(service.camera()?.state).toBe('starting');
   });
 
-  it('phones default to the back camera at 720p', async () => {
+  it('phones default to the back camera at 1080p', async () => {
     const service = setup();
     service.start();
     await settle();
 
-    expect(media.publisher.calls).toContain('publishCamera:camera:environment:720');
+    expect(media.publisher.calls).toContain('publishCamera:camera:environment:1080');
   });
 
   it('does not auto-start a camera that was stopped on purpose', async () => {
@@ -1040,6 +1086,56 @@ describe('DeviceSessionService', () => {
       expect(service.remoteNotice()).toBeNull();
     });
 
+    it('reports the rotation that turns the picture upright, at once when the phone is turned', async () => {
+      const service = setup();
+      await online(service);
+      media.publisher.cameraState = CAMERA_STATE;
+      expect(orientation.started).toBe(1);
+      await vi.advanceTimersByTimeAsync(REPORT_INTERVAL_MS);
+      expect(lastReport().camera).toEqual(CAMERA_STATE);
+      hub.invoked.length = 0;
+
+      orientation.turn(270, 90);
+      await settle(10);
+
+      expect(hub.reports()).toHaveLength(1);
+      expect(lastReport().camera?.settings.rotation).toBe(270);
+      expect(service.cameraRotation()).toBe(270);
+
+      // The same rotation again sends nothing extra.
+      orientation.turn(270, 90);
+      await settle(10);
+      expect(hub.reports()).toHaveLength(1);
+
+      // The front camera turns the other way.
+      service.toggleFacing();
+      await vi.advanceTimersByTimeAsync(REPORT_INTERVAL_MS);
+      expect(lastReport().camera?.settings.rotation).toBe(90);
+    });
+
+    it('asks for the motion sensor on a tap until there is an answer, on phones only', async () => {
+      const service = setup();
+      await online(service);
+      orientation.needsPermission = true;
+
+      service.enableOrientation();
+      service.enableOrientation();
+
+      expect(orientation.requestPermission).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not ask a laptop for the motion sensor and reports no rotation for it', async () => {
+      const service = setup({ self: laptopSelf() });
+      await online(service);
+      orientation.needsPermission = true;
+
+      service.enableOrientation();
+      orientation.turn(90);
+
+      expect(orientation.requestPermission).not.toHaveBeenCalled();
+      expect(service.cameraRotation()).toBeNull();
+    });
+
     it('leaves a laptop camera alone and reports no camera for it', async () => {
       const service = setup({ self: laptopSelf() });
       await online(service);
@@ -1077,7 +1173,7 @@ describe('DeviceSessionService', () => {
 
       expect(media.publisher.lastCamera).toEqual({
         facingMode: 'environment',
-        resolution: 720,
+        resolution: 1080,
         deviceId: 'back-wide',
         image: { exposureCompensation: 1, torch: true },
       });

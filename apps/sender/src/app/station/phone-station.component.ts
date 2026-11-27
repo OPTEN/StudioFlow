@@ -32,7 +32,8 @@ type PendingAction = 'switch' | 'stop';
  * translucent rail of round labelled buttons at the bottom, or at the side of a phone in landscape: switch camera,
  * picture quality (a sheet), microphone, screen off, tech check and stop. Switching or stopping the camera while it is
  * live asks first; the quality sheet says that the picture pauses. “Screen off” blacks out the phone on a stage while
- * it keeps sending; a tap (or Enter) shows the controls for a while.
+ * it keeps sending; a tap (or Enter) shows the controls for a while. The first tap also asks an iPhone for its motion
+ * sensor, so the Regie can turn the picture of a phone held sideways upright.
  */
 @Component({
   selector: 'sf-phone-station',
@@ -58,7 +59,7 @@ export class PhoneStationComponent {
   protected readonly t = t;
   protected readonly camera = this.session.camera;
   protected readonly facing = this.session.facing;
-  protected readonly resolution = computed(() => this.session.settings().resolution);
+  protected readonly resolution = this.session.resolution;
   protected readonly screenOff = computed(() => this.session.settings().dark);
   protected readonly awake = signal(false);
   protected readonly qualityOpen = signal(false);
@@ -162,8 +163,13 @@ export class PhoneStationComponent {
     this.clearWake();
   }
 
-  /** A tap on the black screen shows the controls for a while. */
+  /**
+   * A tap on the black screen shows the controls for a while. Every tap also asks for the motion sensor where the
+   * browser needs a tap for it (iOS), for the automatic rotation of the picture (taps on the buttons arrive as
+   * `touchend`, which they do not stop).
+   */
   protected wake(): void {
+    this.session.enableOrientation();
     if (!this.screenOff()) {
       return;
     }

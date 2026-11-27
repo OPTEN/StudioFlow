@@ -4,6 +4,7 @@
   [class.is-screen-off]="screenOff()"
   [class.is-awake]="awake()"
   (click)="wake()"
+  (touchend)="session.enableOrientation()"
 >
   <div class="c-phone__stage" data-testid="slot-camera" [attr.data-state]="cameraState()">
     @if (preview(); as stream) {
