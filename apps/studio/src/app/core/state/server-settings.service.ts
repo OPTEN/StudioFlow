@@ -72,9 +72,16 @@ export class ServerSettingsService {
     }
   }
 
-  /** Saves the media address. 400 `media_address_invalid`, 409 `broadcast_live`. */
-  async saveMedia(address: string): Promise<ServerSettingsDto> {
-    return this.store(await this.api.updateMediaSettings({ address }));
+  /**
+   * Saves the media address and the media route (directly to the LAN address, or only through the public address of a
+   * relay). Left out, the stored public address and route stay. 400 `media_address_invalid` /
+   * `public_media_address_required`, 409 `broadcast_live`.
+   */
+  async saveMedia(
+    address: string,
+    route?: { readonly publicAddress?: string; readonly usePublicAddress: boolean },
+  ): Promise<ServerSettingsDto> {
+    return this.store(await this.api.updateMediaSettings({ address, ...route }));
   }
 
   /** Saves the address and the certificate mode. */

@@ -9,6 +9,9 @@ public static class SettingsFieldErrors
     /// <summary>The media address is not an IPv4 address a device can reach (e.g. <c>192.168.1.50</c>).</summary>
     public const string MediaAddressInvalid = "media_address_invalid";
 
+    /// <summary>The public media route is switched on, but no public address is set.</summary>
+    public const string PublicMediaAddressRequired = "public_media_address_required";
+
     /// <summary>The certificate mode is not one of <c>internal</c>, <c>custom</c> or <c>dns-*</c> of this version.</summary>
     public const string TlsModeUnknown = "tls_mode_unknown";
 
@@ -100,9 +103,14 @@ public sealed record DnsProviderDto(string Id, IReadOnlyList<string> Fields);
 /// <param name="Fingerprint">SHA-256 of the leaf certificate (hex).</param>
 public sealed record CertificateInfoDto(string Subject, IReadOnlyList<string> Names, DateTimeOffset NotAfter, string Fingerprint);
 
-/// <summary>The media address.</summary>
-/// <param name="Address">The IPv4 address LiveKit announces; null until the wizard saved it.</param>
-public sealed record MediaSettingsDto(string? Address);
+/// <summary>The media address and the route media takes.</summary>
+/// <param name="Address">The IPv4 address of the server in the LAN; null until the wizard saved it.</param>
+/// <param name="PublicAddress">The public IPv4 address of a relay that forwards the media ports to the server; null: none.</param>
+/// <param name="UsePublicAddress">
+/// True: LiveKit announces only <paramref name="PublicAddress"/> (devices send media through the relay, also from outside
+/// the LAN). False: LiveKit announces <paramref name="Address"/> (devices send media directly, only inside the LAN).
+/// </param>
+public sealed record MediaSettingsDto(string? Address, string? PublicAddress, bool UsePublicAddress);
 
 /// <summary>The address and the certificate.</summary>
 /// <param name="TlsMode"><c>internal</c>, <c>custom</c> or <c>dns-*</c>.</param>
@@ -161,9 +169,11 @@ public sealed record ServerSettingsDto(
     BackupSettingsDto Backup,
     IReadOnlyList<DnsProviderDto> DnsProviders);
 
-/// <summary>Sets the media address.</summary>
-/// <param name="Address">The IPv4 address LiveKit announces to the devices.</param>
-public sealed record UpdateMediaRequest(string Address);
+/// <summary>Sets the media address and the route media takes.</summary>
+/// <param name="Address">The IPv4 address of the server in the LAN.</param>
+/// <param name="PublicAddress">The public IPv4 address of the relay; omitted: the stored one stays; empty: none (only while the public route is off).</param>
+/// <param name="UsePublicAddress">Whether LiveKit announces only the public address; omitted: the stored choice stays.</param>
+public sealed record UpdateMediaRequest(string Address, string? PublicAddress = null, bool? UsePublicAddress = null);
 
 /// <summary>Sets the address and the certificate mode.</summary>
 /// <param name="TlsMode"><c>internal</c>, <c>custom</c> or <c>dns-*</c>.</param>

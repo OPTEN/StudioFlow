@@ -51,6 +51,63 @@
     </div>
   </section>
 
+  <section class="c-group" aria-labelledby="media-route-heading">
+    <h2 class="c-group__title" id="media-route-heading">
+      {{ t('regie.server.media.routeHeading') }}
+    </h2>
+    <div class="c-group__body">
+      <div class="c-group__row">
+        <label class="c-switch c-media__switch">
+          <span class="c-group__label">
+            {{ t('regie.server.media.routeSwitch') }}
+            <span class="c-group__sub" id="media-route-note">{{
+              publicOn() ? t('regie.server.media.routeOn') : t('regie.server.media.routeOff')
+            }}</span>
+          </span>
+          <input
+            type="checkbox"
+            role="switch"
+            id="media-route"
+            aria-describedby="media-route-note"
+            [formControl]="usePublic"
+          />
+        </label>
+      </div>
+      @if (publicOn()) {
+        <div class="c-group__row c-group__row--stack">
+          <div class="c-srv__field">
+            <label class="c-srv__label" for="media-public-address">{{
+              t('regie.server.media.publicLabel')
+            }}</label>
+            <input
+              id="media-public-address"
+              class="c-input c-srv__code"
+              type="text"
+              inputmode="decimal"
+              autocomplete="off"
+              spellcheck="false"
+              maxlength="15"
+              placeholder="203.0.113.10"
+              [formControl]="publicAddress"
+              aria-describedby="media-public-address-error media-public-address-hint"
+              [class.is-invalid]="publicAddressError()"
+              [attr.aria-invalid]="publicAddressError() ? 'true' : null"
+            />
+            @if (publicAddressError(); as message) {
+              <p class="c-field-error" id="media-public-address-error" role="alert">
+                {{ message }}
+              </p>
+            }
+            <p class="c-hint" id="media-public-address-hint">
+              {{ t('regie.server.media.publicHint') }}
+            </p>
+          </div>
+        </div>
+      }
+    </div>
+    <p class="c-group__footer">{{ t('regie.server.media.routeFooter') }}</p>
+  </section>
+
   <section class="c-group" aria-labelledby="media-test-heading">
     <h2 class="c-group__title" id="media-test-heading">
       {{ t('regie.server.media.testHeading') }}
@@ -59,9 +116,12 @@
       <div class="c-group__row">
         <span class="c-group__label">
           {{ t('regie.server.media.testLabel') }}
-          <span class="c-group__sub" id="media-test-note">{{
-            t('regie.server.media.testNote')
-          }}</span>
+          <span class="c-group__sub" id="media-test-note">
+            @if (effectiveAddress(); as tested) {
+              {{ t('regie.server.media.testTarget', { address: tested }) }}
+            }
+            {{ t('regie.server.media.testNote') }}
+          </span>
         </span>
         <button
           class="c-btn"

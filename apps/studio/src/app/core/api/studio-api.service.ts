@@ -700,7 +700,10 @@ export class StudioApiService {
     return this.call(this.http.get<ApiResult<'getServerSettingsStatus'>>('/api/settings/status'));
   }
 
-  /** `PUT /api/settings/media`: saves the media address. 400 `media_address_invalid`, 409 `broadcast_live`. */
+  /**
+   * `PUT /api/settings/media`: saves the media address and the media route. 400 `media_address_invalid` /
+   * `public_media_address_required`, 409 `broadcast_live`.
+   */
   updateMediaSettings(
     body: ApiBody<'updateMediaSettings'>,
   ): Promise<ApiResult<'updateMediaSettings'>> {

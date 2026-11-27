@@ -171,6 +171,28 @@ public sealed class ServerSettingsApiTests(PostgresFixture postgres)
     }
 
     [Fact]
+    public async Task Media_ThePublicRoute_IsStored_AndLiveKitAnnouncesOnlyThePublicAddress()
+    {
+        await using var app = await StartAsync(postgres);
+        var admin = await app.AdminAsync();
+        await admin.Client.PutJsonAsync("/api/settings/media", new UpdateMediaRequest("172.25.99.187")).ExpectAsync<ServerSettingsDto>();
+
+        using var refused = await ErrorsOfAsync(admin.Client.PutJsonAsync("/api/settings/media", new { address = "172.25.99.187", usePublicAddress = true }));
+        await admin.Client.PutJsonAsync("/api/settings/media", new UpdateMediaRequest("172.25.99.187", "49.12.213.173", true)).ExpectAsync<ServerSettingsDto>();
+        var settings = await admin.Client.GetAsync("/api/settings", Ct).ExpectAsync<ServerSettingsDto>();
+
+        Assert.Equal(SettingsFieldErrors.PublicMediaAddressRequired, refused.RootElement.GetProperty("errors").GetProperty("publicAddress")[0].GetString());
+        Assert.Equal(("172.25.99.187", "49.12.213.173", true), (settings.Media.Address, settings.Media.PublicAddress, settings.Media.UsePublicAddress));
+        Assert.Equal("https://172.25.99.187:8443", settings.BaseUrl);
+        Assert.Contains("node_ip: 49.12.213.173", app.LiveKitYaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("172.25.99.187", app.LiveKitYaml, StringComparison.Ordinal);
+
+        await admin.Client.PutJsonAsync("/api/settings/media", new { address = "172.25.99.187", usePublicAddress = false }).ExpectAsync<ServerSettingsDto>();
+
+        Assert.Contains("node_ip: 172.25.99.187", app.LiveKitYaml, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task MediaSuggestions_ComeFromTheHostHeaderAndNotFromTheComposeNetwork()
     {
         await using var app = await StartAsync(postgres);

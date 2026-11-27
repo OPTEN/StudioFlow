@@ -2196,10 +2196,17 @@ export interface components {
             /** @description Optional replacement source reference (e.g. a pause slate image). */
             fallbackSource: null | string;
         };
-        /** @description The media address. */
+        /** @description The media address and the route media takes. */
         MediaSettingsDto: {
-            /** @description The IPv4 address LiveKit announces; null until the wizard saved it. */
+            /** @description The IPv4 address of the server in the LAN; null until the wizard saved it. */
             address: null | string;
+            /** @description The public IPv4 address of a relay that forwards the media ports to the server; null: none. */
+            publicAddress: null | string;
+            /**
+             * @description True: LiveKit announces only PublicAddress (devices send media through the relay, also from outside
+             *     the LAN). False: LiveKit announces Address (devices send media directly, only inside the LAN).
+             */
+            usePublicAddress: boolean;
         };
         /** @description Where the media address could come from. */
         MediaSuggestionsDto: {
@@ -3345,10 +3352,14 @@ export interface components {
             /** @description Origins such as `https://proxy.example.ch` or `https://*.example.com`. */
             origins: string[];
         };
-        /** @description Sets the media address. */
+        /** @description Sets the media address and the route media takes. */
         UpdateMediaRequest: {
-            /** @description The IPv4 address LiveKit announces to the devices. */
+            /** @description The IPv4 address of the server in the LAN. */
             address: string;
+            /** @description The public IPv4 address of the relay; omitted: the stored one stays; empty: none (only while the public route is off). */
+            publicAddress?: null | string;
+            /** @description Whether LiveKit announces only the public address; omitted: the stored choice stays. */
+            usePublicAddress?: null | boolean;
         };
         /** @description Sets the IP restriction of an output link. */
         UpdateOutputAccessRequest: {

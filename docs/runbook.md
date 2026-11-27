@@ -228,6 +228,11 @@ changed.
 
 - A new **media address** restarts the media server (a few seconds of freeze frame). It is refused while a broadcast is
   live.
+- **Media route** ("Route media through the public address", in the media section): off, devices send media directly to
+  the LAN media address (only works inside the LAN). On, the media server announces only the **public address** of a relay
+  (a proxy that forwards 7881/tcp and 7882/udp to this server, e.g. through a WireGuard tunnel): devices work from
+  anywhere, LAN devices take the detour too. Switching it changes the announced address, so it restarts the media server
+  and is refused while a broadcast is live. "Test connection" tests the address that will be announced after saving.
 - A new **address or certificate** is applied by Caddy without a restart.
 - Every change is written to the audit log (`settings.media.changed`, `settings.address.changed` (also for an uploaded
   certificate), `settings.embedding.changed`, `settings.backup.changed`; `backup.requested` for "Back up now").

@@ -50,6 +50,8 @@ public sealed class ServerSettingsServiceTests
         var entry = Assert.Single(h.Store.Audit);
         Assert.Equal((AuditActors.Admin, AuditActions.SettingsMediaChanged), (entry.Actor, entry.Action));
         Assert.Equal("192.168.1.50", entry.Detail(AuditDetails.Address));
+        Assert.Equal(AuditMediaRoutes.Lan, entry.Detail(AuditDetails.Route));
+        Assert.Equal((null, false), (settings.Media.PublicAddress, settings.Media.UsePublicAddress));
     }
 
     [Theory]
@@ -97,6 +99,113 @@ public sealed class ServerSettingsServiceTests
         var settings = await h.Service.UpdateMediaAsync(new UpdateMediaRequest("192.168.1.50"), Ct);
 
         Assert.Equal("192.168.1.50", settings.Media.Address);
+    }
+
+    [Fact]
+    public async Task UpdateMedia_ThePublicRoute_AnnouncesOnlyThePublicAddress_AndKeepsTheLanAddressForLinks()
+    {
+        var h = new SettingsHarness();
+        await h.Service.UpdateMediaAsync(new UpdateMediaRequest("172.25.99.187"), Ct);
+
+        var settings = await h.Service.UpdateMediaAsync(new UpdateMediaRequest("172.25.99.187", " 49.12.213.173 ", true), Ct);
+
+        Assert.Equal(("172.25.99.187", "49.12.213.173", true), (settings.Media.Address, settings.Media.PublicAddress, settings.Media.UsePublicAddress));
+        Assert.Equal("https://172.25.99.187:8443", settings.BaseUrl);
+        Assert.Contains("node_ip: 49.12.213.173", h.LiveKit.Written, StringComparison.Ordinal);
+        Assert.DoesNotContain("172.25.99.187", h.LiveKit.Written, StringComparison.Ordinal);
+        var entry = h.Store.Audit.Last();
+        Assert.Equal(("49.12.213.173", AuditMediaRoutes.Public), (entry.Detail(AuditDetails.Address), entry.Detail(AuditDetails.Route)));
+    }
+
+    [Fact]
+    public async Task UpdateMedia_ThePublicRouteOff_GoesBackToTheLanAddress_AndKeepsThePublicOne()
+    {
+        var h = new SettingsHarness();
+        await h.Service.UpdateMediaAsync(new UpdateMediaRequest("172.25.99.187", "49.12.213.173", true), Ct);
+
+        var settings = await h.Service.UpdateMediaAsync(new UpdateMediaRequest("172.25.99.187", UsePublicAddress: false), Ct);
+
+        Assert.Equal(("49.12.213.173", false), (settings.Media.PublicAddress, settings.Media.UsePublicAddress));
+        Assert.Contains("node_ip: 172.25.99.187", h.LiveKit.Written, StringComparison.Ordinal);
+        Assert.Equal(AuditMediaRoutes.Lan, h.Store.Audit.Last().Detail(AuditDetails.Route));
+    }
+
+    [Fact]
+    public async Task UpdateMedia_OnlyTheLanAddress_KeepsTheStoredRoute()
+    {
+        var h = new SettingsHarness();
+        await h.Service.UpdateMediaAsync(new UpdateMediaRequest("172.25.99.187", "49.12.213.173", true), Ct);
+
+        var settings = await h.Service.UpdateMediaAsync(new UpdateMediaRequest("172.25.99.188"), Ct);
+
+        Assert.Equal(("172.25.99.188", "49.12.213.173", true), (settings.Media.Address, settings.Media.PublicAddress, settings.Media.UsePublicAddress));
+        Assert.Contains("node_ip: 49.12.213.173", h.LiveKit.Written, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task UpdateMedia_ThePublicRouteWithoutAPublicAddress_IsRefused()
+    {
+        var h = new SettingsHarness();
+
+        var refused = await Refused(() => h.Service.UpdateMediaAsync(new UpdateMediaRequest("172.25.99.187", UsePublicAddress: true), Ct));
+        var emptied = await Refused(() => h.Service.UpdateMediaAsync(new UpdateMediaRequest("172.25.99.187", " ", true), Ct));
+
+        Assert.Equal(SettingsFieldErrors.PublicMediaAddressRequired, Codes(refused, "publicAddress"));
+        Assert.Equal(SettingsFieldErrors.PublicMediaAddressRequired, Codes(emptied, "publicAddress"));
+        Assert.Equal(0, h.Store.Saves);
+    }
+
+    [Fact]
+    public async Task UpdateMedia_AnInvalidPublicAddress_IsRefused()
+    {
+        var h = new SettingsHarness();
+
+        var refused = await Refused(() => h.Service.UpdateMediaAsync(new UpdateMediaRequest("172.25.99.187", "relay.example.ch", true), Ct));
+
+        Assert.Equal(SettingsFieldErrors.MediaAddressInvalid, Codes(refused, "publicAddress"));
+        Assert.Equal(0, h.Store.Saves);
+    }
+
+    [Fact]
+    public async Task UpdateMedia_AnEmptyPublicAddressWithTheRouteOff_RemovesIt()
+    {
+        var h = new SettingsHarness();
+        await h.Service.UpdateMediaAsync(new UpdateMediaRequest("172.25.99.187", "49.12.213.173", false), Ct);
+
+        var settings = await h.Service.UpdateMediaAsync(new UpdateMediaRequest("172.25.99.187", string.Empty, false), Ct);
+
+        Assert.Null(settings.Media.PublicAddress);
+    }
+
+    [Fact]
+    public async Task UpdateMedia_SwitchingTheRouteWhileLive_IsRefused()
+    {
+        var h = new SettingsHarness();
+        await h.Service.UpdateMediaAsync(new UpdateMediaRequest("172.25.99.187", "49.12.213.173", false), Ct);
+        var production = Build.Production();
+        production.StartBroadcast(h.Clock.Now);
+        h.Data.Productions.Add(production);
+        var writes = h.LiveKit.Writes;
+
+        var refused = await Refused(() => h.Service.UpdateMediaAsync(new UpdateMediaRequest("172.25.99.187", UsePublicAddress: true), Ct));
+
+        Assert.Equal((ErrorKind.Conflict, ErrorCodes.BroadcastLive), (refused.Kind, refused.Code));
+        Assert.False(h.Service.Get().Media.UsePublicAddress);
+        Assert.Equal(writes, h.LiveKit.Writes);
+    }
+
+    [Fact]
+    public async Task UpdateMedia_ChangingTheUnusedPublicAddressWhileLive_IsNotARestart()
+    {
+        var h = new SettingsHarness();
+        await h.Service.UpdateMediaAsync(new UpdateMediaRequest("172.25.99.187", "49.12.213.173", false), Ct);
+        var production = Build.Production();
+        production.StartBroadcast(h.Clock.Now);
+        h.Data.Productions.Add(production);
+
+        var settings = await h.Service.UpdateMediaAsync(new UpdateMediaRequest("172.25.99.187", "49.12.213.174"), Ct);
+
+        Assert.Equal("49.12.213.174", settings.Media.PublicAddress);
     }
 
     [Fact]
@@ -548,6 +657,21 @@ public sealed class ServerSettingsServiceTests
 
         Assert.Equal(ErrorCodes.BroadcastLive, refused.Code);
         Assert.Contains("node_ip: 192.168.1.50", h.LiveKit.Written, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task MediaTest_ThePublicAddressInUse_IsNotAChangeWhileLive()
+    {
+        var h = new SettingsHarness();
+        await h.Service.UpdateMediaAsync(new UpdateMediaRequest("172.25.99.187", "49.12.213.173", true), Ct);
+        var production = Build.Production();
+        production.StartBroadcast(h.Clock.Now);
+        h.Data.Productions.Add(production);
+
+        var test = await h.Service.StartMediaTestAsync(new MediaTestRequest("49.12.213.173"), Ct);
+
+        Assert.StartsWith("mediatest-", test.Room, StringComparison.Ordinal);
+        Assert.Contains("node_ip: 49.12.213.173", h.LiveKit.Written, StringComparison.Ordinal);
     }
 
     [Fact]

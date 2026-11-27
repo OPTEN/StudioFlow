@@ -219,6 +219,7 @@ internal sealed class ServerSettingsConfiguration : IEntityTypeConfiguration<Ser
         builder.Property(s => s.Id).ValueGeneratedNever();
         builder.Property(s => s.Revision).IsConcurrencyToken();
         builder.Property(s => s.MediaAddress).HasMaxLength(15);
+        builder.Property(s => s.PublicMediaAddress).HasMaxLength(15);
         builder.Property(s => s.TlsMode).HasMaxLength(Columns.Enum).IsRequired();
         builder.Property(s => s.Domain).HasMaxLength(253);
         builder.Property(s => s.AcmeEmail).HasMaxLength(254);

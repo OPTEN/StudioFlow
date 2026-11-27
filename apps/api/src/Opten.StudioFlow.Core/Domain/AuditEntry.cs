@@ -253,8 +253,11 @@ public static class AuditDetails
     /// <summary>The retention period in days.</summary>
     public const string Days = "days";
 
-    /// <summary>The media address that was saved.</summary>
+    /// <summary>The media address that was saved (the one LiveKit announces).</summary>
     public const string Address = "address";
+
+    /// <summary>The route media takes, see <see cref="AuditMediaRoutes"/>.</summary>
+    public const string Route = "route";
 
     /// <summary>The certificate mode of the address that was saved.</summary>
     public const string Mode = "mode";
@@ -306,6 +309,16 @@ public static class AuditSlates
 
     /// <summary>The slate after the broadcast.</summary>
     public const string End = "end";
+}
+
+/// <summary>Values of <see cref="AuditDetails.Route"/> of <see cref="AuditActions.SettingsMediaChanged"/>.</summary>
+public static class AuditMediaRoutes
+{
+    /// <summary>Devices send media directly to the LAN address.</summary>
+    public const string Lan = "lan";
+
+    /// <summary>Devices send media only to the public address of the relay.</summary>
+    public const string Public = "public";
 }
 
 /// <summary>An entry of the audit log (table <c>audit_entries</c>).</summary>

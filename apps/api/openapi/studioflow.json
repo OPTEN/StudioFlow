@@ -6834,7 +6834,9 @@
       },
       "MediaSettingsDto": {
         "required": [
-          "address"
+          "address",
+          "publicAddress",
+          "usePublicAddress"
         ],
         "type": "object",
         "properties": {
@@ -6843,10 +6845,21 @@
               "null",
               "string"
             ],
-            "description": "The IPv4 address LiveKit announces; null until the wizard saved it."
+            "description": "The IPv4 address of the server in the LAN; null until the wizard saved it."
+          },
+          "publicAddress": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The public IPv4 address of a relay that forwards the media ports to the server; null: none."
+          },
+          "usePublicAddress": {
+            "type": "boolean",
+            "description": "True: LiveKit announces only PublicAddress (devices send media through the relay, also from outside\nthe LAN). False: LiveKit announces Address (devices send media directly, only inside the LAN)."
           }
         },
-        "description": "The media address."
+        "description": "The media address and the route media takes."
       },
       "MediaSuggestionsDto": {
         "required": [
@@ -9642,10 +9655,24 @@
         "properties": {
           "address": {
             "type": "string",
-            "description": "The IPv4 address LiveKit announces to the devices."
+            "description": "The IPv4 address of the server in the LAN."
+          },
+          "publicAddress": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The public IPv4 address of the relay; omitted: the stored one stays; empty: none (only while the public route is off)."
+          },
+          "usePublicAddress": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "Whether LiveKit announces only the public address; omitted: the stored choice stays."
           }
         },
-        "description": "Sets the media address."
+        "description": "Sets the media address and the route media takes."
       },
       "UpdateOutputAccessRequest": {
         "required": [
