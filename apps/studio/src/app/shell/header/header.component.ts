@@ -35,6 +35,7 @@ import { OUTPUT_POPOVER, OutputPopoverComponent, linkStateText } from './output-
 import { maskOutputUrl } from './output-url';
 import { ProductionMenuComponent } from './production-menu.component';
 import { ShortcutsSheetComponent } from './shortcuts-sheet.component';
+import { onThisOrigin } from '../../core/ui/this-origin';
 
 /** Id of the presence popover. */
 export const PRESENCE_POPOVER = 'presence';
@@ -234,7 +235,8 @@ export class HeaderComponent {
         });
         return;
       }
-      await this.clipboard.copy(link.url, { label: maskOutputUrl(link.url) });
+      const url = onThisOrigin(link.url);
+      await this.clipboard.copy(url, { label: maskOutputUrl(url) });
     } catch (error) {
       this.toasts.error(error);
     }

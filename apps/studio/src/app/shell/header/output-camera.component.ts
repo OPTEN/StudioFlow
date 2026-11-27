@@ -6,6 +6,7 @@ import { DownloadService } from '../../core/ui/download.service';
 import { IconComponent } from '../../core/ui/icon.component';
 import { ToastService } from '../../core/ui/toast.service';
 import { OBS_FPS, obsSceneCollection, obsSceneCollectionFileName } from './obs-scene-collection';
+import { onThisOrigin } from '../../core/ui/this-origin';
 
 /**
  * "Use as camera in OBS" (issue #9): the numbered steps to show a link as the camera "OBS Virtual Camera" in Teams, Zoom
@@ -59,7 +60,10 @@ export class OutputCameraComponent {
   protected download(): void {
     const link = this.link();
     const file = obsSceneCollectionFileName(link.name);
-    this.downloads.saveText(file, obsSceneCollection(link.name, link.url, this.store.canvas()));
+    this.downloads.saveText(
+      file,
+      obsSceneCollection(link.name, onThisOrigin(link.url), this.store.canvas()),
+    );
     this.toasts.show(t('regie.output.camera.downloaded', { file }));
   }
 }

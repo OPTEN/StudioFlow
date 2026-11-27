@@ -7,6 +7,7 @@ import { startStore, studioTestProviders, type StoreHarness } from '../../../tes
 import { ClipboardService } from '../../core/ui/clipboard.service';
 import { PopoverService } from '../../core/ui/popover.directive';
 import { OUTPUT_POPOVER, OutputPopoverComponent } from './output-popover.component';
+import { onThisOrigin } from '../../core/ui/this-origin';
 
 const BASE = `/api/productions/${PRODUCTION_ID}/output`;
 const PROXY_KEY = 'proxy-key-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
@@ -184,7 +185,7 @@ describe('OutputPopoverComponent', () => {
       expect(lines()).toEqual(['Proxy · connected', 'Teams camera · not connected']);
       expect(
         Array.from(element.querySelectorAll('.c-output-pop__url')).map((url) => text(url)),
-      ).toEqual(['studioflow.example/o/webinar?k=••••••', 'studioflow.example/o/webinar?k=••••••']);
+      ).toEqual([`${location.host}/o/webinar?k=••••••`, `${location.host}/o/webinar?k=••••••`]);
       expect(text()).not.toContain(PROXY_KEY);
       expect(text()).not.toContain(TEAMS_KEY);
       const copies = Array.from(element.querySelectorAll('.c-output-pop__link button')).map(
@@ -200,8 +201,8 @@ describe('OutputPopoverComponent', () => {
       await open();
       const copy = vi.spyOn(TestBed.inject(ClipboardService), 'copy').mockResolvedValue(true);
       element.querySelectorAll<HTMLButtonElement>('.c-output-pop__link button')[1]?.click();
-      expect(copy).toHaveBeenCalledWith(TEAMS.url, {
-        label: 'studioflow.example/o/webinar?k=••••••',
+      expect(copy).toHaveBeenCalledWith(onThisOrigin(TEAMS.url), {
+        label: `${location.host}/o/webinar?k=••••••`,
       });
     });
 
@@ -211,7 +212,7 @@ describe('OutputPopoverComponent', () => {
       const select = vi.spyOn(TestBed.inject(ClipboardService), 'selectContents');
       element.querySelectorAll<HTMLButtonElement>('.c-output-pop__link button')[0]?.click();
       await render();
-      expect(text(element.querySelector('[data-url="olk_proxy"]'))).toBe(PROXY.url);
+      expect(text(element.querySelector('[data-url="olk_proxy"]'))).toBe(onThisOrigin(PROXY.url));
       expect(select).toHaveBeenCalledWith(element.querySelector('[data-url="olk_proxy"]'));
     });
 

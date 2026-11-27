@@ -36,6 +36,7 @@ import {
   outputLinkUrl,
   type OutputLinkOptions,
 } from './output-url';
+import { onThisOrigin } from '../../core/ui/this-origin';
 
 // The URL helpers have their own module (the output popover uses them without this component).
 export { maskOutputUrl, outputLinkUrl } from './output-url';
@@ -141,7 +142,9 @@ export class OutputLinkComponent {
     );
   });
   /** The URL with the chosen display options (what "Copy" copies). */
-  protected readonly url = computed(() => outputLinkUrl(this.link().url, this.options()));
+  protected readonly url = computed(() =>
+    outputLinkUrl(onThisOrigin(this.link().url), this.options()),
+  );
   protected readonly displayUrl = computed(() =>
     this.revealed() ? this.url() : maskOutputUrl(this.url()),
   );

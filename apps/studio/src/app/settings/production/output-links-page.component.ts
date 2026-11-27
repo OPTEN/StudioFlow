@@ -41,6 +41,7 @@ import { linkStateText } from '../../shell/header/output-popover.component';
 import { DEFAULT_LINK_OPTIONS, maskOutputUrl, outputLinkUrl } from '../../shell/header/output-url';
 import { SettingsPageHeadComponent } from '../pages/settings-page-head.component';
 import { moveRowFocus } from './tab-keys';
+import { onThisOrigin } from '../../core/ui/this-origin';
 
 /** Width of the row menu, to right-align it to the "⋯" button. */
 const MENU_WIDTH = 220;
@@ -319,7 +320,7 @@ export class OutputLinksPageComponent {
       await detail.copy();
       return;
     }
-    const url = outputLinkUrl(link.url, DEFAULT_LINK_OPTIONS);
+    const url = outputLinkUrl(onThisOrigin(link.url), DEFAULT_LINK_OPTIONS);
     if (!(await this.clipboard.copy(url, { label: maskOutputUrl(url) }))) {
       this.withDetail(link.id, (open) => void open.copy());
     }

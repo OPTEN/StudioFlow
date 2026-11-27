@@ -255,7 +255,7 @@ describe('HeaderComponent', () => {
       expect(text()).toContain('connected, 1 consumer');
       expect(text()).toContain('10.0.0.42');
       expect(text()).toContain('1920 × 1080 · 16:9 · 30 fps');
-      expect(text()).toContain('studioflow.example.com/o/webinar?k=••••••');
+      expect(text()).toContain(`${location.host}/o/webinar?k=••••••`);
       expect(text()).not.toContain('secret123');
     });
 
@@ -300,9 +300,7 @@ describe('HeaderComponent', () => {
         frameAncestors: ["'self'"],
       });
       await render();
-      expect(writeText).toHaveBeenCalledWith(
-        'https://studioflow.example.com/o/webinar?k=secret123',
-      );
+      expect(writeText).toHaveBeenCalledWith(`${location.origin}/o/webinar?k=secret123`);
 
       menus.run(items[1]);
       await render();
