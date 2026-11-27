@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/OPTEN/StudioFlow/compare/v0.2.2...v0.3.0) (2026-11-27)
+
+
+### Features
+
+* **studio:** hand out links on the address the Regie is open at ([#120](https://github.com/OPTEN/StudioFlow/issues/120)) ([956282b](https://github.com/OPTEN/StudioFlow/commit/956282b1214bbe8c206e273543022e932287622e))
+
 ## [0.2.2](https://github.com/OPTEN/StudioFlow/compare/v0.2.1...v0.2.2) (2026-11-05)
 
 
