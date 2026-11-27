@@ -115,6 +115,11 @@ export interface SceneRendererOptions {
   readonly assetKindOf?: (assetId: string) => AssetMediaKind | undefined;
   /** Content of a text source (`txt_…`); undefined renders the item as “Source missing” (monitor) or nothing. */
   readonly textOf?: (sourceId: string) => TextSourceDto | undefined;
+  /**
+   * Clockwise rotation of the picture of a device source (`SourceDto.rotation`: a phone held sideways), applied before
+   * the item's own rotation; undefined or anything but 90/180/270 is no rotation. `refresh` re-reads it.
+   */
+  readonly rotationOf?: (sourceId: string) => number | undefined;
   /** Colours of all texts (the production's text theme); undefined uses the defaults. */
   readonly textTheme?: () => TextThemeDto | undefined;
   /** Accessible name of the stage (`role="img"`). Default “Scene” in the active language. */
@@ -188,7 +193,10 @@ export interface SceneRenderer {
    * will have on stage. Sources of every other scene are not requested at all.
    */
   setPreloadScenes(scenes: readonly SceneDto[]): void;
-  /** Re-reads the callbacks (`statusOf`, `textOf`, `textTheme`) and renders again: sources or text colours changed. */
+  /**
+   * Re-reads the callbacks (`statusOf`, `textOf`, `rotationOf`, `textTheme`) and renders again: sources or text colours
+   * changed.
+   */
   refresh(): void;
   /** Rectangles actually used per visible item id of the shown scene (after Auto-Grid), in canvas pixels. */
   effectiveRects(): ReadonlyMap<string, CanvasRect>;

@@ -31,6 +31,7 @@ public static class AuditCategories
         [AuditActions.DevicePaired] = AuditCategory.Devices,
         [AuditActions.DeviceRenamed] = AuditCategory.Devices,
         [AuditActions.CameraLensSwitched] = AuditCategory.Devices,
+        [AuditActions.CameraRotationChanged] = AuditCategory.Devices,
         [AuditActions.DeviceBlocked] = AuditCategory.Devices,
         [AuditActions.DeviceUnblocked] = AuditCategory.Devices,
         [AuditActions.DeviceRemoved] = AuditCategory.Devices,

@@ -37,6 +37,34 @@ public sealed class DeviceAdminService(ProductionCoordinator coordinator, LiveKi
     }
 
     /// <summary>
+    /// Sets how the camera picture of a device is turned upright: a fixed 0/90/180/270 or automatic (null, what the
+    /// phone reports). The device and, when the applied rotation changes, its camera source reach the clients (the
+    /// output turns the picture); a change is audited.
+    /// </summary>
+    public Task<DeviceDto> SetCameraRotationAsync(string productionId, string deviceId, SetCameraRotationRequest request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return coordinator.ExecuteAsync(
+            productionId,
+            async context =>
+            {
+                var device = await context.DeviceAsync(deviceId, cancellationToken);
+                var before = SourceMonitor.CameraRotationOf(context.Runtime, device);
+                if (device.SetCameraRotation(request.Rotation))
+                {
+                    var details = MutationContextExtensions.DeviceDetails(device);
+                    details[AuditDetails.Rotation] = AuditRotations.Of(request.Rotation);
+                    context.Audit(AuditActors.Admin, AuditActions.CameraRotationChanged, details);
+                    DeviceEvents.EmitDevice(context, device);
+                    SourceMonitor.PublishCameraRotation(context, device, before);
+                }
+
+                return Dtos.Device(device, context.Runtime.FindDevice(device.Id));
+            },
+            cancellationToken);
+    }
+
+    /// <summary>
     /// Blocks a device: its sources turn red (“blocked”), incidents disappear, the device gets a final <c>self</c>,
     /// its hub connection is aborted and LiveKit removes it. The token endpoint refuses it from now on.
     /// </summary>

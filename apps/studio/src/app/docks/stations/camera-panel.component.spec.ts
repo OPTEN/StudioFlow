@@ -327,6 +327,95 @@ describe('CameraPanelComponent', () => {
     expect(element.querySelector('[data-testid="camera-resolution-hint"]')).toBeNull();
   });
 
+  describe('rotation', () => {
+    const ROTATION = `/api/productions/${PRODUCTION_ID}/devices/${PHONE}/camera-rotation`;
+
+    function rotationButton(mode: string): HTMLButtonElement | null {
+      return element.querySelector<HTMLButtonElement>(
+        `[data-testid="camera-rotation"][data-rotation="${mode}"]`,
+      );
+    }
+
+    it('shows automatic with what the phone reports and sets a fixed angle at once off air', async () => {
+      await setup(phone(ANDROID, { rotation: 90 }), false);
+
+      expect(text(rotationButton('auto'))).toBe('Automatic (90°)');
+      expect(rotationButton('auto')?.getAttribute('aria-pressed')).toBe('true');
+      expect(['0', '90', '180', '270'].map((mode) => text(rotationButton(mode)))).toEqual([
+        '0°',
+        '90°',
+        '180°',
+        '270°',
+      ]);
+      rotationButton('auto')?.click();
+      await tick();
+      harness.http.expectNone(ROTATION);
+
+      rotationButton('180')?.click();
+      await tick();
+      const request = harness.http.expectOne(ROTATION);
+      expect(request.request.method).toBe('PUT');
+      expect(request.request.body).toEqual({ rotation: 180 });
+      request.flush(phone(ANDROID, { rotation: 90 }, null, { cameraRotation: 180 }));
+      await tick();
+      expect(element.querySelector('.c-confirm')).toBeNull();
+    });
+
+    it('shows the fixed angle the Regie set and goes back to automatic', async () => {
+      await setup(phone(ANDROID, {}, null, { cameraRotation: 270 }), false);
+
+      expect(text(rotationButton('auto'))).toBe('Automatic');
+      expect(rotationButton('270')?.getAttribute('aria-pressed')).toBe('true');
+      expect(rotationButton('auto')?.getAttribute('aria-pressed')).toBe('false');
+
+      rotationButton('auto')?.click();
+      await tick();
+      harness.http.expectOne(ROTATION).flush(phone(ANDROID));
+      await tick();
+    });
+
+    it('asks before it turns the picture of a source that is in the program, also to 0°', async () => {
+      await setup(phone(ANDROID, { rotation: 90 }), true);
+
+      rotationButton('0')?.click();
+      await tick();
+      harness.http.expectNone(ROTATION);
+      expect(text(element.querySelector('.c-confirm span'))).toBe(
+        'K1 is live. The picture on air turns at once.',
+      );
+
+      button('Turn picture')?.click();
+      await tick();
+      expect(harness.http.expectOne(ROTATION).request.body).toEqual({ rotation: 0 });
+      expect(element.querySelector('.c-confirm')).toBeNull();
+    });
+
+    it('is offered while the phone is offline or has not reported its camera', async () => {
+      await setup(phone(ANDROID, {}, null, { connection: 'offline' }));
+
+      expect(rotationButton('auto')).not.toBeNull();
+      expect(text(element.querySelector('[data-testid="camera-rotation-hint"]'))).toContain(
+        'Turns the picture upright',
+      );
+    });
+
+    it('shows a refusal of the server as the inline message', async () => {
+      await setup(phone(ANDROID), false);
+
+      rotationButton('90')?.click();
+      await tick();
+      harness.http
+        .expectOne(ROTATION)
+        .flush(
+          { title: 'Invalid', status: 400, errors: { rotation: ['Must be 0, 90, 180 or 270.'] } },
+          { status: 400, statusText: 'Bad Request' },
+        );
+      await tick();
+
+      expect(element.querySelector('[data-testid="camera-problem"]')).not.toBeNull();
+    });
+  });
+
   it('does not ask for zoom, focus, brightness or light in the program (no interruption)', async () => {
     await setup(phone(ANDROID), true);
 

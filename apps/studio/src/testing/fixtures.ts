@@ -114,6 +114,7 @@ export function sourceFixture(
     status,
     statusSince: null,
     text: null,
+    rotation: 0,
     ...overrides,
   };
 }
@@ -173,6 +174,7 @@ export function textSourceFixture(
     status: 'ok',
     statusSince: null,
     text,
+    rotation: 0,
   };
 }
 

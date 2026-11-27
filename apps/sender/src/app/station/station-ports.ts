@@ -1,6 +1,7 @@
 import { InjectionToken } from '@angular/core';
 import { AudioPublisher, MediaSession, Publisher } from '@studioflow/media-client';
 import {
+  CameraOrientation,
   ScreenWakeLock,
   runTechCheck,
   type TechCheckOptions,
@@ -118,6 +119,21 @@ export const WAKE_LOCK_FACTORY = new InjectionToken<() => StationWakeLock>(
   {
     providedIn: 'root',
     factory: () => () => new ScreenWakeLock(),
+  },
+);
+
+/** How the phone is held and turned (`CameraOrientation` from `@studioflow/media-client`): the automatic rotation. */
+export type StationOrientation = Pick<
+  CameraOrientation,
+  'needsPermission' | 'requestPermission' | 'start' | 'onChange' | 'correction' | 'dispose'
+>;
+
+/** Factory of the orientation watcher. */
+export const ORIENTATION_FACTORY = new InjectionToken<() => StationOrientation>(
+  'studioflow.orientationFactory',
+  {
+    providedIn: 'root',
+    factory: () => () => new CameraOrientation(),
   },
 );
 

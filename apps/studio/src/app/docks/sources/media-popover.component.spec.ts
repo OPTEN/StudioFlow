@@ -42,6 +42,7 @@ function mediaSource(id: string, code: string, label: string): SourceDto {
     status: 'ok',
     statusSince: null,
     text: null,
+    rotation: 0,
   };
 }
 

@@ -70,6 +70,15 @@
   }
 }
 
+// Rotation: “Automatic (90°)” is wider than the four angles, which share the rest of the row.
+.c-cam__turns {
+  grid-template-columns: minmax(max-content, 2fr) repeat(4, minmax(0, 1fr));
+
+  button {
+    padding: 0 6px;
+  }
+}
+
 .c-cam__label {
   color: var(--text-2);
   font-size: var(--fs-footnote);

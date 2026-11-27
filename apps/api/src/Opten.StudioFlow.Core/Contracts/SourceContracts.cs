@@ -11,6 +11,10 @@ namespace Opten.StudioFlow.Core.Contracts;
 /// <param name="Status">Health.</param>
 /// <param name="StatusSince">Time of the last status change (timers in the Regie).</param>
 /// <param name="Text">Content of a text source; null for every other kind.</param>
+/// <param name="Rotation">
+/// Clockwise rotation (0, 90, 180 or 270) the renderers apply to the picture of the source before the rotation of the
+/// scene item: the rotation set in the Regie for the camera, else the one the phone reports, else 0.
+/// </param>
 public sealed record SourceDto(
     string Id,
     string Code,
@@ -21,7 +25,8 @@ public sealed record SourceDto(
     string? AssetId,
     SourceStatus Status,
     DateTimeOffset? StatusSince,
-    TextSourceDto? Text);
+    TextSourceDto? Text,
+    int Rotation = 0);
 
 /// <summary>
 /// A device source of the production this one was copied from (duplicate or import). Devices belong to one production

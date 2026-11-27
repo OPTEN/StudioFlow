@@ -130,6 +130,7 @@
                     @if (row.thumbSourceId; as thumbId) {
                       <sf-station-thumb
                         [sourceId]="thumbId"
+                        [rotation]="rotationOf(thumbId)"
                         [width]="40"
                         [dimmed]="row.state !== null"
                       />

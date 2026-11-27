@@ -1,4 +1,4 @@
-import type { CanvasSize, TextSourceDto, TextThemeDto } from '@studioflow/scene-model';
+import type { CanvasSize, Rotation, TextSourceDto, TextThemeDto } from '@studioflow/scene-model';
 
 import { guarded, type ErrorSink } from './guard';
 import type { MediaHost } from './media-view';
@@ -37,6 +37,8 @@ export interface RenderContext extends MediaHost {
   codeOf(sourceId: string): string | undefined;
   /** Content of a text source; undefined when unknown. */
   textOf(sourceId: string): TextSourceDto | undefined;
+  /** Rotation of the picture of a device source (0 when unknown or without `rotationOf`). */
+  sourceRotation(sourceId: string): Rotation;
   /** Colours of all texts; undefined uses the defaults. */
   textTheme(): TextThemeDto | undefined;
   /** Texts appear and disappear without animation. */
@@ -67,6 +69,16 @@ export type RenderContextHooks = Pick<
 
 const PENDING: SourceAvailability = { state: 'pending' };
 
+/** The rotation of a source as the host reports it: 90, 180 or 270, else (anything unusable) 0. */
+export function sourceRotationOf(
+  sink: ErrorSink,
+  rotationOf: SceneRendererOptions['rotationOf'],
+  sourceId: string,
+): Rotation {
+  const value: unknown = guarded<unknown>(sink, () => rotationOf?.(sourceId), undefined);
+  return value === 90 || value === 180 || value === 270 ? value : 0;
+}
+
 /** Builds the guarded context for one renderer. */
 export function createRenderContext(
   doc: Document,
@@ -74,7 +86,7 @@ export function createRenderContext(
   sink: ErrorSink,
   hooks: RenderContextHooks,
 ): RenderContext {
-  const { provider, statusOf, codeOf, assetKindOf, textOf, textTheme } = options;
+  const { provider, statusOf, codeOf, assetKindOf, textOf, rotationOf, textTheme } = options;
   const statusOfSource = (sourceId: string): MonitorSourceStatus | undefined =>
     guarded(sink, () => statusOf?.(sourceId), undefined);
   return {
@@ -104,6 +116,7 @@ export function createRenderContext(
     isKnown: (sourceId) => !statusOf || statusOfSource(sourceId) !== undefined,
     codeOf: (sourceId) => guarded(sink, () => codeOf?.(sourceId), undefined),
     textOf: (sourceId) => guarded(sink, () => textOf?.(sourceId), undefined),
+    sourceRotation: (sourceId) => sourceRotationOf(sink, rotationOf, sourceId),
     textTheme: () => guarded(sink, () => textTheme?.(), undefined),
     reducedMotion: options.reducedMotion === true,
     canvas: () => hooks.canvas(),

@@ -7,7 +7,11 @@ namespace Opten.StudioFlow.Core.Domain;
 /// <param name="Slot">Slot name (LiveKit track name).</param>
 /// <param name="Code">Slot code, e.g. K2.</param>
 /// <param name="Kind">Camera, screen or audio (microphone).</param>
-public sealed record DeviceSlot(string Slot, string Code, SourceKind Kind);
+/// <param name="Rotation">
+/// Camera slot: rotation of the picture set in the Regie (0, 90, 180, 270 clockwise); null for automatic (what the
+/// phone reports).
+/// </param>
+public sealed record DeviceSlot(string Slot, string Code, SourceKind Kind, int? Rotation = null);
 
 /// <summary>
 /// A paired device (aggregate root, spec 4.6). Its slots are sources of the production. Live data (connection,
@@ -196,6 +200,28 @@ public sealed class Device
         var recoded = existing with { Code = code };
         Slots = [.. Slots.Select(s => s == existing ? recoded : s)];
         return recoded;
+    }
+
+    /// <summary>
+    /// Sets the rotation of the camera picture: 0, 90, 180 or 270, or null for automatic. Returns false when it did not
+    /// change; throws <c>validation_failed</c> for another angle or a device without a camera.
+    /// </summary>
+    public bool SetCameraRotation(int? rotation)
+    {
+        if (rotation is not null && !CameraRotations.IsValid(rotation))
+        {
+            throw StudioFlowException.Invalid("rotation", "Must be 0, 90, 180 or 270, or null for automatic.");
+        }
+
+        var camera = FindSlot(DeviceSlots.Camera) ?? throw StudioFlowException.Invalid("rotation", "The device has no camera.");
+        if (camera.Rotation == rotation)
+        {
+            return false;
+        }
+
+        var turned = camera with { Rotation = rotation };
+        Slots = [.. Slots.Select(s => s == camera ? turned : s)];
+        return true;
     }
 
     /// <summary>The slot with the given name, if any.</summary>

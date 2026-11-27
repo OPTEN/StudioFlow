@@ -26,6 +26,7 @@ import {
   type DeviceSelfDto,
   type DeviceSessionDto,
   type DeviceSlotDto,
+  type Rotation,
   type TallyDto,
   type TallyState,
 } from '@studioflow/scene-model';
@@ -57,11 +58,13 @@ import {
 import { SLOT_ERRORS, allocateSlotError, releaseSlotError, type ActionError } from './slot-errors';
 import {
   DEVICE_HUB_FACTORY,
+  ORIENTATION_FACTORY,
   SENDER_MEDIA_FACTORY,
   TECH_CHECK_RUNNER,
   WAKE_LOCK_FACTORY,
   type DeviceHub,
   type SenderMedia,
+  type StationOrientation,
   type StationWakeLock,
 } from './station-ports';
 
@@ -181,6 +184,7 @@ export class DeviceSessionService {
   private readonly hubFactory = inject(DEVICE_HUB_FACTORY);
   private readonly mediaFactory = inject(SENDER_MEDIA_FACTORY);
   private readonly wakeLockFactory = inject(WAKE_LOCK_FACTORY);
+  private readonly orientationFactory = inject(ORIENTATION_FACTORY);
   private readonly techCheckRunner = inject(TECH_CHECK_RUNNER);
 
   private currentSessionId = createSessionId();
@@ -212,6 +216,8 @@ export class DeviceSessionService {
   readonly previewRevision = signal(0);
 
   private readonly slotStates = signal<Readonly<Record<string, SlotView>>>({});
+  /** Bumped whenever the orientation watcher reports a change. */
+  private readonly orientationRevision = signal(0);
   /** Slots stopped on purpose or lost by a reload, reported `ended` (see {@link buildDeviceReport}). */
   private readonly endedSlots = signal<ReadonlySet<string>>(new Set());
   /** Screens added in this page whose allocation is still running. */
@@ -259,6 +265,19 @@ export class DeviceSessionService {
       }));
   });
 
+  /**
+   * The clockwise rotation that turns the camera picture upright (a phone held sideways with its screen locked
+   * upright), reported to the Regie; null on laptops and while the phone cannot tell (no sensor, permission missing or
+   * denied, lying flat since the start).
+   */
+  readonly cameraRotation = computed<Rotation | null>(() => {
+    this.orientationRevision();
+    const orientation = this.orientation;
+    return this.kind() === 'phone' && orientation !== null
+      ? orientation.correction(this.facing())
+      : null;
+  });
+
   /** The camera slot, if the device has one. */
   readonly camera = computed(() => this.slots().find((slot) => slot.kind === 'camera') ?? null);
   /** The screen slots. */
@@ -275,6 +294,9 @@ export class DeviceSessionService {
   private hub: DeviceHub | null = null;
   private media: SenderMedia | null = null;
   private wakeLock: StationWakeLock | null = null;
+  private orientation: StationOrientation | null = null;
+  /** The rotation in the last report, to report a change at once. */
+  private reportedRotation: Rotation | null = null;
   private readonly disposers: (() => unknown)[] = [];
   private readonly intervals: ReturnType<typeof setInterval>[] = [];
   private accessTimer: ReturnType<typeof setTimeout> | null = null;
@@ -335,7 +357,13 @@ export class DeviceSessionService {
     this.hub = hub;
     this.media = media;
     this.wakeLock = this.wakeLockFactory();
+    const orientation = this.orientationFactory();
+    this.orientation = orientation;
+    orientation.start();
+    this.orientationRevision.update((revision) => revision + 1);
     this.disposers.push(
+      orientation.onChange(() => this.onOrientationChange()),
+      () => orientation.dispose(),
       hub.onStateChange((state) => this.onHubState(state)),
       hub.onConnected(() => void this.sayHello()),
       hub.on(HUB.tally, (tally: unknown) => this.onTally(tally)),
@@ -1153,6 +1181,26 @@ export class DeviceSessionService {
     this.updateDerived();
   }
 
+  /**
+   * Asks for the motion sensor where the browser requires a tap for it (iOS), for the automatic rotation. Called on
+   * every tap of the phone station until there is an answer; elsewhere nothing happens.
+   */
+  enableOrientation(): void {
+    const orientation = this.orientation;
+    if (orientation === null || !orientation.needsPermission || this.kind() !== 'phone') {
+      return;
+    }
+    void orientation.requestPermission();
+  }
+
+  /** The phone was turned (or its screen): a changed rotation goes to the Regie with a report at once. */
+  private onOrientationChange(): void {
+    this.orientationRevision.update((revision) => revision + 1);
+    if (this.cameraRotation() !== this.reportedRotation) {
+      void this.sendReport();
+    }
+  }
+
   // ---- Periodic work ------------------------------------------------------------------------------------------
 
   /**
@@ -1194,11 +1242,13 @@ export class DeviceSessionService {
         rttMs: this.rttMs(),
         techCheck: this.techCheck(),
         camera,
+        cameraRotation: this.cameraRotation(),
       });
       if (seq !== this.reportSeq || this.phase() !== 'online' || hub.state !== 'connected') {
         return;
       }
       this.lastReportSent = report;
+      this.reportedRotation = report.camera === null ? null : this.cameraRotation();
       const sentAt = monotonicNow();
       await hub.invoke(HUB.report, report);
       if (seq === this.reportSeq && hub === this.hub) {

@@ -435,6 +435,20 @@ export class StudioApiService {
     );
   }
 
+  /** `PUT …/devices/{deviceId}/camera-rotation`: turns the camera picture (0/90/180/270) or back to automatic (null). */
+  setCameraRotation(
+    productionId: string,
+    deviceId: string,
+    body: ApiBody<'setCameraRotation'>,
+  ): Promise<ApiResult<'setCameraRotation'>> {
+    return this.call(
+      this.http.put<ApiResult<'setCameraRotation'>>(
+        this.device(productionId, deviceId, '/camera-rotation'),
+        body,
+      ),
+    );
+  }
+
   /** `POST …/devices/{deviceId}/block`: disconnects the device immediately. */
   blockDevice(productionId: string, deviceId: string): Promise<ApiResult<'blockDevice'>> {
     return this.post<ApiResult<'blockDevice'>>(this.device(productionId, deviceId, '/block'));

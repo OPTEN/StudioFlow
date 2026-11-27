@@ -1,7 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { t } from '@studioflow/i18n';
 import { CAMERA_PROTOCOL_VERSION, mergeCameraControl } from '@studioflow/media-client/device';
-import type { CameraControlDto, DeviceDto } from '@studioflow/scene-model';
+import type { CameraControlDto, DeviceDto, Rotation } from '@studioflow/scene-model';
 import { toUserMessage } from '../../core/api/api-error';
 import { StudioApiService } from '../../core/api/studio-api.service';
 import { ProductionStoreService } from '../../core/state/production-store.service';
@@ -70,6 +70,24 @@ export class CameraControlService {
     const next = command(change);
     channel.pending = channel.pending === null ? next : mergeCameraControl(channel.pending, next);
     this.schedule(device.id, channel);
+  }
+
+  /**
+   * Turns the camera picture of the phone by a fixed angle, or back to automatic (null: what the phone reports). The
+   * picture turns in the Regie and on the output once the server confirms; a failure becomes the inline message.
+   */
+  async setRotation(device: DeviceDto, rotation: Rotation | null): Promise<void> {
+    const productionId = this.store.productionId();
+    if (!this.store.canCommand() || productionId === null || productionId === '') {
+      this.fail(device.id, t('regie.docks.offline'));
+      return;
+    }
+    try {
+      await this.api.setCameraRotation(productionId, device.id, { rotation });
+      this.clearFailure(device.id);
+    } catch (error) {
+      this.fail(device.id, toUserMessage(error));
+    }
   }
 
   private channel(deviceId: string): Channel {

@@ -91,6 +91,26 @@ public sealed class DeviceApiTests(StudioFlowApp app) : IClassFixture<StudioFlow
     }
 
     [Fact]
+    public async Task CameraRotation_IsStoredAndTurnsTheCameraSource()
+    {
+        var admin = await app.AdminAsync();
+        var credentials = await app.PairPhoneAsync(admin, "Bühnenkamera");
+        var url = $"/api/productions/{admin.ProductionId}/devices/{credentials.DeviceId}/camera-rotation";
+
+        var turned = await admin.Client.PutJsonAsync(url, new SetCameraRotationRequest(270)).ExpectAsync<DeviceDto>();
+        await admin.Client.PutJsonAsync(url, new SetCameraRotationRequest(45)).ExpectProblemAsync(HttpStatusCode.BadRequest);
+        await admin.Client.PutJsonAsync($"/api/productions/{admin.ProductionId}/devices/dev_unknown0000/camera-rotation", new SetCameraRotationRequest(90)).ExpectProblemAsync(HttpStatusCode.NotFound);
+        var snapshot = await admin.Client.GetAsync($"/api/productions/{admin.ProductionId}/snapshot", TestContext.Current.CancellationToken).ExpectAsync<ProductionSnapshot>();
+
+        Assert.Equal(270, turned.CameraRotation);
+        Assert.Equal(270, snapshot.Devices.Single(d => d.Id == credentials.DeviceId).CameraRotation);
+        Assert.Equal(270, snapshot.Sources.Single(s => s.DeviceId == credentials.DeviceId).Rotation);
+
+        var auto = await admin.Client.PutJsonAsync(url, new SetCameraRotationRequest(null)).ExpectAsync<DeviceDto>();
+        Assert.Null(auto.CameraRotation);
+    }
+
+    [Fact]
     public async Task Slots_AllocateUpToLimitAndRelease()
     {
         var admin = await app.AdminAsync();

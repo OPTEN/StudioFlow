@@ -151,6 +151,37 @@ describe('scene renderer: stage and items', () => {
       expect(box?.style.transform).toBe('');
     });
 
+    it('turns the picture by the rotation of its source before the rotation of the item', () => {
+      const rotations = new Map<string, number>([[CAMERA, 90]]);
+      mounted = mount({ rotationOf: (sourceId) => rotations.get(sourceId) });
+      mounted.renderer.show(
+        scene('scn_a', [
+          sceneItem('itm_a', CAMERA, { w: 800, h: 450, rotation: 90 }),
+          sceneItem('itm_b', CAMERA, { w: 800, h: 450, rotation: 0 }),
+          sceneItem('itm_s', SCREEN, { w: 800, h: 450, rotation: 0 }),
+        ]),
+      );
+      const box = mounted.part('itm_a', '.sf-r-box');
+      const plain = mounted.part('itm_b', '.sf-r-box');
+      // 90 (item) + 90 (source) = 180: no swap of width and height.
+      expect(box?.style.transform).toBe('rotate(180deg)');
+      expect([box?.style.width, box?.style.height]).toEqual(['800px', '450px']);
+      // The source alone: a quarter turn, width and height swapped.
+      expect(plain?.style.transform).toBe('rotate(90deg)');
+      expect([plain?.style.width, plain?.style.height]).toEqual(['450px', '800px']);
+      // Another source is not turned.
+      expect(mounted.part('itm_s', '.sf-r-box')?.style.transform).toBe('');
+
+      rotations.set(CAMERA, 270);
+      mounted.renderer.refresh();
+      expect(box?.style.transform).toBe('');
+      expect(plain?.style.transform).toBe('rotate(270deg)');
+
+      rotations.set(CAMERA, 45);
+      mounted.renderer.refresh();
+      expect(plain?.style.transform).toBe('');
+    });
+
     it('mirrors the media horizontally', () => {
       mounted = mount();
       mounted.renderer.show(scene('scn_a', [sceneItem('itm_a', CAMERA, { mirror: true })]));

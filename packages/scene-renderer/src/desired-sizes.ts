@@ -1,7 +1,14 @@
 import { parseSourceRef, type CanvasSize, type SceneDto } from '@studioflow/scene-model';
 
 import { autoGridRects } from './auto-grid';
-import { desiredPixelSize, itemLook, itemRect, maxDesiredSize, pictureBoxOf } from './geometry';
+import {
+  composeRotation,
+  desiredPixelSize,
+  itemLook,
+  itemRect,
+  maxDesiredSize,
+  pictureBoxOf,
+} from './geometry';
 import type { CanvasRect, DesiredSize, SourceMediaProvider } from './types';
 
 /**
@@ -17,6 +24,8 @@ export interface PreloadGeometry {
   readonly scale: number;
   /** The pixel ratio sizes are requested for (see `requestPixelRatio`). */
   readonly devicePixelRatio: number;
+  /** Rotation of the picture of a device source (a phone camera turned upright); none when absent. */
+  readonly sourceRotation?: (sourceId: string) => number;
 }
 
 /** True when `have` is at least as large as `need` on both axes. */
@@ -77,7 +86,9 @@ export function preloadRequests(
       ) {
         continue;
       }
-      const box = pictureBoxOf(rect, itemLook(item));
+      const look = itemLook(item);
+      const rotation = composeRotation(look.rotation, geometry.sourceRotation?.(source) ?? 0);
+      const box = pictureBoxOf(rect, { crop: look.crop, rotation });
       collector.add(
         source,
         desiredPixelSize(box, geometry.scale, geometry.devicePixelRatio, geometry.canvas),

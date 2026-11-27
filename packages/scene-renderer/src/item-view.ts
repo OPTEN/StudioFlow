@@ -3,12 +3,14 @@ import {
   DEFAULT_FADE_MS,
   parseSourceRef,
   slotKind,
+  type Rotation,
   type SceneItemDto,
 } from '@studioflow/scene-model';
 
 import { SMALL_PICTURE, type DesiredSizeCollector } from './desired-sizes';
 import { createElement, FILL, px, setStyle, setStyles, setText, setVisible } from './dom';
 import {
+  composeRotation,
   cropBox,
   desiredPixelSize,
   heldBlurPx,
@@ -605,8 +607,18 @@ export class ItemView {
     this.lastState = null;
   }
 
+  /** Rotation of the picture: the source's (a phone camera turned upright) followed by the item's own. */
+  private pictureRotation(): Rotation {
+    const source = this.media?.source;
+    return composeRotation(
+      this.look.rotation,
+      source?.kind === 'device' ? this.ctx.sourceRotation(source.sourceId) : 0,
+    );
+  }
+
   private renderGeometry(rect: CanvasRect): void {
-    const { crop, rotation, radius } = this.look;
+    const { crop, radius } = this.look;
+    const rotation = this.pictureRotation();
     setStyles(this.root, {
       transform: `translate(${px(rect.x)}, ${px(rect.y)})`,
       width: px(rect.w),

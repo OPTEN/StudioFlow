@@ -87,6 +87,20 @@ describe('logEntryText', () => {
     );
   });
 
+  it('names the rotation of a camera picture: automatic or the angle', () => {
+    const params = { subject: 'K1 Phone' };
+    expect(logEntryText(entry('cameraRotationChanged', { ...params, rotation: '90' }))).toBe(
+      'K1 Phone: rotation set to 90°',
+    );
+    expect(logEntryText(entry('cameraRotationChanged', { ...params, rotation: 'auto' }))).toBe(
+      'K1 Phone: rotation set to Automatic',
+    );
+    resetLocaleForTests('de-CH');
+    expect(logEntryText(entry('cameraRotationChanged', { ...params, rotation: 'auto' }))).toBe(
+      'K1 Phone: Drehung auf Automatisch gestellt',
+    );
+  });
+
   it('writes the entries of the audio mixer', () => {
     expect(logEntryText(entry('audioMuted', { code: 'A1' }))).toBe('A1 muted');
     expect(logEntryText(entry('audioUnmuted', { code: 'A1' }))).toBe('A1 unmuted');
@@ -155,7 +169,7 @@ describe('logEntryText', () => {
   });
 
   it('has a message key for every code of the API', () => {
-    expect(Object.keys(LOG_MESSAGE_KEYS)).toHaveLength(65);
+    expect(Object.keys(LOG_MESSAGE_KEYS)).toHaveLength(66);
     for (const [code, key] of Object.entries(LOG_MESSAGE_KEYS)) {
       expect(key).toBe(`regie.log.${code}`);
     }

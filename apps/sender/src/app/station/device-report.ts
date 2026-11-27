@@ -1,6 +1,7 @@
 import { toRtcState, type MediaSessionState, type TechCheckResult } from '@studioflow/media-client';
 import type {
   CameraStateDto,
+  Rotation,
   DeviceReportDto,
   SlotState,
   SlotTelemetryDto,
@@ -26,6 +27,12 @@ export interface DeviceReportInput {
   readonly techCheck: TechCheckResult | null;
   /** `Publisher.getCameraState()` of a phone (issue #11); null on a laptop or without a running camera. */
   readonly camera: CameraStateDto | null;
+  /**
+   * The rotation that turns the camera picture upright (`CameraOrientation.correction`), reported in the camera's
+   * settings; null or missing when the phone cannot tell (the settings then carry none, which the server reads as
+   * unknown).
+   */
+  readonly cameraRotation?: Rotation | null;
 }
 
 function emptyTelemetry(slot: string, state: SlotState): SlotTelemetryDto {
@@ -62,7 +69,7 @@ function finiteOrNull(value: number | null): number | null {
  * Builds the `Report` payload sent every 2 s over the device hub (spec 6): media state, one entry per slot of the
  * device (telemetry from the publisher, or `ended` for slots stopped on purpose, so the Regie sees “camera stopped” /
  * “sharing stopped” instead of an endless “reconnecting”), battery, network type, RTT, the last tech check and what
- * the phone camera can do and does now.
+ * the phone camera can do and does now, with the rotation that turns its picture upright.
  */
 export function buildDeviceReport(input: DeviceReportInput): DeviceReportDto {
   const allowed = input.deviceSlots === null ? null : new Set(input.deviceSlots);
@@ -87,6 +94,12 @@ export function buildDeviceReport(input: DeviceReportInput): DeviceReportDto {
     network: input.network,
     rttMs: rtt === null ? null : Math.max(0, Math.round(rtt)),
     techCheck: wireTechCheck(input.techCheck),
-    camera: input.camera,
+    camera:
+      input.camera === null || input.cameraRotation == null
+        ? input.camera
+        : {
+            ...input.camera,
+            settings: { ...input.camera.settings, rotation: input.cameraRotation },
+          },
   };
 }

@@ -67,6 +67,16 @@ describe('buildDeviceReport', () => {
     expect(buildDeviceReport(input({ camera: CAMERA_STATE })).camera).toEqual(CAMERA_STATE);
   });
 
+  it('carries the rotation that turns the picture upright in the camera settings', () => {
+    const report = buildDeviceReport(input({ camera: CAMERA_STATE, cameraRotation: 270 }));
+    expect(report.camera?.settings).toEqual({ ...CAMERA_STATE.settings, rotation: 270 });
+    expect(buildDeviceReport(input({ camera: CAMERA_STATE, cameraRotation: null })).camera).toBe(
+      CAMERA_STATE,
+    );
+    // Without a running camera there is nothing to turn.
+    expect(buildDeviceReport(input({ camera: null, cameraRotation: 90 })).camera).toBeNull();
+  });
+
   it.each([
     ['connecting', 'reconnecting'],
     ['reconnecting', 'reconnecting'],
