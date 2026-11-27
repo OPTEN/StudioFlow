@@ -55,6 +55,9 @@ export class CameraPanelComponent {
   protected readonly lensToConfirm = signal<{ id: string; label: string } | null>(null);
   /** "Reset to auto" of a camera on air waits for the confirmation. */
   protected readonly confirmReset = signal(false);
+  /** The resolution waiting for the confirmation (the picture freezes briefly while it changes). */
+  protected readonly resolutionToConfirm = signal<720 | 1080 | null>(null);
+  protected readonly resolutions = [720, 1080] as const;
   private readonly drafts = signal<Readonly<Partial<Record<Slider, number>>>>({});
   private lastMoveAt = 0;
   private draftTimer: ReturnType<typeof setTimeout> | null = null;
@@ -144,9 +147,32 @@ export class CameraPanelComponent {
     this.control.send(this.device(), { reset: true });
   }
 
+  /** 720p or 1080p; a camera on air asks first, because the picture freezes briefly. */
+  protected chooseResolution(resolution: 720 | 1080, current: 720 | 1080 | null): void {
+    if (resolution === current) {
+      return;
+    }
+    if (this.inProgram()) {
+      this.confirmReset.set(false);
+      this.lensToConfirm.set(null);
+      this.resolutionToConfirm.set(resolution);
+      return;
+    }
+    this.control.send(this.device(), { resolution });
+  }
+
+  protected confirmResolution(): void {
+    const resolution = this.resolutionToConfirm();
+    if (resolution !== null) {
+      this.control.send(this.device(), { resolution });
+    }
+    this.resolutionToConfirm.set(null);
+  }
+
   protected chooseLens(id: string, label: string): void {
     if (this.inProgram()) {
       this.confirmReset.set(false);
+      this.resolutionToConfirm.set(null);
       this.lensToConfirm.set({ id, label });
       return;
     }

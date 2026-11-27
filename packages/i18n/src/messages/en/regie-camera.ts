@@ -23,6 +23,14 @@ export const regieCamera = {
   'regie.camera.lens.tele': 'Tele',
   'regie.camera.lens.ultraWide': 'Wide-angle',
 
+  'regie.camera.resolution.label': 'Resolution',
+  'regie.camera.resolution.value': '{height}p',
+  'regie.camera.resolution.hint':
+    '1080p is sharper and needs more Wi-Fi and battery. If it stutters or the phone gets hot: 720p.',
+  'regie.camera.resolution.confirmNow': 'Change resolution',
+  'regie.camera.resolution.confirmMessage':
+    '{label} is live. The picture freezes briefly while the phone changes to {height}p.',
+
   'regie.camera.live': 'Every change shows on air right away.',
 
   'regie.camera.panel.label': 'Camera controls of {name}',

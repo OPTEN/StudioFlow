@@ -5370,7 +5370,15 @@
               "null",
               "boolean"
             ],
-            "description": "Back to automatic: zoom out, automatic focus, no brightness shift, light off. The lens stays."
+            "description": "Back to automatic: zoom out, automatic focus, no brightness shift, light off. The lens and the resolution stay."
+          },
+          "resolution": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Send in this picture height: 720 or 1080 (changed in place, the picture freezes briefly).",
+            "format": "int32"
           }
         },
         "description": "Remote camera control (partial update, command kind DeviceCommandKind.CameraControl). The device\nresets first when Reset is set, then applies every other field that is set."
@@ -5503,6 +5511,14 @@
               "boolean"
             ],
             "description": "The light is on."
+          },
+          "resolution": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The picture height the device sends: 720 or 1080; null from an older sender.",
+            "format": "int32"
           }
         },
         "description": "The settings the camera really has right now (from `getSettings()`); null where the camera reports none."

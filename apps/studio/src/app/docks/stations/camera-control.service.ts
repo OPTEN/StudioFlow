@@ -30,6 +30,7 @@ function command(change: CameraChange): CameraControlDto {
     exposureCompensation: null,
     torch: null,
     reset: null,
+    resolution: null,
     ...change,
   };
 }

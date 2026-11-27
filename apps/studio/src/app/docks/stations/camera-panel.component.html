@@ -30,6 +30,49 @@
         </p>
       }
 
+      @if (current.resolution !== null) {
+        <div class="c-cam__field c-cam__field--seg">
+          <span class="c-cam__label" id="sf-cam-resolution-{{ device().id }}">{{
+            t('regie.camera.resolution.label')
+          }}</span>
+          <div
+            class="c-seg"
+            role="group"
+            [attr.aria-labelledby]="'sf-cam-resolution-' + device().id"
+          >
+            @for (option of resolutions; track option) {
+              <button
+                type="button"
+                data-testid="camera-resolution"
+                [attr.data-resolution]="option"
+                [attr.aria-pressed]="current.resolution === option"
+                (click)="chooseResolution(option, current.resolution)"
+              >
+                {{ t('regie.camera.resolution.value', { height: option }) }}
+              </button>
+            }
+          </div>
+        </div>
+        @if (resolutionToConfirm(); as resolution) {
+          <sf-confirm-box
+            [label]="t('regie.camera.resolution.label')"
+            [confirmLabel]="t('regie.camera.resolution.confirmNow')"
+            [flush]="true"
+            [message]="
+              t('regie.camera.resolution.confirmMessage', {
+                label: label() || device().name,
+                height: resolution,
+              })
+            "
+            (confirm)="confirmResolution()"
+            (cancel)="resolutionToConfirm.set(null)"
+          />
+        }
+        <p class="c-hint" data-testid="camera-resolution-hint">
+          {{ t('regie.camera.resolution.hint') }}
+        </p>
+      }
+
       @if (current.lenses.length > 0) {
         <div class="c-cam__field c-cam__field--seg">
           <span class="c-cam__label" id="sf-cam-lens-{{ device().id }}">{{

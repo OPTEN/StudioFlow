@@ -2,6 +2,7 @@ import { Track, VideoPresets } from 'livekit-client';
 import {
   SCREEN_CAPTURE_OPTIONS,
   cameraCaptureOptions,
+  cameraLayerEncodings,
   cameraPublishOptions,
   isCameraSettings,
   isScreenFrameRate,
@@ -82,13 +83,29 @@ describe('publish options', () => {
       simulcast: true,
       videoCodec: 'h264',
       backupCodec: false,
+      videoEncoding: { maxBitrate: 2_500_000, maxFramerate: 30 },
       videoSimulcastLayers: [VideoPresets.h180, VideoPresets.h360],
-      degradationPreference: 'maintain-framerate',
+      degradationPreference: 'balanced',
     });
-    const layers = cameraPublishOptions('camera', 1080).videoSimulcastLayers ?? [];
+    const full = cameraPublishOptions('camera', 1080);
+    expect(full.videoEncoding).toEqual({ maxBitrate: 5_000_000, maxFramerate: 30 });
+    const layers = full.videoSimulcastLayers ?? [];
     expect(layers.map((preset) => [preset.width, preset.height])).toEqual([
       [480, 270],
       [960, 540],
+    ]);
+  });
+
+  it('lists the encodings of every camera layer smallest first, the full layer last', () => {
+    expect(cameraLayerEncodings(720).map((encoding) => encoding.maxBitrate)).toEqual([
+      VideoPresets.h180.encoding.maxBitrate,
+      VideoPresets.h360.encoding.maxBitrate,
+      2_500_000,
+    ]);
+    expect(cameraLayerEncodings(1080).map((encoding) => encoding.maxBitrate)).toEqual([
+      300_000,
+      VideoPresets.h540.encoding.maxBitrate,
+      5_000_000,
     ]);
   });
 

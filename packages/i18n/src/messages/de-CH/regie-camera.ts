@@ -23,6 +23,14 @@ export const regieCamera: Translation<typeof en> = {
   'regie.camera.lens.tele': 'Tele',
   'regie.camera.lens.ultraWide': 'Weitwinkel',
 
+  'regie.camera.resolution.label': 'Auflösung',
+  'regie.camera.resolution.value': '{height}p',
+  'regie.camera.resolution.hint':
+    '1080p ist schärfer und braucht mehr WLAN und Akku. Bei Rucklern oder wenn das Handy heiss wird: 720p.',
+  'regie.camera.resolution.confirmNow': 'Auflösung wechseln',
+  'regie.camera.resolution.confirmMessage':
+    '{label} ist live. Das Bild friert kurz ein, während das Handy auf {height}p wechselt.',
+
   'regie.camera.live': 'Jede Änderung ist sofort auf Sendung zu sehen.',
 
   'regie.camera.panel.label': 'Kamerasteuerung von {name}',

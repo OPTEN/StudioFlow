@@ -55,6 +55,23 @@ const CAMERA_LAYERS: Readonly<Record<CameraResolution, readonly VideoPreset[]>> 
   1080: [H270, VideoPresets.h540],
 };
 
+/**
+ * Encoding cap of the full camera layer. livekit's defaults (1.7 Mbit/s at 720p, 3 Mbit/s at 1080p) are made for video
+ * calls; a phone camera in indoor light needs more bits to stay sharp, and a studio LAN or relay has the room for it.
+ */
+export const CAMERA_ENCODINGS: Readonly<Record<CameraResolution, VideoEncoding>> = {
+  720: { maxBitrate: 2_500_000, maxFramerate: 30 },
+  1080: { maxBitrate: 5_000_000, maxFramerate: 30 },
+};
+
+/** The encodings of every simulcast layer of a camera, smallest first (the order livekit publishes them in). */
+export function cameraLayerEncodings(resolution: CameraResolution): VideoEncoding[] {
+  return [
+    ...CAMERA_LAYERS[resolution].map((preset) => preset.encoding),
+    CAMERA_ENCODINGS[resolution],
+  ];
+}
+
 /** getUserMedia constraints for the camera: a chosen lens by its device id, otherwise by facing mode. */
 export function cameraCaptureOptions(settings: CameraSettings): VideoCaptureOptions {
   const preset = settings.resolution === 1080 ? VideoPresets.h1080 : VideoPresets.h720;
@@ -63,7 +80,11 @@ export function cameraCaptureOptions(settings: CameraSettings): VideoCaptureOpti
     : { deviceId: { exact: settings.deviceId }, resolution: preset.resolution };
 }
 
-/** Publish options of the camera: H.264 simulcast with three layers, no backup codec. */
+/**
+ * Publish options of the camera: H.264 simulcast with three layers, no backup codec, the full layer capped by
+ * {@link CAMERA_ENCODINGS}. Under pressure (heat, a busy WLAN) the encoder balances resolution and frame rate instead
+ * of keeping 30 fps at any cost: a person on camera looks better at 24 fps than blurred at a quarter of the resolution.
+ */
 export function cameraPublishOptions(
   slot: string,
   resolution: CameraResolution,
@@ -74,8 +95,9 @@ export function cameraPublishOptions(
     simulcast: true,
     videoCodec: 'h264',
     backupCodec: false,
+    videoEncoding: CAMERA_ENCODINGS[resolution],
     videoSimulcastLayers: [...CAMERA_LAYERS[resolution]],
-    degradationPreference: 'maintain-framerate',
+    degradationPreference: 'balanced',
   };
 }
 

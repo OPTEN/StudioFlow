@@ -185,12 +185,12 @@ describe('DeviceSessionService', () => {
     expect(service.camera()?.state).toBe('starting');
   });
 
-  it('phones default to the back camera at 720p', async () => {
+  it('phones default to the back camera at 1080p', async () => {
     const service = setup();
     service.start();
     await settle();
 
-    expect(media.publisher.calls).toContain('publishCamera:camera:environment:720');
+    expect(media.publisher.calls).toContain('publishCamera:camera:environment:1080');
   });
 
   it('does not auto-start a camera that was stopped on purpose', async () => {
@@ -1077,7 +1077,7 @@ describe('DeviceSessionService', () => {
 
       expect(media.publisher.lastCamera).toEqual({
         facingMode: 'environment',
-        resolution: 720,
+        resolution: 1080,
         deviceId: 'back-wide',
         image: { exposureCompensation: 1, torch: true },
       });

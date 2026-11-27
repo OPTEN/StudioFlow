@@ -293,18 +293,19 @@ describe('StationComponent', () => {
     media.publisher.emitSlot('camera', 'live');
     fixture.detectChanges();
     const quality = query(element, '.c-phone__control--quality');
-    expect(quality?.getAttribute('aria-label')).toBe('Picture quality: Standard');
+    // A phone starts at 1080p unless the person chose otherwise.
+    expect(quality?.getAttribute('aria-label')).toBe('Picture quality: High');
 
     quality?.click();
     fixture.detectChanges();
     await settle();
     const sheet = query(element, '[data-testid=quality-sheet]');
     expect(sheet?.textContent).toContain('Picture quality');
-    sheet?.querySelector<HTMLInputElement>('input[value="1080"]')?.click();
+    sheet?.querySelector<HTMLInputElement>('input[value="720"]')?.click();
     fixture.detectChanges();
 
-    expect(media.publisher.calls).toContain('setCameraResolution:1080');
-    expect(quality?.getAttribute('aria-label')).toBe('Picture quality: High');
+    expect(media.publisher.calls).toContain('setCameraResolution:720');
+    expect(quality?.getAttribute('aria-label')).toBe('Picture quality: Standard');
   });
 
   it('laptop: “Share screen” calls the publisher synchronously in the click', async () => {

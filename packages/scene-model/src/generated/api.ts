@@ -1636,8 +1636,13 @@ export interface components {
             exposureCompensation: null | number;
             /** @description Light on or off. */
             torch: null | boolean;
-            /** @description Back to automatic: zoom out, automatic focus, no brightness shift, light off. The lens stays. */
+            /** @description Back to automatic: zoom out, automatic focus, no brightness shift, light off. The lens and the resolution stay. */
             reset: null | boolean;
+            /**
+             * Format: int32
+             * @description Send in this picture height: 720 or 1080 (changed in place, the picture freezes briefly).
+             */
+            resolution?: null | number;
         };
         /**
          * @description Focus behaviour of a camera.
@@ -1698,6 +1703,11 @@ export interface components {
             exposureCompensation: null | number;
             /** @description The light is on. */
             torch: null | boolean;
+            /**
+             * Format: int32
+             * @description The picture height the device sends: 720 or 1080; null from an older sender.
+             */
+            resolution?: null | number;
         };
         /** @description Camera section of a device report (and of the telemetry the Regie gets). */
         CameraStateDto: {

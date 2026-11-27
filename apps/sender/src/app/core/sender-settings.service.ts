@@ -17,7 +17,8 @@ export type Resolution = 720 | 1080;
 export interface SenderSettings {
   /** Camera direction; null until the device kind is known (phones default to the back camera). */
   readonly facing: Facing | null;
-  readonly resolution: Resolution;
+  /** Camera resolution; null until chosen (phones default to 1080p, laptops to 720p, see {@link defaultResolution}). */
+  readonly resolution: Resolution | null;
   /** “Dark”: black screen with a thin tally frame. */
   readonly dark: boolean;
   /** The camera was running when the page was left: start it again after a reload. */
@@ -46,7 +47,7 @@ export interface SenderSettings {
 /** Defaults of a fresh browser. */
 export const DEFAULT_SETTINGS: SenderSettings = {
   facing: null,
-  resolution: 720,
+  resolution: null,
   dark: false,
   cameraOn: true,
   micOn: null,
@@ -157,7 +158,8 @@ export function parseSettings(value: unknown): SenderSettings {
   }
   const raw = value as Record<string, unknown>;
   const facing = raw['facing'] === 'user' || raw['facing'] === 'environment' ? raw['facing'] : null;
-  const resolution = raw['resolution'] === 1080 ? 1080 : 720;
+  const resolution =
+    raw['resolution'] === 1080 || raw['resolution'] === 720 ? raw['resolution'] : null;
   return {
     facing,
     resolution,
@@ -189,6 +191,14 @@ export function defaultFacing(kind: DeviceKind): Facing {
   return kind === 'phone' ? 'environment' : 'user';
 }
 
+/**
+ * Default camera resolution of a device kind: a phone encodes 1080p in hardware and is mostly the main camera, a laptop
+ * webcam often encodes in software and rarely delivers more than 720p.
+ */
+export function defaultResolution(kind: DeviceKind): Resolution {
+  return kind === 'phone' ? 1080 : 720;
+}
+
 /** Station settings persisted per browser, so a reloaded phone starts again with the last settings. */
 @Injectable({ providedIn: 'root' })
 export class SenderSettingsService {
@@ -209,6 +219,11 @@ export class SenderSettingsService {
   /** Camera direction for a device kind (the stored one, else the kind's default). */
   facingFor(kind: DeviceKind): Facing {
     return this.settings().facing ?? defaultFacing(kind);
+  }
+
+  /** Camera resolution for a device kind (the stored one, else the kind's default). */
+  resolutionFor(kind: DeviceKind): Resolution {
+    return this.settings().resolution ?? defaultResolution(kind);
   }
 
   /** Last technical check of the given device, if stored. */

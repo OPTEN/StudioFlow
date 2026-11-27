@@ -9,6 +9,7 @@
 export {
   CAMERA_PROTOCOL_VERSION,
   clampToRange,
+  hasCameraChange,
   isCameraControl,
   mergeCameraControl,
   type CameraImageSettings,

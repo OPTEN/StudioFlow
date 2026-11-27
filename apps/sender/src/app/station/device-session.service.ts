@@ -3,6 +3,7 @@ import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core'
 import {
   SCREEN_FRAME_RATE_DEFAULT,
   SCREEN_FRAME_RATE_VIDEO,
+  hasCameraChange,
   isTerminalState,
   toRtcState,
   type LocalSlotState,
@@ -225,6 +226,10 @@ export class DeviceSessionService {
     () =>
       this.settingsService.settings().facing ?? (this.kind() === 'laptop' ? 'user' : 'environment'),
   );
+  /** Camera resolution in use or to be used (phones 1080p, laptops 720p unless chosen). */
+  readonly resolution = computed<Resolution>(
+    () => this.settingsService.settings().resolution ?? (this.kind() === 'laptop' ? 720 : 1080),
+  );
 
   /** All slots of the device (camera first, then screens by number), including screens being added. */
   readonly slots = computed<readonly StationSlot[]>(() => {
@@ -391,7 +396,8 @@ export class DeviceSessionService {
       return;
     }
     const facing = this.facing();
-    const { resolution, lens, image } = this.settingsService.settings();
+    const resolution = this.resolution();
+    const { lens, image } = this.settingsService.settings();
     this.setEnded('camera', false);
     this.settingsService.update({ cameraOn: true, facing });
     this.autoStartDone = true;
@@ -438,9 +444,9 @@ export class DeviceSessionService {
     this.setFacing(this.facing() === 'user' ? 'environment' : 'user');
   }
 
-  /** 720p or 1080p; applied to the running camera in place. */
+  /** 720p or 1080p (also the Regie's camera control); applied to the running camera in place. */
   setResolution(resolution: Resolution): void {
-    if (resolution === this.settingsService.settings().resolution) {
+    if (resolution === this.resolution()) {
       return;
     }
     this.settingsService.update({ resolution });
@@ -818,7 +824,14 @@ export class DeviceSessionService {
     if (media === null || this.kind() !== 'phone') {
       return;
     }
-    await media.publisher.controlCamera(camera);
+    // The resolution belongs to the station's settings (kept across reloads); the rest goes to the camera itself.
+    const { resolution, ...image } = camera;
+    if (resolution === 720 || resolution === 1080) {
+      this.setResolution(resolution);
+    }
+    if (hasCameraChange(image)) {
+      await media.publisher.controlCamera(image);
+    }
     const state = await media.publisher.getCameraState().catch(() => null);
     if (this.isTerminal()) {
       return;

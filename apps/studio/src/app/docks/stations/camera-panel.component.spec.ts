@@ -230,6 +230,7 @@ describe('CameraPanelComponent', () => {
         exposureCompensation: null,
         torch: null,
         reset: null,
+        resolution: null,
       },
     });
   });
@@ -286,6 +287,44 @@ describe('CameraPanelComponent', () => {
     await tick();
     expect(sent()).toMatchObject({ camera: { lensId: 'wide' } });
     expect(element.querySelector('.c-confirm')).toBeNull();
+  });
+
+  it('shows the resolution the phone sends and changes it at once when the source is not on air', async () => {
+    await setup(phone(ANDROID, { resolution: 720 }), false);
+
+    expect(button('720p')?.getAttribute('aria-pressed')).toBe('true');
+    expect(button('1080p')?.getAttribute('aria-pressed')).toBe('false');
+    button('720p')?.click();
+    await tick();
+    harness.http.expectNone(COMMANDS);
+
+    button('1080p')?.click();
+    await tick();
+    expect(element.querySelector('.c-confirm')).toBeNull();
+    expect(sent()).toMatchObject({ camera: { resolution: 1080, zoom: null, lensId: null } });
+  });
+
+  it('asks before it changes the resolution of a source that is in the program', async () => {
+    await setup(phone(ANDROID, { resolution: 1080 }), true);
+
+    button('720p')?.click();
+    await tick();
+    harness.http.expectNone(COMMANDS);
+    expect(text(element.querySelector('.c-confirm span'))).toBe(
+      'K1 is live. The picture freezes briefly while the phone changes to 720p.',
+    );
+
+    button('Change resolution')?.click();
+    await tick();
+    expect(sent()).toMatchObject({ camera: { resolution: 720 } });
+    expect(element.querySelector('.c-confirm')).toBeNull();
+  });
+
+  it('offers no resolution for a phone that does not report one (an older sender)', async () => {
+    await setup(phone(ANDROID), false);
+
+    expect(button('720p')).toBeUndefined();
+    expect(element.querySelector('[data-testid="camera-resolution-hint"]')).toBeNull();
   });
 
   it('does not ask for zoom, focus, brightness or light in the program (no interruption)', async () => {

@@ -59,7 +59,8 @@ public static class CameraControlRules
             settings.FocusMode is { } mode && Enum.IsDefined(mode) ? mode : null,
             Finite(settings.FocusDistance),
             Finite(settings.ExposureCompensation),
-            settings.Torch);
+            settings.Torch,
+            IsResolution(settings.Resolution) ? settings.Resolution : null);
         var problem = reported.Problem is CameraProblems.Overconstrained or CameraProblems.Failed ? reported.Problem : null;
         return new CameraStateDto(CameraProtocol.Version, cleanCapabilities, cleanSettings, problem);
     }
@@ -120,13 +121,18 @@ public static class CameraControlRules
             errors.Add("camera.lensId", "Must be 1–512 characters long.");
         }
 
+        if (command.Resolution is { } resolution && !IsResolution(resolution))
+        {
+            errors.Add("camera.resolution", "Must be 720 or 1080.");
+        }
+
         errors.ThrowIfAny();
         return capabilities is null ? command : ClampTo(command, capabilities, errors);
     }
 
     /// <summary>
     /// Merges a command held back by the throttle with a newer one: the newer value of each field wins. A newer reset
-    /// drops the older values (a reset leaves the lens alone, so an older lens switch stays).
+    /// drops the older values (a reset leaves the lens and the resolution alone, so an older switch of either stays).
     /// </summary>
     public static CameraControlDto Merge(CameraControlDto older, CameraControlDto newer)
     {
@@ -134,7 +140,7 @@ public static class CameraControlRules
         ArgumentNullException.ThrowIfNull(newer);
         if (newer.Reset is true)
         {
-            return newer with { LensId = newer.LensId ?? older.LensId };
+            return newer with { LensId = newer.LensId ?? older.LensId, Resolution = newer.Resolution ?? older.Resolution };
         }
 
         return new CameraControlDto(
@@ -145,7 +151,8 @@ public static class CameraControlRules
             newer.FocusDistance ?? older.FocusDistance,
             newer.ExposureCompensation ?? older.ExposureCompensation,
             newer.Torch ?? older.Torch,
-            older.Reset);
+            older.Reset,
+            newer.Resolution ?? older.Resolution);
     }
 
     private static CameraControlDto ClampTo(CameraControlDto command, CameraCapabilitiesDto capabilities, ValidationErrors errors)
@@ -204,9 +211,12 @@ public static class CameraControlRules
         || command.FocusMode is not null
         || command.FocusDistance is not null
         || command.ExposureCompensation is not null
-        || command.Torch is not null;
+        || command.Torch is not null
+        || command.Resolution is not null;
 
     private static bool IsId(string? id) => !string.IsNullOrWhiteSpace(id) && id.Length <= IdMax;
+
+    private static bool IsResolution(int? resolution) => resolution is 720 or 1080;
 
     private static double? Finite(double? value) => value is { } number && double.IsFinite(number) ? number : null;
 

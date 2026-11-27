@@ -50,6 +50,7 @@ import { DeltaRatio } from './media-stats';
 import {
   SCREEN_FRAME_RATE_DEFAULT,
   cameraCaptureOptions,
+  cameraLayerEncodings,
   cameraPublishOptions,
   contentHintOf,
   isCameraSettings,
@@ -407,7 +408,10 @@ export class Publisher {
     return {
       v: CAMERA_PROTOCOL_VERSION,
       capabilities: mapCapabilities(capabilitiesOf(media), lenses),
-      settings: mapSettings(media.getSettings()),
+      settings: {
+        ...mapSettings(media.getSettings()),
+        resolution: (record.appliedCamera ?? record.camera)?.resolution ?? null,
+      },
       problem: record.cameraProblem,
     };
   }
@@ -835,6 +839,7 @@ export class Publisher {
     if (track === null || target === null || sameCamera(record.appliedCamera, target)) {
       return;
     }
+    const previousResolution = record.appliedCamera?.resolution;
     try {
       await track.restartTrack(cameraCaptureOptions(target));
     } catch (error) {
@@ -861,7 +866,43 @@ export class Publisher {
       record.camera = record.appliedCamera;
     }
     setContentHint(track.mediaStreamTrack, 'motion');
+    if (previousResolution !== undefined && previousResolution !== target.resolution) {
+      await this.#applyCameraEncodings(track, target.resolution);
+    }
     this.#notifyPreview(record);
+  }
+
+  /**
+   * After a resolution change in place the encoder still has the limits of the resolution it was published with: sets
+   * the bitrate (and frame rate) of every simulcast layer to those of the new one. Best effort: what a browser refuses
+   * stays as it was.
+   */
+  async #applyCameraEncodings(track: LocalVideoTrack, resolution: CameraResolution): Promise<void> {
+    const sender = track.sender;
+    if (sender === undefined) {
+      return;
+    }
+    try {
+      const parameters = sender.getParameters();
+      const layers = [...(parameters.encodings ?? [])].sort(
+        (a, b) => (b.scaleResolutionDownBy ?? 1) - (a.scaleResolutionDownBy ?? 1),
+      );
+      const targets = cameraLayerEncodings(resolution);
+      // Fewer layers than presets (simulcast off or reduced): the largest layers get the largest limits.
+      const offset = Math.max(0, targets.length - layers.length);
+      layers.forEach((layer, index) => {
+        const encoding = targets[index + offset];
+        if (encoding !== undefined) {
+          layer.maxBitrate = encoding.maxBitrate;
+          if (encoding.maxFramerate !== undefined) {
+            layer.maxFramerate = encoding.maxFramerate;
+          }
+        }
+      });
+      await sender.setParameters(parameters);
+    } catch (error) {
+      this.#logger.warn('camera encoder limits refused', errorContext(error));
+    }
   }
 
   /** Re-acquires a camera that stopped delivering frames: up to three attempts with backoff, then `failed`. */

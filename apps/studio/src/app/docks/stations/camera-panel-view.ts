@@ -45,6 +45,8 @@ export interface CameraControlsView {
   } | null;
   readonly brightness: SliderView | null;
   readonly torch: { readonly on: boolean } | null;
+  /** The picture height the phone sends (720 or 1080); null when an older phone does not report it. */
+  readonly resolution: 720 | 1080 | null;
   /** Message about the last command the phone refused, or null. */
   readonly problem: string | null;
 }
@@ -151,6 +153,8 @@ function controls(state: CameraStateDto): CameraControlsView {
       brightnessText,
     ),
     torch: capabilities.torch ? { on: settings.torch === true } : null,
+    resolution:
+      settings.resolution === 720 || settings.resolution === 1080 ? settings.resolution : null,
     problem: problemText(state.problem),
   };
 }
@@ -161,7 +165,8 @@ function hasAnyControl(view: CameraControlsView): boolean {
     view.zoom !== null ||
     view.focus !== null ||
     view.brightness !== null ||
-    view.torch !== null
+    view.torch !== null ||
+    view.resolution !== null
   );
 }
 

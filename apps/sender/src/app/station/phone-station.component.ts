@@ -58,7 +58,7 @@ export class PhoneStationComponent {
   protected readonly t = t;
   protected readonly camera = this.session.camera;
   protected readonly facing = this.session.facing;
-  protected readonly resolution = computed(() => this.session.settings().resolution);
+  protected readonly resolution = this.session.resolution;
   protected readonly screenOff = computed(() => this.session.settings().dark);
   protected readonly awake = signal(false);
   protected readonly qualityOpen = signal(false);

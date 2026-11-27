@@ -73,13 +73,15 @@ public sealed record CameraCapabilitiesDto(
 /// <param name="FocusDistance">Focus distance in metres.</param>
 /// <param name="ExposureCompensation">Brightness in EV.</param>
 /// <param name="Torch">The light is on.</param>
+/// <param name="Resolution">The picture height the device sends: 720 or 1080; null from an older sender.</param>
 public sealed record CameraSettingsDto(
     string? LensId,
     double? Zoom,
     CameraFocusMode? FocusMode,
     double? FocusDistance,
     double? ExposureCompensation,
-    bool? Torch);
+    bool? Torch,
+    int? Resolution = null);
 
 /// <summary>Camera section of a device report (and of the telemetry the Regie gets).</summary>
 /// <param name="V">Protocol version, currently 1.</param>
@@ -99,7 +101,8 @@ public sealed record CameraStateDto(int V, CameraCapabilitiesDto Capabilities, C
 /// <param name="FocusDistance">Focus distance in metres (manual focus).</param>
 /// <param name="ExposureCompensation">Brightness in EV.</param>
 /// <param name="Torch">Light on or off.</param>
-/// <param name="Reset">Back to automatic: zoom out, automatic focus, no brightness shift, light off. The lens stays.</param>
+/// <param name="Reset">Back to automatic: zoom out, automatic focus, no brightness shift, light off. The lens and the resolution stay.</param>
+/// <param name="Resolution">Send in this picture height: 720 or 1080 (changed in place, the picture freezes briefly).</param>
 public sealed record CameraControlDto(
     int V,
     string? LensId,
@@ -108,4 +111,5 @@ public sealed record CameraControlDto(
     double? FocusDistance,
     double? ExposureCompensation,
     bool? Torch,
-    bool? Reset);
+    bool? Reset,
+    int? Resolution = null);
