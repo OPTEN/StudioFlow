@@ -630,6 +630,11 @@ namespace Opten.StudioFlow.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(65536)")
                         .HasColumnName("private_key_protected");
 
+                    b.Property<string>("PublicMediaAddress")
+                        .HasMaxLength(15)
+                        .HasColumnType("character varying(15)")
+                        .HasColumnName("public_media_address");
+
                     b.Property<string>("RcloneConfigProtected")
                         .HasMaxLength(131072)
                         .HasColumnType("character varying(131072)")
@@ -654,6 +659,10 @@ namespace Opten.StudioFlow.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
+
+                    b.Property<bool>("UsePublicMediaAddress")
+                        .HasColumnType("boolean")
+                        .HasColumnName("use_public_media_address");
 
                     b.HasKey("Id")
                         .HasName("pk_server_settings");

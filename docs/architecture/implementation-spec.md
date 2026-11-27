@@ -799,7 +799,10 @@ once more right after a camera command.
   as a number and drops it): the init service makes `sk` + 46 alphanumeric characters. Healthcheck
   `wget -q -O /dev/null http://127.0.0.1:7880/`. Caddy forwards the whole `/rtc` prefix (`/rtc`, `/rtc/v1`,
   `…/validate`); never expose `/twirp`. The media address (`rtc.node_ip`) is the host's LAN IPv4 (works for LAN and same-host
-  clients), chosen in the wizard and changed under "Server settings"; `127.0.0.1` only for single-machine tests.
+  clients), chosen in the wizard and changed under "Server settings"; `127.0.0.1` only for single-machine tests. The
+  media route switch (`server_settings.use_public_media_address`) makes `rtc.node_ip` the saved **public media address**
+  instead (a relay that forwards 7881/tcp and 7882/udp to the server): LiveKit then announces only that address, so
+  devices outside the LAN work and LAN devices take the detour (`ServerSettings.EffectiveMediaAddress`).
 - Publishing (sender): camera H.264, simulcast layers 1080p/540p/270p (or 720p/360p/180p), `contentHint = 'motion'`;
   screens H.264 (VP9 with a VP8 backup codec only where `MediaCapabilities.encodingInfo` reports a power-efficient VP9
   encoder, see 8.4), `contentHint = 'detail'`, simulcast off, max 1440p at **15 fps** and 3 Mbit/s; a slot with the sender's

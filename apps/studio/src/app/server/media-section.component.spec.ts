@@ -137,6 +137,9 @@ describe('MediaSectionComponent', () => {
   it('takes the address the page was opened with when there is none yet, and offers the interfaces', async () => {
     await setup(serverSettingsFixture(), { fromHost: '192.168.1.50', interfaces: ['10.0.0.7'] });
     expect(field().value).toBe('192.168.1.50');
+    expect(element.querySelector('#media-test-note')?.textContent).toContain(
+      'Tests 192.168.1.50, the address after saving.',
+    );
     expect(suggestionButtons().map((button) => button.getAttribute('aria-label'))).toEqual([
       'Use 192.168.1.50 (Address of this page)',
       'Use 10.0.0.7 (Network of the server)',
@@ -257,7 +260,7 @@ describe('MediaSectionComponent', () => {
     async function flushSave(status = appliedStatusFixture()): Promise<void> {
       const request = http.expectOne('/api/settings/media');
       expect(request.request.method).toBe('PUT');
-      expect(request.request.body).toEqual({ address: '192.168.1.50' });
+      expect(request.request.body).toEqual({ address: '192.168.1.50', usePublicAddress: false });
       request.flush(configuredSettingsFixture());
       await flushMicrotasks();
       http.expectOne('/api/settings/status').flush(status);
@@ -320,6 +323,135 @@ describe('MediaSectionComponent', () => {
         .flush({ code: 'broadcast_live' }, { status: 409, statusText: 'Conflict' });
       await render();
       expect(element.querySelector('[role="alert"]')?.textContent).toContain('broadcast');
+    });
+  });
+
+  describe('the media route', () => {
+    function routeSwitch(): HTMLInputElement {
+      return element.querySelector<HTMLInputElement>('#media-route')!;
+    }
+
+    function publicField(): HTMLInputElement | null {
+      return element.querySelector<HTMLInputElement>('#media-public-address');
+    }
+
+    async function toggle(): Promise<void> {
+      routeSwitch().click();
+      await render();
+    }
+
+    function typePublic(value: string): void {
+      publicField()!.value = value;
+      publicField()!.dispatchEvent(new Event('input'));
+    }
+
+    it('is off by default, explains the direct route and hides the public address', async () => {
+      await setup(configuredSettingsFixture());
+      expect(routeSwitch().checked).toBe(false);
+      expect(routeSwitch().getAttribute('role')).toBe('switch');
+      expect(publicField()).toBeNull();
+      expect(element.querySelector('#media-route-note')?.textContent).toContain(
+        'only works inside the LAN',
+      );
+    });
+
+    it('shows the public address and explains the detour when switched on', async () => {
+      await setup(configuredSettingsFixture());
+      await toggle();
+      expect(publicField()).not.toBeNull();
+      expect(element.querySelector('label[for="media-public-address"]')?.textContent).toContain(
+        'Public IPv4 address',
+      );
+      expect(element.querySelector('#media-route-note')?.textContent).toContain(
+        'devices in the LAN take the detour too',
+      );
+    });
+
+    it('shows a saved public route', async () => {
+      await setup(
+        configuredSettingsFixture({
+          media: {
+            address: '172.25.99.187',
+            publicAddress: '49.12.213.173',
+            usePublicAddress: true,
+          },
+        }),
+      );
+      expect(routeSwitch().checked).toBe(true);
+      expect(publicField()?.value).toBe('49.12.213.173');
+    });
+
+    it('tests the public address while the route is on, and the LAN address otherwise', async () => {
+      await setup(configuredSettingsFixture({ media: { address: '172.25.99.187' } }));
+      mediaTest.run.mockResolvedValue({ ok: true, roundTripMs: 9 });
+      await toggle();
+      typePublic('49.12.213.173');
+      await render();
+      expect(element.querySelector('#media-test-note')?.textContent).toContain('49.12.213.173');
+      buttons()[0].click();
+      await render();
+      expect(mediaTest.run).toHaveBeenLastCalledWith('49.12.213.173');
+      expect(element.querySelector('.c-srv__result')?.textContent).toContain('49.12.213.173');
+      await toggle();
+      expect(element.querySelector('.c-srv__result')).toBeNull();
+      buttons()[0].click();
+      await render();
+      expect(mediaTest.run).toHaveBeenLastCalledWith('172.25.99.187');
+    });
+
+    it('asks for the public address before it saves the public route', async () => {
+      await setup(configuredSettingsFixture({ media: { address: '172.25.99.187' } }));
+      await toggle();
+      await submit();
+      expect(element.querySelector('#media-public-address-error')?.textContent).toContain(
+        'Enter the public IPv4 address.',
+      );
+      expect(publicField()?.getAttribute('aria-invalid')).toBe('true');
+      http.expectNone('/api/settings/media');
+    });
+
+    it('saves the public route with the public address', async () => {
+      await setup(configuredSettingsFixture({ media: { address: '172.25.99.187' } }));
+      await toggle();
+      typePublic(' 49.12.213.173 ');
+      await submit();
+      const request = http.expectOne('/api/settings/media');
+      expect(request.request.body).toEqual({
+        address: '172.25.99.187',
+        publicAddress: '49.12.213.173',
+        usePublicAddress: true,
+      });
+      request.flush(
+        configuredSettingsFixture({
+          media: {
+            address: '172.25.99.187',
+            publicAddress: '49.12.213.173',
+            usePublicAddress: true,
+          },
+        }),
+      );
+      await flushMicrotasks();
+      http.expectOne('/api/settings/status').flush(appliedStatusFixture());
+      await render();
+      expect(mediaTest.markSaved).toHaveBeenCalled();
+    });
+
+    it('shows what the server found wrong with the public address', async () => {
+      await setup(configuredSettingsFixture({ media: { address: '172.25.99.187' } }));
+      await toggle();
+      typePublic('49.12.213.173');
+      await submit();
+      http.expectOne('/api/settings/media').flush(
+        {
+          code: 'validation_failed',
+          errors: { publicAddress: ['public_media_address_required'] },
+        },
+        { status: 400, statusText: 'Bad Request' },
+      );
+      await render();
+      expect(element.querySelector('#media-public-address-error')?.textContent).toContain(
+        'Enter the public IPv4 address.',
+      );
     });
   });
 });

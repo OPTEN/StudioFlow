@@ -10,13 +10,14 @@ import {
   output,
   signal,
 } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import {
   FormControl,
   ReactiveFormsModule,
   type AbstractControl,
   type ValidationErrors,
 } from '@angular/forms';
-import { msg, t, tm } from '@studioflow/i18n';
+import { msg, t, tm, type Msg } from '@studioflow/i18n';
 import { SETTINGS_FIELD_ERROR_CODES as CODES } from '@studioflow/scene-model';
 import { ApiError, toUserMsg } from '../core/api/api-error';
 import { StudioApiService } from '../core/api/studio-api.service';
@@ -54,9 +55,11 @@ function addressValidator(control: AbstractControl): ValidationErrors | null {
 /**
  * The media server (issue #27): the IPv4 address LiveKit announces, so that cameras, phones and the output reach the
  * server for picture and sound. The operator types it or takes a labelled suggestion, tests it with a WebRTC round trip
- * from this browser (which restarts the media server, so it waits for the end of a broadcast) and saves it. The same
- * section is the second step of the first-run wizard (`mode="next"`, with the wizard's buttons projected into the
- * action row) and the page "Media server" of the settings window.
+ * from this browser (which restarts the media server, so it waits for the end of a broadcast) and saves it. The media
+ * route switch lets LiveKit announce only the public address of a relay instead (devices outside the LAN work too, LAN
+ * devices take the detour); the test always tries the address that will be announced after saving. The same section is
+ * the second step of the first-run wizard (`mode="next"`, with the wizard's buttons projected into the action row) and
+ * the page "Media server" of the settings window.
  */
 @Component({
   selector: 'sf-media-section',
@@ -72,7 +75,7 @@ export class MediaSectionComponent {
   private readonly store = inject(ProductionStoreService);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly injector = inject(Injector);
-  private readonly refused = new RefusedFields<'address'>();
+  private readonly refused = new RefusedFields<'address' | 'publicAddress'>();
 
   /** `next`: the step of the wizard ("Save and continue"); `save`: the settings page. */
   readonly mode = input<'save' | 'next'>('save');
@@ -84,6 +87,28 @@ export class MediaSectionComponent {
     nonNullable: true,
     validators: [addressValidator],
   });
+  /** On: LiveKit announces only the public address of the relay; off: devices send directly to the LAN address. */
+  protected readonly usePublic = new FormControl(
+    this.settings.settings()?.media.usePublicAddress ?? false,
+    { nonNullable: true },
+  );
+  /** The public IPv4 address of the relay; enabled (and validated) only while the public route is on. */
+  protected readonly publicAddress = new FormControl(
+    { value: this.settings.settings()?.media.publicAddress ?? '', disabled: !this.usePublic.value },
+    { nonNullable: true, validators: [addressValidator] },
+  );
+  protected readonly publicOn = toSignal(this.usePublic.valueChanges, {
+    initialValue: this.usePublic.value,
+  });
+  /** The LAN address as typed; a signal of its own, because a suggestion fills the field without a change event. */
+  private readonly typedAddress = signal(this.address.value);
+  private readonly typedPublic = toSignal(this.publicAddress.valueChanges, {
+    initialValue: this.publicAddress.value,
+  });
+  /** The address LiveKit announces after saving: the one the test tries. */
+  protected readonly effectiveAddress = computed(() =>
+    (this.publicOn() ? this.typedPublic() : this.typedAddress()).trim(),
+  );
   /** The addresses the operator can take with one click, labelled with where they come from. */
   protected readonly suggestions = signal<readonly Suggestion[]>([]);
   protected readonly testing = signal(false);
@@ -114,8 +139,22 @@ export class MediaSectionComponent {
   protected readonly signalCommand = SIGNAL_COMMAND;
 
   constructor() {
-    this.address.valueChanges.subscribe(() => {
+    this.address.valueChanges.subscribe((value) => {
+      this.typedAddress.set(value);
       this.refused.clear('address');
+      this.check.set(null);
+    });
+    this.publicAddress.valueChanges.subscribe(() => {
+      this.refused.clear('publicAddress');
+      this.check.set(null);
+    });
+    this.usePublic.valueChanges.subscribe((on) => {
+      if (on) {
+        this.publicAddress.enable({ emitEvent: false });
+      } else {
+        this.publicAddress.disable({ emitEvent: false });
+      }
+      this.refused.clear('publicAddress');
       this.check.set(null);
     });
     void this.loadSuggestions();
@@ -124,15 +163,30 @@ export class MediaSectionComponent {
 
   /** The text under the field: the server's verdict first, then the browser's own check once the field was left. */
   protected addressError(): string | null {
-    const fromServer = this.refused.get('address');
+    return this.fieldError('address', this.address, 'regie.server.media.required');
+  }
+
+  /** The text under the public address: like {@link addressError}, only while the public route is on. */
+  protected publicAddressError(): string | null {
+    return this.fieldError(
+      'publicAddress',
+      this.publicAddress,
+      'regie.server.media.publicRequired',
+    );
+  }
+
+  private fieldError(
+    field: 'address' | 'publicAddress',
+    control: FormControl<string>,
+    requiredKey: 'regie.server.media.required' | 'regie.server.media.publicRequired',
+  ): string | null {
+    const fromServer = this.refused.get(field);
     if (fromServer) {
       return tm(fromServer);
     }
-    if (this.address.invalid && this.address.touched) {
+    if (control.invalid && control.touched) {
       return t(
-        this.address.errors?.['address'] === 'required'
-          ? 'regie.server.media.required'
-          : 'regie.server.media.invalid',
+        control.errors?.['address'] === 'required' ? requiredKey : 'regie.server.media.invalid',
       );
     }
     return null;
@@ -162,7 +216,7 @@ export class MediaSectionComponent {
     if (!this.valid() || this.busy() || this.onAir()) {
       return;
     }
-    const address = this.address.value.trim();
+    const address = (this.usePublic.value ? this.publicAddress.value : this.address.value).trim();
     this.problem.set(null);
     this.check.set(null);
     this.testing.set(true);
@@ -188,7 +242,13 @@ export class MediaSectionComponent {
     this.problem.set(null);
     this.saving.set(true);
     try {
-      await this.settings.saveMedia(this.address.value.trim());
+      // With the route off, the stored public address stays as it is (the field is hidden and not sent).
+      await this.settings.saveMedia(
+        this.address.value.trim(),
+        this.usePublic.value
+          ? { publicAddress: this.publicAddress.value.trim(), usePublicAddress: true }
+          : { usePublicAddress: false },
+      );
       this.mediaTest.markSaved();
       const outcome = await this.settings.waitUntilApplied(['liveKit']);
       if (!outcome.applied) {
@@ -205,7 +265,9 @@ export class MediaSectionComponent {
 
   private valid(): boolean {
     this.address.markAsTouched();
-    if (this.address.invalid) {
+    this.publicAddress.markAsTouched();
+    // A disabled control (public route off) is never invalid.
+    if (this.address.invalid || this.publicAddress.invalid) {
       focusFirstInvalid(this.host, this.injector);
       return false;
     }
@@ -213,8 +275,18 @@ export class MediaSectionComponent {
   }
 
   private showFailure(error: ApiError): void {
+    const refused: { address?: Msg; publicAddress?: Msg } = {};
     if (error.fieldErrors['address']?.includes(CODES.mediaAddressInvalid)) {
-      this.refused.set({ address: msg('regie.server.media.invalid') });
+      refused.address = msg('regie.server.media.invalid');
+    }
+    const publicCodes = error.fieldErrors['publicAddress'] ?? [];
+    if (publicCodes.includes(CODES.publicMediaAddressRequired)) {
+      refused.publicAddress = msg('regie.server.media.publicRequired');
+    } else if (publicCodes.includes(CODES.mediaAddressInvalid)) {
+      refused.publicAddress = msg('regie.server.media.invalid');
+    }
+    if (refused.address || refused.publicAddress) {
+      this.refused.set(refused);
       focusFirstInvalid(this.host, this.injector);
       return;
     }
@@ -236,6 +308,7 @@ export class MediaSectionComponent {
       this.suggestions.set(list);
       if (this.address.value === '' && found.fromHost) {
         this.address.setValue(found.fromHost, { emitEvent: false });
+        this.typedAddress.set(found.fromHost);
       }
     } catch {
       // Suggestions are a convenience.

@@ -259,6 +259,7 @@ export type FieldErrorCode = (typeof FIELD_ERROR_CODES)[keyof typeof FIELD_ERROR
  */
 export const SETTINGS_FIELD_ERROR_CODES = {
   mediaAddressInvalid: 'media_address_invalid',
+  publicMediaAddressRequired: 'public_media_address_required',
   tlsModeUnknown: 'tls_mode_unknown',
   domainRequired: 'domain_required',
   domainInvalid: 'domain_invalid',

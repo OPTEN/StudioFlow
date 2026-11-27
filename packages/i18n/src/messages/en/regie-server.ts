@@ -85,6 +85,19 @@ export const regieServer = {
   'regie.server.media.required': 'Enter the IPv4 address.',
   'regie.server.media.invalid':
     'Enter four numbers from 0 to 255 separated by dots, for example 192.168.1.50.',
+  'regie.server.media.routeHeading': 'Media route',
+  'regie.server.media.routeSwitch': 'Route media through the public address',
+  'regie.server.media.routeOff':
+    'Off: devices send picture and sound directly to the address above. This only works inside the LAN.',
+  'regie.server.media.routeOn':
+    'On: devices send picture and sound only to the public address (relay or proxy). This works from anywhere; devices in the LAN take the detour too.',
+  'regie.server.media.publicLabel': 'Public IPv4 address',
+  'regie.server.media.publicHint':
+    'The address of the relay that forwards the media ports 7881/tcp and 7882/udp to this server.',
+  'regie.server.media.publicRequired': 'Enter the public IPv4 address.',
+  'regie.server.media.routeFooter':
+    'The media server announces only one address to the devices: with the switch off the LAN address, with the switch on only the public one.',
+  'regie.server.media.testTarget': 'Tests {address}, the address after saving.',
   'regie.server.media.testHeading': 'Connection test',
   'regie.server.media.testLabel': 'Test this address',
   'regie.server.media.testNote':

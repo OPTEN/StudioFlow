@@ -84,6 +84,19 @@ export const regieServer: Translation<typeof en> = {
   'regie.server.media.required': 'Bitte die IPv4-Adresse eingeben.',
   'regie.server.media.invalid':
     'Bitte vier Zahlen von 0 bis 255 mit Punkten getrennt eingeben, zum Beispiel 192.168.1.50.',
+  'regie.server.media.routeHeading': 'Medienweg',
+  'regie.server.media.routeSwitch': 'Medien über öffentliche Adresse leiten',
+  'regie.server.media.routeOff':
+    'Aus: Die Geräte schicken Bild und Ton direkt an die Adresse oben. Das funktioniert nur im LAN.',
+  'regie.server.media.routeOn':
+    'Ein: Die Geräte schicken Bild und Ton nur an die öffentliche Adresse (Relay oder Proxy). Das funktioniert von überall; auch Geräte im LAN nehmen diesen Umweg.',
+  'regie.server.media.publicLabel': 'Öffentliche IPv4-Adresse',
+  'regie.server.media.publicHint':
+    'Die Adresse des Relays, das die Medien-Ports 7881/tcp und 7882/udp an diesen Server weiterleitet.',
+  'regie.server.media.publicRequired': 'Bitte die öffentliche IPv4-Adresse eingeben.',
+  'regie.server.media.routeFooter':
+    'Der Medienserver gibt den Geräten immer nur eine Adresse bekannt: mit dem Schalter aus die Adresse im LAN, mit dem Schalter ein nur die öffentliche.',
+  'regie.server.media.testTarget': 'Getestet wird {address}, die Adresse nach dem Speichern.',
   'regie.server.media.testHeading': 'Verbindungstest',
   'regie.server.media.testLabel': 'Diese Adresse testen',
   'regie.server.media.testNote':

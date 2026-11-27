@@ -1,5 +1,11 @@
-// Media server: the labelled address suggestions under the field (address in the code face, where it comes from below).
+// Media server: the labelled address suggestions under the field (address in the code face, where it comes from below)
+// and the switch of the media route across the full row.
 @use 'mixins' as *;
+
+.c-media__switch {
+  grid-column: 1 / -1;
+  justify-content: space-between;
+}
 
 .c-suggest {
   display: flex;
