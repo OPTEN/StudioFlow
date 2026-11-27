@@ -9,6 +9,7 @@ import { DownloadService } from '../../core/ui/download.service';
 import { ToastService } from '../../core/ui/toast.service';
 import { outputLinkUrl } from '../../shell/header/output-url';
 import { OutputLinksPageComponent } from './output-links-page.component';
+import { onThisOrigin } from '../../core/ui/this-origin';
 
 const BASE = `/api/productions/${PRODUCTION_ID}/output`;
 const PROXY_KEY = 'proxy-key-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
@@ -337,14 +338,14 @@ describe('OutputLinksPageComponent', () => {
     it('masks the link, shows it on request and copies it with the chosen options', async () => {
       await open();
       const url = (): string => text(detail('Proxy').querySelector('.c-output-link__url'));
-      expect(url()).toBe('studioflow.example/o/webinar?k=••••••');
+      expect(url()).toBe(`${location.host}/o/webinar?k=••••••`);
       expect(text()).not.toContain(PROXY_KEY);
       const eye = detail('Proxy').querySelector<HTMLButtonElement>(
         'button[aria-label="Show link"]',
       )!;
       eye.click();
       await render();
-      expect(url()).toBe(PROXY.url);
+      expect(url()).toBe(onThisOrigin(PROXY.url));
       expect(eye.getAttribute('aria-pressed')).toBe('true');
 
       await click(/Link options/, detail('Proxy'));
@@ -354,8 +355,8 @@ describe('OutputLinksPageComponent', () => {
       await render();
       const copy = vi.spyOn(TestBed.inject(ClipboardService), 'copy').mockResolvedValue(true);
       await click('Copy', detail('Proxy'));
-      expect(copy).toHaveBeenCalledWith(`${PROXY.url}&bg=transparent&audio=off`, {
-        label: 'studioflow.example/o/webinar?k=••••••&bg=transparent&audio=off',
+      expect(copy).toHaveBeenCalledWith(`${onThisOrigin(PROXY.url)}&bg=transparent&audio=off`, {
+        label: `${location.host}/o/webinar?k=••••••&bg=transparent&audio=off`,
       });
     });
 
@@ -518,8 +519,8 @@ describe('OutputLinksPageComponent', () => {
       await render();
       await runMenu('Copy link');
       await render();
-      expect(copy).toHaveBeenCalledWith(TEAMS.url, {
-        label: 'studioflow.example/o/webinar?k=••••••',
+      expect(copy).toHaveBeenCalledWith(onThisOrigin(TEAMS.url), {
+        label: `${location.host}/o/webinar?k=••••••`,
       });
       expect(element.querySelector('[aria-label="Link “Teams camera”"]')).toBeNull();
     });
@@ -530,7 +531,9 @@ describe('OutputLinksPageComponent', () => {
       await render();
       await runMenu('Show link');
       await render();
-      expect(text(detail('Teams camera').querySelector('.c-output-link__url'))).toBe(TEAMS.url);
+      expect(text(detail('Teams camera').querySelector('.c-output-link__url'))).toBe(
+        onThisOrigin(TEAMS.url),
+      );
     });
 
     it('"New link…" opens the Link tab with the question', async () => {
@@ -607,7 +610,7 @@ describe('OutputLinksPageComponent', () => {
       const collection = JSON.parse(saved[0]!.text) as {
         sources: { settings: Record<string, unknown> }[];
       };
-      expect(collection.sources[1]?.settings['url']).toBe(TEAMS.url);
+      expect(collection.sources[1]?.settings['url']).toBe(onThisOrigin(TEAMS.url));
       expect(TestBed.inject(ToastService).current()?.message).toContain(
         'StudioFlow-Teams-camera.json',
       );

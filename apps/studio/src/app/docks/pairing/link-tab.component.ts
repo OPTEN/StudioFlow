@@ -17,6 +17,7 @@ import { ClipboardService } from '../../core/ui/clipboard.service';
 import { ClockService } from '../../core/ui/clock.service';
 import { ContextMenuDirective, type ContextMenuEntry } from '../../core/ui/context-menu';
 import { IconComponent } from '../../core/ui/icon.component';
+import { onThisOrigin } from '../../core/ui/this-origin';
 import { ToastService } from '../../core/ui/toast.service';
 import { DockCommandService } from '../shared/dock-command.service';
 import { displayUrl } from './public-url.service';
@@ -181,7 +182,7 @@ export class LinkTabComponent {
       .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
       .map((invite) => ({
         invite,
-        url: displayUrl(invite.url),
+        url: displayUrl(onThisOrigin(invite.url)),
         expiry: expiryText(Date.parse(invite.expiresAt) - now),
       }));
   });
@@ -251,11 +252,12 @@ export class LinkTabComponent {
     return this.revealed() ? display : maskedUrl(display);
   }
 
-  /** Copies the full link; the toast names it the way it is shown. */
+  /** Copies the full link (on the address this Regie is open at); the toast names it the way it is shown. */
   protected copy(invite: InviteDto): void {
     const current = this.createdId() === invite.id;
-    void this.clipboard.copy(invite.url, {
-      label: this.shown(displayUrl(invite.url)),
+    const url = onThisOrigin(invite.url);
+    void this.clipboard.copy(url, {
+      label: this.shown(displayUrl(url)),
       selectElement: current && this.revealed() ? (this.urlElement()?.nativeElement ?? null) : null,
     });
   }

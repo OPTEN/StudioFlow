@@ -31,6 +31,7 @@ import { PopoverDirective, PopoverService } from '../../core/ui/popover.directiv
 import { OBS_FPS } from './obs-scene-collection';
 import { outputLoad } from './output-load';
 import { maskOutputUrl } from './output-url';
+import { onThisOrigin } from '../../core/ui/this-origin';
 
 /** Id of the output popover. */
 export const OUTPUT_POPOVER = 'output';
@@ -111,7 +112,10 @@ export class OutputPopoverComponent {
               ? ''
               : 'c-state--warn',
         lamp: state === 'connected' ? '' : state === 'stale' ? 'is-warn' : 'is-idle',
-        url: this.revealedId() === link.id ? link.url : maskOutputUrl(link.url),
+        url:
+          this.revealedId() === link.id
+            ? onThisOrigin(link.url)
+            : maskOutputUrl(onThisOrigin(link.url)),
         title: state === 'none' ? this.lastSeenText(link) : null,
       };
     }),
@@ -218,7 +222,8 @@ export class OutputPopoverComponent {
 
   /** Copies the full URL of a link; where the clipboard is refused, its real URL is shown and selected. */
   protected async copy(link: OutputLinkDto): Promise<void> {
-    const copied = await this.clipboard.copy(link.url, { label: maskOutputUrl(link.url) });
+    const url = onThisOrigin(link.url);
+    const copied = await this.clipboard.copy(url, { label: maskOutputUrl(url) });
     if (!copied) {
       this.revealedId.set(link.id);
       afterNextRender(
@@ -249,7 +254,8 @@ export class OutputPopoverComponent {
   ];
 
   private async copyFromMenu(link: OutputLinkDto): Promise<void> {
-    if (!(await this.clipboard.copy(link.url, { label: maskOutputUrl(link.url) }))) {
+    const url = onThisOrigin(link.url);
+    if (!(await this.clipboard.copy(url, { label: maskOutputUrl(url) }))) {
       // The popover's own copy button shows the real link to copy by hand.
       this.popovers.open(this.popoverId);
     }

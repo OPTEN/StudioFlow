@@ -47,10 +47,6 @@ export class LaptopTabComponent {
 
   protected readonly shownUrl = computed(() => displayUrl(this.urls.joinUrl()));
 
-  constructor() {
-    this.urls.ensureLoaded();
-  }
-
   protected copy(): void {
     void this.clipboard.copy(this.urls.joinUrl(), {
       label: this.shownUrl(),

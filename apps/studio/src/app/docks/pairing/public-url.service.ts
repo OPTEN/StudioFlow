@@ -1,6 +1,5 @@
 import { DOCUMENT } from '@angular/common';
 import { Injectable, computed, inject } from '@angular/core';
-import { SystemInfoService } from '../../core/api/system-info.service';
 
 /** "studioflow.example.com/join" for "https://studioflow.example.com/join/" (what people type; shown large). */
 export function displayUrl(url: string): string {
@@ -8,28 +7,17 @@ export function displayUrl(url: string): string {
 }
 
 /**
- * The public base URL of the installation (`GET /api/system/info`: the address of the server settings) for the short join
- * address "‹host›/join". Until it is loaded (or when the request fails) the address of this page is used, which is
- * the same host in a normal installation.
+ * The base URL devices are sent to: the address this Regie is open at. Whoever opens the Regie through a tunnel or
+ * reverse proxy (`https://studioflow.example.com`) hands out that address; whoever opens it directly
+ * (`https://172.25.99.187:9443`) hands out the direct one. Invite and output links of the API are moved to it with
+ * `onThisOrigin`.
  */
 @Injectable({ providedIn: 'root' })
 export class PublicUrlService {
-  private readonly system = inject(SystemInfoService);
   private readonly document = inject(DOCUMENT);
-  private readonly base = computed(() => {
-    const url = this.system.info()?.publicBaseUrl?.trim();
-    return url ? url.replace(/\/+$/, '') : null;
-  });
 
   /** "https://studioflow.example.com" (no trailing slash). */
-  readonly baseUrl = computed(
-    () => this.base() ?? this.document.location?.origin ?? 'https://studioflow.local',
-  );
+  readonly baseUrl = computed(() => this.document.location?.origin ?? 'https://studioflow.local');
   /** Short address for laptops: "https://studioflow.example.com/join". */
   readonly joinUrl = computed(() => `${this.baseUrl()}/join`);
-
-  /** Loads the base URL once; failures keep the fallback (no toast, the fallback works on site). */
-  ensureLoaded(): void {
-    this.system.ensureLoaded();
-  }
 }

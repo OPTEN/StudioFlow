@@ -14,6 +14,7 @@ import { StudioApiService } from '../../core/api/studio-api.service';
 import { ProductionStoreService } from '../../core/state/production-store.service';
 import { ClockService } from '../../core/ui/clock.service';
 import { IconComponent } from '../../core/ui/icon.component';
+import { onThisOrigin } from '../../core/ui/this-origin';
 import { ToastService } from '../../core/ui/toast.service';
 import { DockCommandService } from '../shared/dock-command.service';
 import { messageParts } from '../shared/message-parts';
@@ -46,7 +47,7 @@ export function latestPhoneInvite(invites: readonly InviteDto[]): InviteDto | nu
     <div class="c-pair__qr-wrap">
       <div class="c-pair__qr">
         @if (invite(); as invite) {
-          <sf-qr-code [value]="invite.url" [label]="t('regie.pairing.phone.qrLabel')" />
+          <sf-qr-code [value]="here(invite.url)" [label]="t('regie.pairing.phone.qrLabel')" />
         } @else {
           <div class="c-pair__qr-empty" role="status">
             {{ tm(error()) || t('regie.pairing.phone.generating') }}
@@ -89,6 +90,8 @@ export function latestPhoneInvite(invites: readonly InviteDto[]): InviteDto | nu
 })
 export class PhoneTabComponent {
   protected readonly t = t;
+  /** The QR code opens the server the way this Regie is open (tunnel, domain or IP address). */
+  protected readonly here = (url: string): string => onThisOrigin(url);
   protected readonly tm = tm;
   protected readonly commands = inject(DockCommandService);
   private readonly api = inject(StudioApiService);

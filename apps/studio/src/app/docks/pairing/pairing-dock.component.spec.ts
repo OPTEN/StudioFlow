@@ -25,8 +25,8 @@ function invite(
     kind,
     url:
       kind === 'phoneQr'
-        ? `https://studioflow.example.com/join/i/${id}`
-        : `https://studioflow.example.com/j/${id}`,
+        ? `https://studioflow.example.com:8443/join/i/${id}`
+        : `https://studioflow.example.com:8443/j/${id}`,
     createdAt: new Date(created).toISOString(),
     expiresAt: new Date(Date.now() + minutes * 60_000).toISOString(),
   };
@@ -76,13 +76,6 @@ describe('PairingDockComponent', () => {
     fixture = TestBed.createComponent(PairingDockComponent);
     element = fixture.nativeElement as HTMLElement;
     await render();
-    harness.http.expectOne('/api/system/info').flush({
-      version: '1',
-      publicBaseUrl: 'https://regie.example.ch/',
-      canvasWidth: 1920,
-      canvasHeight: 1080,
-    });
-    await render();
   }
 
   async function render(): Promise<void> {
@@ -120,7 +113,7 @@ describe('PairingDockComponent', () => {
     expect(element.querySelector('[role="tabpanel"]')?.getAttribute('aria-labelledby')).toBe(
       'sf-pair-tab-laptop',
     );
-    expect(text(element.querySelector('.c-pair__url'))).toBe('regie.example.ch/join');
+    expect(text(element.querySelector('.c-pair__url'))).toBe(`${location.host}/join`);
     expect(text(element.querySelector('sf-pairing-requests'))).toContain('No request yet.');
     tabs()[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
     await render();
@@ -167,14 +160,14 @@ describe('PairingDockComponent', () => {
       statusText: 'Created',
     });
     await render();
-    expect(text(element.querySelector('.c-pair__url'))).toBe('studioflow.example.com/j/••••••••');
+    expect(text(element.querySelector('.c-pair__url'))).toBe(`${location.host}/j/••••••••`);
     const show = element.querySelector<HTMLButtonElement>('[aria-label="Show link"]');
     expect(show?.getAttribute('aria-pressed')).toBe('false');
     show?.click();
     await render();
     expect(show?.getAttribute('aria-pressed')).toBe('true');
     expect(text(element.querySelector('.c-pair__url'))).toBe(
-      'studioflow.example.com/j/inv_cccccccccccccccc',
+      `${location.host}/j/inv_cccccccccccccccc`,
     );
     expect(text(element.querySelector('sf-link-tab .c-hint'))).toBe(
       'Valid once and expires in 30 minutes. Whoever opens it is paired straight away.',
