@@ -58,6 +58,7 @@ export const LOG_MESSAGE_KEYS = {
   incidentAcknowledged: 'regie.log.incidentAcknowledged',
   deviceRenamed: 'regie.log.deviceRenamed',
   cameraLensSwitched: 'regie.log.cameraLensSwitched',
+  cameraRotationChanged: 'regie.log.cameraRotationChanged',
   auditExported: 'regie.log.auditExported',
   auditRetention: 'regie.log.auditRetention',
   settingsMediaChanged: 'regie.log.settingsMediaChanged',
@@ -124,6 +125,13 @@ export function logEntryText(entry: LogText): string {
       entry.params['lens'] ?? ''
     ];
     params['lens'] = lensKey === undefined ? (entry.params['lens'] ?? '') : tm({ key: lensKey });
+  }
+  if (entry.code === 'cameraRotationChanged') {
+    const rotation = entry.params['rotation'] ?? '';
+    params['rotation'] =
+      rotation === 'auto'
+        ? tm({ key: 'regie.camera.rotation.auto' })
+        : tm({ key: 'regie.camera.rotation.value', params: { angle: rotation } });
   }
   return tm({ key, params });
 }

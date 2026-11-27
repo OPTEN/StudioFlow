@@ -31,7 +31,7 @@ public static class CameraControlRules
 
     /// <summary>
     /// The camera section of a report as the server keeps it: wrong version, impossible ranges, too many or duplicate
-    /// lenses and unknown problem codes are dropped. Returns null when the report carries no usable camera.
+    /// lenses, unknown problem codes and a rotation other than 0, 90, 180 or 270 are dropped. Returns null when the report carries no usable camera.
     /// </summary>
     public static CameraStateDto? Sanitize(CameraStateDto? reported)
     {
@@ -60,7 +60,8 @@ public static class CameraControlRules
             Finite(settings.FocusDistance),
             Finite(settings.ExposureCompensation),
             settings.Torch,
-            IsResolution(settings.Resolution) ? settings.Resolution : null);
+            IsResolution(settings.Resolution) ? settings.Resolution : null,
+            CameraRotations.IsValid(settings.Rotation) ? settings.Rotation : null);
         var problem = reported.Problem is CameraProblems.Overconstrained or CameraProblems.Failed ? reported.Problem : null;
         return new CameraStateDto(CameraProtocol.Version, cleanCapabilities, cleanSettings, problem);
     }

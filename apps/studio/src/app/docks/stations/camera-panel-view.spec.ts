@@ -11,6 +11,7 @@ import {
   cameraPanelView,
   distanceText,
   lensLabels,
+  rotationView,
   zoomText,
 } from './camera-panel-view';
 
@@ -181,6 +182,34 @@ describe('lensLabels', () => {
         { id: 'd', label: null, kind: 'other' },
       ]),
     ).toEqual(['Camera 1', 'Camera 2', 'Tele', 'Camera 4']);
+  });
+});
+
+describe('rotationView', () => {
+  it('is automatic with what the phone reports', () => {
+    const view = rotationView(phone(state({}, { rotation: 270 })));
+    expect(view.mode).toBe('auto');
+    expect(view.reported).toBe(270);
+    expect(view.options.map((option) => [option.mode, option.label, option.active])).toEqual([
+      ['auto', 'Automatic (270°)', true],
+      [0, '0°', false],
+      [90, '90°', false],
+      [180, '180°', false],
+      [270, '270°', false],
+    ]);
+  });
+
+  it('shows the angle set in the Regie, which wins over the reported one', () => {
+    const view = rotationView(phone(state({}, { rotation: 90 }), { cameraRotation: 180 }));
+    expect(view.mode).toBe(180);
+    expect(view.options.find((option) => option.active)?.mode).toBe(180);
+  });
+
+  it('says plain "Automatic" when the phone cannot tell, and ignores impossible values', () => {
+    expect(rotationView(phone(null)).options[0].label).toBe('Automatic');
+    expect(rotationView(phone(state({}, { rotation: 45 }))).reported).toBeNull();
+    expect(rotationView(phone(null, { cameraRotation: 45 })).mode).toBe('auto');
+    expect(rotationView(phone(null, {}, false)).reported).toBeNull();
   });
 });
 

@@ -169,6 +169,8 @@ internal static class ApiSurface
     {
         g.MapPatch("/{deviceId}", DeviceAdminEndpoints.RenameAsync)
             .WithName("renameDevice").Produces<DeviceDto>().ProducesValidationProblem().ProducesProblem(404);
+        g.MapPut("/{deviceId}/camera-rotation", DeviceAdminEndpoints.SetCameraRotationAsync)
+            .WithName("setCameraRotation").Produces<DeviceDto>().ProducesValidationProblem().ProducesProblem(404);
         g.MapPost("/{deviceId}/block", DeviceAdminEndpoints.BlockAsync).WithName("blockDevice")
             .Produces<DeviceDto>().ProducesProblem(404);
         g.MapPost("/{deviceId}/unblock", DeviceAdminEndpoints.UnblockAsync).WithName("unblockDevice")

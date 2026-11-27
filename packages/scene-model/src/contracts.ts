@@ -121,6 +121,7 @@ export type {
   ServerSettingsDto,
   SessionDto,
   SetAudioChannelsRequest,
+  SetCameraRotationRequest,
   SetPreviewRequest,
   SetupRequest,
   SetupStatusDto,

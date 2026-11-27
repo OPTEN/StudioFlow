@@ -107,6 +107,14 @@ export function itemLook(item: SceneItemDto): ItemLook {
 }
 
 /**
+ * Rotation of the picture of an item: the rotation of its source (a phone camera turned upright, `SourceDto.rotation`)
+ * followed by the item's own rotation, both clockwise. Anything that is not a quarter turn is snapped first.
+ */
+export function composeRotation(itemRotation: number, sourceRotation: number): Rotation {
+  return snapRotation(snapRotation(itemRotation) + snapRotation(sourceRotation));
+}
+
+/**
  * Box of the uncropped picture relative to the item: scaled up so that the visible part (1 − left − right,
  * 1 − top − bottom) exactly fills the item, and shifted so the cropped edges lie outside the item (clipped there).
  */

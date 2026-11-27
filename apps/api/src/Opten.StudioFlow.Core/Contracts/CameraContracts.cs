@@ -74,6 +74,11 @@ public sealed record CameraCapabilitiesDto(
 /// <param name="ExposureCompensation">Brightness in EV.</param>
 /// <param name="Torch">The light is on.</param>
 /// <param name="Resolution">The picture height the device sends: 720 or 1080; null from an older sender.</param>
+/// <param name="Rotation">
+/// Clockwise rotation (0, 90, 180 or 270) that makes the delivered picture upright, measured by the phone from how it is
+/// held and how its screen is turned (a phone held sideways with its screen locked upright sends a sideways picture);
+/// null when the phone cannot tell (no motion sensor, permission denied, lying flat since the start, older sender).
+/// </param>
 public sealed record CameraSettingsDto(
     string? LensId,
     double? Zoom,
@@ -81,7 +86,8 @@ public sealed record CameraSettingsDto(
     double? FocusDistance,
     double? ExposureCompensation,
     bool? Torch,
-    int? Resolution = null);
+    int? Resolution = null,
+    int? Rotation = null);
 
 /// <summary>Camera section of a device report (and of the telemetry the Regie gets).</summary>
 /// <param name="V">Protocol version, currently 1.</param>

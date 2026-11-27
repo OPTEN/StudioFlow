@@ -53,6 +53,13 @@ public sealed class DeviceRuntime(string deviceId)
     /// <summary>Camera section of the latest report of the current session (capabilities and settings), sanitised.</summary>
     public CameraStateDto? Camera { get; private set; }
 
+    /// <summary>
+    /// Rotation that makes the camera picture upright as the phone last reported it (<see cref="CameraSettingsDto.Rotation"/>);
+    /// null when it cannot tell. Only a report with a camera changes it, so a stopped camera or a new session keeps the
+    /// last value until the camera reports again (the held picture does not turn).
+    /// </summary>
+    public int? ReportedRotation { get; private set; }
+
     /// <summary>Last technical check result.</summary>
     public TechCheckDto? TechCheck { get; private set; }
 
@@ -277,6 +284,11 @@ public sealed class DeviceRuntime(string deviceId)
         var camera = CameraControlRules.Sanitize(report.Camera);
         var cameraChanged = !CameraControlRules.SameState(camera, Camera);
         Camera = camera;
+        if (camera is not null)
+        {
+            ReportedRotation = camera.Settings.Rotation;
+        }
+
         LastSeenAt = now;
         LastReportAt = now;
         Telemetry = new DeviceTelemetryDto(

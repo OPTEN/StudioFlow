@@ -201,6 +201,11 @@ export class StationRowComponent {
     });
   }
 
+  /** Rotation of the thumbnail picture (a phone camera turned upright). */
+  protected rotationOf(sourceId: string | null): number | undefined {
+    return sourceId === null ? undefined : this.store.rotationOf(sourceId);
+  }
+
   protected toneClass(tone: StateTone): string {
     return toneClass(tone);
   }

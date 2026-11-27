@@ -15,7 +15,12 @@
     @if (v.audioOnly) {
       <span class="c-st__audio" aria-hidden="true"><svg sfIcon="mic" [size]="16"></svg></span>
     } @else {
-      <sf-station-thumb class="c-st__thumb" [sourceId]="v.thumbSourceId" [dimmed]="down()" />
+      <sf-station-thumb
+        class="c-st__thumb"
+        [sourceId]="v.thumbSourceId"
+        [rotation]="rotationOf(v.thumbSourceId)"
+        [dimmed]="down()"
+      />
     }
     <div class="c-st__main">
       <div class="c-st__l1">

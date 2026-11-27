@@ -612,6 +612,22 @@ export interface paths {
         patch: operations["renameDevice"];
         trace?: never;
     };
+    "/api/productions/{productionId}/devices/{deviceId}/camera-rotation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["setCameraRotation"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/productions/{productionId}/devices/{deviceId}/block": {
         parameters: {
             query?: never;
@@ -1708,6 +1724,13 @@ export interface components {
              * @description The picture height the device sends: 720 or 1080; null from an older sender.
              */
             resolution?: null | number;
+            /**
+             * Format: int32
+             * @description Clockwise rotation (0, 90, 180 or 270) that makes the delivered picture upright, measured by the phone from how it is
+             *     held and how its screen is turned (a phone held sideways with its screen locked upright sends a sideways picture);
+             *     null when the phone cannot tell (no motion sensor, permission denied, lying flat since the start, older sender).
+             */
+            rotation?: null | number;
         };
         /** @description Camera section of a device report (and of the telemetry the Regie gets). */
         CameraStateDto: {
@@ -1915,6 +1938,12 @@ export interface components {
             connectionSince: null | string;
             techCheck: null | components["schemas"]["TechCheckDto"];
             telemetry: null | components["schemas"]["DeviceTelemetryDto"];
+            /**
+             * Format: int32
+             * @description Rotation of the camera picture set in the Regie (0, 90, 180 or 270, clockwise); null for automatic (what the phone
+             *     reports in int? CameraSettingsDto.Rotation).
+             */
+            cameraRotation?: null | number;
         };
         /** @description First message of a device after connecting to the device hub. */
         DeviceHelloDto: {
@@ -2174,7 +2203,7 @@ export interface components {
          *     entry; the English text of the entry is the fallback for clients that do not know the code yet.
          * @enum {unknown}
          */
-        LogCode: "sceneLive" | "sceneCreated" | "sceneDeleted" | "broadcastStarted" | "broadcastEnded" | "devicePaired" | "deviceBlocked" | "deviceUnblocked" | "deviceRemoved" | "pairingDenied" | "inviteLinkCreated" | "inviteLinkRevoked" | "outputLinkCreated" | "outputLinkRenamed" | "outputLinkRevoked" | "outputLinkRegenerated" | "outputAccessChanged" | "assetUploaded" | "assetDeleted" | "sourceReconnecting" | "cameraEnded" | "screenEnded" | "sourceLost" | "sourceRecovered" | "accountSetUp" | "passwordChanged" | "accountReset" | "textCreated" | "textDeleted" | "textShown" | "textHidden" | "loginSucceeded" | "loginFailed" | "loginFailedUnknownUser" | "loginLocked" | "loggedOut" | "productionCreated" | "productionRenamed" | "canvasChanged" | "productionDuplicated" | "productionExported" | "productionImported" | "placeholderAssigned" | "placeholderRemoved" | "productionActivated" | "broadcastReset" | "standbySlateChanged" | "endSlateChanged" | "incidentAcknowledged" | "deviceRenamed" | "cameraLensSwitched" | "auditExported" | "auditRetention" | "settingsMediaChanged" | "settingsAddressChanged" | "settingsEmbeddingChanged" | "settingsBackupChanged" | "backupRequested" | "audioEnded" | "audioLost" | "audioMuted" | "audioUnmuted" | "audioGainChanged" | "audioModeChanged" | "audioSyncOffsetChanged";
+        LogCode: "sceneLive" | "sceneCreated" | "sceneDeleted" | "broadcastStarted" | "broadcastEnded" | "devicePaired" | "deviceBlocked" | "deviceUnblocked" | "deviceRemoved" | "pairingDenied" | "inviteLinkCreated" | "inviteLinkRevoked" | "outputLinkCreated" | "outputLinkRenamed" | "outputLinkRevoked" | "outputLinkRegenerated" | "outputAccessChanged" | "assetUploaded" | "assetDeleted" | "sourceReconnecting" | "cameraEnded" | "screenEnded" | "sourceLost" | "sourceRecovered" | "accountSetUp" | "passwordChanged" | "accountReset" | "textCreated" | "textDeleted" | "textShown" | "textHidden" | "loginSucceeded" | "loginFailed" | "loginFailedUnknownUser" | "loginLocked" | "loggedOut" | "productionCreated" | "productionRenamed" | "canvasChanged" | "productionDuplicated" | "productionExported" | "productionImported" | "placeholderAssigned" | "placeholderRemoved" | "productionActivated" | "broadcastReset" | "standbySlateChanged" | "endSlateChanged" | "incidentAcknowledged" | "deviceRenamed" | "cameraLensSwitched" | "cameraRotationChanged" | "auditExported" | "auditRetention" | "settingsMediaChanged" | "settingsAddressChanged" | "settingsEmbeddingChanged" | "settingsBackupChanged" | "backupRequested" | "audioEnded" | "audioLost" | "audioMuted" | "audioUnmuted" | "audioGainChanged" | "audioModeChanged" | "audioSyncOffsetChanged";
         /** @description An entry of "Recent events", derived from the audit log. */
         LogEntryDto: {
             /**
@@ -3088,6 +3117,14 @@ export interface components {
              */
             adjusting: boolean;
         };
+        /** @description Sets how the camera picture of a device is turned upright. */
+        SetCameraRotationRequest: {
+            /**
+             * Format: int32
+             * @description 0, 90, 180 or 270 (clockwise) to fix it; null for automatic (what the phone reports).
+             */
+            rotation: null | number;
+        };
         /** @description Sets or clears the preview scene. */
         SetPreviewRequest: {
             sceneId: null | string;
@@ -3184,6 +3221,13 @@ export interface components {
              */
             statusSince: null | string;
             text: null | components["schemas"]["TextSourceDto"];
+            /**
+             * Format: int32
+             * @description Clockwise rotation (0, 90, 180 or 270) the renderers apply to the picture of the source before the rotation of the
+             *     scene item: the rotation set in the Regie for the camera, else the one the phone reports, else 0.
+             * @default 0
+             */
+            rotation: number;
         };
         /**
          * @description Kind of a source.
@@ -3556,6 +3600,7 @@ export type SceneLayoutMode = components['schemas']['SceneLayoutMode'];
 export type ServerSettingsDto = components['schemas']['ServerSettingsDto'];
 export type SessionDto = components['schemas']['SessionDto'];
 export type SetAudioChannelsRequest = components['schemas']['SetAudioChannelsRequest'];
+export type SetCameraRotationRequest = components['schemas']['SetCameraRotationRequest'];
 export type SetPreviewRequest = components['schemas']['SetPreviewRequest'];
 export type SetupRequest = components['schemas']['SetupRequest'];
 export type SetupStatusDto = components['schemas']['SetupStatusDto'];
@@ -5273,6 +5318,51 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["RenameDeviceRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    setCameraRotation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                productionId: string;
+                deviceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetCameraRotationRequest"];
             };
         };
         responses: {

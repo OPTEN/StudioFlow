@@ -219,6 +219,8 @@ export function startOutputApp(
     reducedMotion: false,
     assetKindOf: (assetId) => sync?.state?.assets.get(assetId)?.kind,
     textOf: (sourceId) => sync?.state?.sources.get(sourceId)?.text ?? undefined,
+    // A phone camera turned upright (automatic or set in the Regie); `refresh` follows a change of the sources.
+    rotationOf: (sourceId) => sync?.state?.sources.get(sourceId)?.rotation,
     textTheme: () => sync?.state?.production.textTheme,
     label: t('output.page.program'),
     onError: (error) => log.warn(`renderer: ${describe(error)}`),

@@ -2282,6 +2282,74 @@
         }
       }
     },
+    "/api/productions/{productionId}/devices/{deviceId}/camera-rotation": {
+      "put": {
+        "tags": [
+          "Devices"
+        ],
+        "operationId": "setCameraRotation",
+        "parameters": [
+          {
+            "name": "productionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetCameraRotationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/productions/{productionId}/devices/{deviceId}/block": {
       "post": {
         "tags": [
@@ -5519,6 +5587,14 @@
             ],
             "description": "The picture height the device sends: 720 or 1080; null from an older sender.",
             "format": "int32"
+          },
+          "rotation": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Clockwise rotation (0, 90, 180 or 270) that makes the delivered picture upright, measured by the phone from how it is\nheld and how its screen is turned (a phone held sideways with its screen locked upright sends a sideways picture);\nnull when the phone cannot tell (no motion sensor, permission denied, lying flat since the start, older sender).",
+            "format": "int32"
           }
         },
         "description": "The settings the camera really has right now (from `getSettings()`); null where the camera reports none."
@@ -6071,6 +6147,14 @@
                 "$ref": "#/components/schemas/DeviceTelemetryDto"
               }
             ]
+          },
+          "cameraRotation": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Rotation of the camera picture set in the Regie (0, 90, 180 or 270, clockwise); null for automatic (what the phone\nreports in int? CameraSettingsDto.Rotation).",
+            "format": "int32"
           }
         },
         "description": "A paired device (station) as shown in the Regie."
@@ -6758,6 +6842,7 @@
           "incidentAcknowledged",
           "deviceRenamed",
           "cameraLensSwitched",
+          "cameraRotationChanged",
           "auditExported",
           "auditRetention",
           "settingsMediaChanged",
@@ -8968,6 +9053,23 @@
         },
         "description": "Sets channels of the mixer (`PUT …/audio/channels`). Every listed channel replaces the stored one in full; channels\nthat are not listed stay as they are, so two Regie seats that move different faders do not overwrite each other.\nUndo and redo send the previous state of the channels they touched."
       },
+      "SetCameraRotationRequest": {
+        "required": [
+          "rotation"
+        ],
+        "type": "object",
+        "properties": {
+          "rotation": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "0, 90, 180 or 270 (clockwise) to fix it; null for automatic (what the phone reports).",
+            "format": "int32"
+          }
+        },
+        "description": "Sets how the camera picture of a device is turned upright."
+      },
       "SetPreviewRequest": {
         "required": [
           "sceneId"
@@ -9224,6 +9326,12 @@
                 "$ref": "#/components/schemas/TextSourceDto"
               }
             ]
+          },
+          "rotation": {
+            "type": "integer",
+            "description": "Clockwise rotation (0, 90, 180 or 270) the renderers apply to the picture of the source before the rotation of the\nscene item: the rotation set in the Regie for the camera, else the one the phone reports, else 0.",
+            "format": "int32",
+            "default": 0
           }
         },
         "description": "A source that scene items can show."

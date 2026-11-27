@@ -42,6 +42,12 @@ describe('scene renderer: desired sizes and preload', () => {
     expect(stageSizes().get(CAMERA)).toEqual({ width: 480, height: 272 });
   });
 
+  it('asks a phone held sideways for a tall picture for a wide item', () => {
+    mounted = mount({ rotationOf: (sourceId) => (sourceId === CAMERA ? 270 : undefined) });
+    mounted.renderer.show(scene('scn_a', [sceneItem('itm_a', CAMERA, { w: 640, h: 352 })]));
+    expect(stageSizes().get(CAMERA)).toEqual({ width: 352, height: 640 });
+  });
+
   it('never asks for more than the canvas of the production, however large the window is', () => {
     mounted = mount({}, { width: 3840, height: 2160 });
     mounted.renderer.show(

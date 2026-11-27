@@ -224,6 +224,32 @@ public sealed class CameraControlRulesTests
         Assert.Null(dropped.Settings.Resolution);
     }
 
+    [Theory]
+    [InlineData(0, 0)]
+    [InlineData(90, 90)]
+    [InlineData(180, 180)]
+    [InlineData(270, 270)]
+    [InlineData(45, null)]
+    [InlineData(-90, null)]
+    [InlineData(360, null)]
+    [InlineData(null, null)]
+    public void Sanitize_Rotation_KeepsOnlyQuarterTurns(int? reported, int? expected)
+    {
+        var state = CameraControlRules.Sanitize(State() with { Settings = new CameraSettingsDto("back-main", 1, CameraFocusMode.Auto, null, 0, false, 1080, reported) })!;
+
+        Assert.Equal(expected, state.Settings.Rotation);
+        Assert.Equal(1080, state.Settings.Resolution);
+    }
+
+    [Fact]
+    public void SameState_SeesARotationChange()
+    {
+        var upright = CameraControlRules.Sanitize(State() with { Settings = new CameraSettingsDto("back-main", 1, CameraFocusMode.Auto, null, 0, false, 1080, 0) });
+        var sideways = CameraControlRules.Sanitize(State() with { Settings = new CameraSettingsDto("back-main", 1, CameraFocusMode.Auto, null, 0, false, 1080, 90) });
+
+        Assert.False(CameraControlRules.SameState(upright, sideways));
+    }
+
     [Fact]
     public void Merge_Resolution_NewerWinsAndAResetKeepsIt()
     {

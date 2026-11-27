@@ -432,6 +432,7 @@ class DomSceneRenderer implements SceneRenderer {
         canvas: this.canvas,
         scale: this.scale,
         devicePixelRatio: frame.devicePixelRatio,
+        sourceRotation: (sourceId) => this.ctx.sourceRotation(sourceId),
       }),
     );
   }

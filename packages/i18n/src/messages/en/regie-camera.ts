@@ -31,6 +31,15 @@ export const regieCamera = {
   'regie.camera.resolution.confirmMessage':
     '{label} is live. The picture freezes briefly while the phone changes to {height}p.',
 
+  'regie.camera.rotation.label': 'Rotation',
+  'regie.camera.rotation.auto': 'Automatic',
+  'regie.camera.rotation.autoWith': 'Automatic ({angle})',
+  'regie.camera.rotation.value': '{angle}°',
+  'regie.camera.rotation.hint':
+    'Turns the picture upright in the Regie and on the output. Automatic follows how the phone is held; on an iPhone only after a tap on its screen.',
+  'regie.camera.rotation.confirmNow': 'Turn picture',
+  'regie.camera.rotation.confirmMessage': '{label} is live. The picture on air turns at once.',
+
   'regie.camera.live': 'Every change shows on air right away.',
 
   'regie.camera.panel.label': 'Camera controls of {name}',

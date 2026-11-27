@@ -65,6 +65,9 @@ public static class AuditActions
     /// <summary>The Regie switched the lens of a phone camera.</summary>
     public const string CameraLensSwitched = "device.camera.lens";
 
+    /// <summary>The Regie set how the camera picture of a device is turned (automatic or a fixed angle).</summary>
+    public const string CameraRotationChanged = "device.camera.rotation";
+
     /// <summary>The audit log was exported.</summary>
     public const string AuditExported = "audit.exported";
 
@@ -235,6 +238,9 @@ public static class AuditDetails
     /// <summary>Kind of the lens a phone camera switched to (<c>Front</c>, <c>UltraWide</c>, <c>Standard</c>, <c>Tele</c>, <c>Other</c>).</summary>
     public const string Lens = "lens";
 
+    /// <summary>Rotation of a camera picture set in the Regie, see <see cref="AuditRotations"/>.</summary>
+    public const string Rotation = "rotation";
+
     /// <summary>Which slate changed, see <see cref="AuditSlates"/>.</summary>
     public const string Slate = "slate";
 
@@ -319,6 +325,17 @@ public static class AuditMediaRoutes
 
     /// <summary>Devices send media only to the public address of the relay.</summary>
     public const string Public = "public";
+}
+
+/// <summary>Values of <see cref="AuditDetails.Rotation"/>: <c>auto</c> or the angle (<c>0</c>, <c>90</c>, <c>180</c>, <c>270</c>).</summary>
+public static class AuditRotations
+{
+    /// <summary>The phone turns its picture by itself.</summary>
+    public const string Auto = "auto";
+
+    /// <summary>The detail value of a rotation; null means automatic.</summary>
+    public static string Of(int? rotation) =>
+        rotation is { } angle ? angle.ToString(System.Globalization.CultureInfo.InvariantCulture) : Auto;
 }
 
 /// <summary>An entry of the audit log (table <c>audit_entries</c>).</summary>

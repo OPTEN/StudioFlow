@@ -25,6 +25,7 @@ export const regieLog: Translation<typeof en> = {
   'regie.log.broadcastStarted': 'Sendung gestartet',
   'regie.log.cameraEnded': '{code} Kamera beendet',
   'regie.log.cameraLensSwitched': '{subject}: Objektiv gewechselt auf {lens}',
+  'regie.log.cameraRotationChanged': '{subject}: Drehung auf {rotation} gestellt',
   'regie.log.deviceBlocked': '{subject} gesperrt',
   'regie.log.devicePaired': '{subject} gekoppelt',
   'regie.log.deviceRemoved': '{subject} entfernt',

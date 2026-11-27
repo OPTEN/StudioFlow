@@ -15,6 +15,7 @@ import { FakeHub, FakeRenderer, fakeApi, fakeMedia } from './testing/fakes';
 import {
   CAMERA,
   canvasChanged,
+  deviceSource,
   FADE,
   IMAGE,
   SCREEN,
@@ -271,6 +272,23 @@ describe('output app: state → picture', () => {
     );
     hub.emit(HUB.event, sceneUpserted(102, scene('scn_c', 2, [], { version: 2 })));
     expect(renderer.summary()).toEqual(['update scn_a']);
+  });
+
+  it('turns a phone camera by the rotation of its source and draws again when it changes', async () => {
+    const { hub, renderer } = await boot();
+    const options = renderer.options as SceneRendererOptions;
+    expect(options.rotationOf?.(CAMERA)).toBe(0);
+    const refreshes = renderer.refreshes;
+
+    hub.emit(HUB.event, {
+      type: 'sourceUpserted',
+      revision: 101,
+      source: { ...deviceSource(CAMERA, 'K1', 'Handy Lea'), rotation: 90 },
+    });
+
+    expect(options.rotationOf?.(CAMERA)).toBe(90);
+    expect(renderer.refreshes).toBeGreaterThan(refreshes);
+    expect(options.rotationOf?.('dev_unknown0000000/camera')).toBeUndefined();
   });
 
   it('shows the end slate when the broadcast ends', async () => {

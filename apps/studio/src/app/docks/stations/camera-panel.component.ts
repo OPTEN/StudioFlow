@@ -13,7 +13,14 @@ import { t } from '@studioflow/i18n';
 import type { DeviceDto } from '@studioflow/scene-model';
 import { ConfirmBoxComponent } from '../../core/ui/confirm-box.component';
 import { IconComponent } from '../../core/ui/icon.component';
-import { brightnessText, cameraPanelView, distanceText, zoomText } from './camera-panel-view';
+import {
+  brightnessText,
+  cameraPanelView,
+  distanceText,
+  rotationView,
+  zoomText,
+  type RotationMode,
+} from './camera-panel-view';
 import { CameraControlService } from './camera-control.service';
 
 /** A slider keeps the value the user drags to this long after the last move; then it shows what the phone reports. */
@@ -25,7 +32,9 @@ type Slider = 'zoom' | 'distance' | 'brightness';
 
 /**
  * "Camera settings" of a phone (issue #11): lens picker, zoom, focus (automatic or locked, with distance), brightness,
- * light and "Reset to auto", each as a labelled field with its value on the right. Only the controls the phone reported
+ * light, "Reset to auto" and the rotation of the picture (automatic, with what the phone reports, or a fixed angle;
+ * offered in every state, because the Regie and the output turn the picture), each as a labelled field with its value
+ * on the right. Only the controls the phone reported
  * are shown, and every slider shows the value the phone reports back; while the user drags, the dragged value is shown
  * and sent (throttled by {@link CameraControlService}). While the camera is in the program a Live note says that every
  * change shows on air, and the two changes that interrupt or undo the picture (a lens switch, "Reset to auto") ask
@@ -58,6 +67,10 @@ export class CameraPanelComponent {
   /** The resolution waiting for the confirmation (the picture freezes briefly while it changes). */
   protected readonly resolutionToConfirm = signal<720 | 1080 | null>(null);
   protected readonly resolutions = [720, 1080] as const;
+  /** Automatic or a fixed angle, with what the phone reports. */
+  protected readonly rotation = computed(() => rotationView(this.device()));
+  /** The rotation waiting for the confirmation (the picture on air turns at once). */
+  protected readonly rotationToConfirm = signal<RotationMode | null>(null);
   private readonly drafts = signal<Readonly<Partial<Record<Slider, number>>>>({});
   private lastMoveAt = 0;
   private draftTimer: ReturnType<typeof setTimeout> | null = null;
@@ -134,6 +147,7 @@ export class CameraPanelComponent {
   protected reset(): void {
     if (this.inProgram()) {
       this.lensToConfirm.set(null);
+      this.rotationToConfirm.set(null);
       this.confirmReset.set(true);
       return;
     }
@@ -155,6 +169,7 @@ export class CameraPanelComponent {
     if (this.inProgram()) {
       this.confirmReset.set(false);
       this.lensToConfirm.set(null);
+      this.rotationToConfirm.set(null);
       this.resolutionToConfirm.set(resolution);
       return;
     }
@@ -169,10 +184,34 @@ export class CameraPanelComponent {
     this.resolutionToConfirm.set(null);
   }
 
+  /** Automatic or a fixed angle; a camera on air asks first, because the picture turns at once. */
+  protected chooseRotation(mode: RotationMode, current: RotationMode): void {
+    if (mode === current) {
+      return;
+    }
+    if (this.inProgram()) {
+      this.confirmReset.set(false);
+      this.lensToConfirm.set(null);
+      this.resolutionToConfirm.set(null);
+      this.rotationToConfirm.set(mode);
+      return;
+    }
+    void this.control.setRotation(this.device(), mode === 'auto' ? null : mode);
+  }
+
+  protected confirmRotation(): void {
+    const mode = this.rotationToConfirm();
+    this.rotationToConfirm.set(null);
+    if (mode !== null) {
+      void this.control.setRotation(this.device(), mode === 'auto' ? null : mode);
+    }
+  }
+
   protected chooseLens(id: string, label: string): void {
     if (this.inProgram()) {
       this.confirmReset.set(false);
       this.resolutionToConfirm.set(null);
+      this.rotationToConfirm.set(null);
       this.lensToConfirm.set({ id, label });
       return;
     }

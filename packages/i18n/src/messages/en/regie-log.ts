@@ -3,7 +3,8 @@ import type { Namespace } from '../../types';
 /**
  * "Recent events" and the audit log. One message per `LogCode` of the API (`regie.log.<code>`); the parameters are the
  * ones the API sends in `LogEntryDto.params`, except `{downtime}` of `sourceRecovered`, which the client formats from
- * `downSeconds`, `{lens}` of `cameraLensSwitched`, which the client names from the lens kind, and `{value}` of the audio
+ * `downSeconds`, `{lens}` of `cameraLensSwitched`, which the client names from the lens kind, `{rotation}` of
+ * `cameraRotationChanged` (“Automatic” or “90°”, from `auto` or the angle), and `{value}` of the audio
  * changes, which the client formats (dB, the name of the mode).
  */
 export const regieLog = {
@@ -30,6 +31,7 @@ export const regieLog = {
   'regie.log.broadcastStarted': 'Broadcast started',
   'regie.log.cameraEnded': '{code} camera stopped',
   'regie.log.cameraLensSwitched': '{subject}: lens switched to {lens}',
+  'regie.log.cameraRotationChanged': '{subject}: rotation set to {rotation}',
   'regie.log.deviceBlocked': '{subject} blocked',
   'regie.log.devicePaired': '{subject} paired',
   'regie.log.deviceRemoved': '{subject} removed',

@@ -161,6 +161,30 @@ describe('preloadRequests', () => {
     expect(requests.get(SCREEN)).toEqual({ width: 448, height: 800 });
   });
 
+  it('turns the request by the rotation of the source too', () => {
+    const sideways = (sourceId: string): number => (sourceId === CAMERA ? 90 : 0);
+    const requests = preloadRequests(
+      [
+        scene('scn_a', [
+          sceneItem('a', CAMERA, { w: 800, h: 448 }),
+          sceneItem('b', SCREEN, { w: 800, h: 448, rotation: 90 }),
+        ]),
+      ],
+      new Map(),
+      { ...GEOMETRY, sourceRotation: sideways },
+    );
+    // A phone held sideways sends a tall picture for a wide item.
+    expect(requests.get(CAMERA)).toEqual({ width: 448, height: 800 });
+    expect(requests.get(SCREEN)).toEqual({ width: 448, height: 800 });
+
+    const turnedBack = preloadRequests(
+      [scene('scn_a', [sceneItem('a', CAMERA, { w: 800, h: 448, rotation: 270 })])],
+      new Map(),
+      { ...GEOMETRY, sourceRotation: sideways },
+    );
+    expect(turnedBack.get(CAMERA)).toEqual({ width: 800, height: 448 });
+  });
+
   it('places the items of an Auto-Grid scene like the stage does', () => {
     const requests = preloadRequests(
       [

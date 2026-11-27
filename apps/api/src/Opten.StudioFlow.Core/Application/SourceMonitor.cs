@@ -153,7 +153,34 @@ public static class SourceMonitor
         ArgumentNullException.ThrowIfNull(slot);
         var id = device.SourceIdOf(slot);
         var entry = new SourceEntry(id, slot.Code, slot.Kind, device.LabelOf(slot), device, slot, null);
-        return Dtos.Source(entry, runtime.Sources.GetValueOrDefault(id));
+        return Dtos.Source(entry, runtime.Sources.GetValueOrDefault(id), Dtos.RotationOf(entry, runtime.FindDevice(device.Id)));
+    }
+
+    /// <summary>The rotation of the camera picture of a device (see <see cref="Dtos.RotationOf"/>); 0 without a camera.</summary>
+    public static int CameraRotationOf(ProductionRuntime runtime, Device device)
+    {
+        ArgumentNullException.ThrowIfNull(runtime);
+        ArgumentNullException.ThrowIfNull(device);
+        return device.FindSlot(DeviceSlots.Camera) is { } camera
+            ? CameraRotations.Effective(camera.Rotation, runtime.FindDevice(device.Id)?.ReportedRotation)
+            : 0;
+    }
+
+    /// <summary>
+    /// Emits the camera source of a device when the rotation of its picture differs from <paramref name="before"/>: the
+    /// output sees it too (it turns the picture), unlike a change of health only.
+    /// </summary>
+    public static void PublishCameraRotation(MutationContext context, Device device, int before)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(device);
+        if (device.FindSlot(DeviceSlots.Camera) is not { } camera || CameraRotationOf(context.Runtime, device) == before)
+        {
+            return;
+        }
+
+        var dto = SourceOf(context.Runtime, device, camera);
+        context.Emit(revision => new SourceUpsertedEvent(revision, dto));
     }
 
     /// <summary>

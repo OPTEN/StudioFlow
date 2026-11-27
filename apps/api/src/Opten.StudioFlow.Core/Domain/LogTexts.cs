@@ -35,6 +35,7 @@ public static class LogTexts
         public const string DownSeconds = "downSeconds";
         public const string Username = "username";
         public const string Lens = "lens";
+        public const string Rotation = "rotation";
         public const string From = "from";
         public const string To = "to";
         public const string Target = "target";
@@ -124,6 +125,7 @@ public static class LogTexts
             AuditActions.IncidentAcknowledged => With(LogCode.IncidentAcknowledged, $"{code} message marked as seen", (Param.Code, code)),
             AuditActions.DeviceRenamed => With(LogCode.DeviceRenamed, $"{subject} renamed to “{name}”", (Param.Subject, subject), (Param.Name, name)),
             AuditActions.CameraLensSwitched => Lens(entry, subject),
+            AuditActions.CameraRotationChanged => Rotation(entry, subject),
             AuditActions.AuditExported => With(LogCode.AuditExported, $"Audit log exported as {entry.Detail(AuditDetails.Format)}, {entry.Detail(AuditDetails.Rows)} rows", (Param.Format, entry.Detail(AuditDetails.Format)), (Param.Rows, entry.Detail(AuditDetails.Rows))),
             AuditActions.AuditRetention => Retention(entry),
             AuditActions.SettingsMediaChanged => With(LogCode.SettingsMediaChanged, $"Media address set to {entry.Detail(AuditDetails.Address)}", (Param.Address, entry.Detail(AuditDetails.Address))),
@@ -158,6 +160,13 @@ public static class LogTexts
             _ => ("other", "Other"),
         };
         return With(LogCode.CameraLensSwitched, $"{subject}: lens switched to {name}", (Param.Subject, subject), (Param.Lens, param));
+    }
+
+    private static (LogCode Code, IReadOnlyDictionary<string, string> Params, string Text) Rotation(AuditEntry entry, string subject)
+    {
+        var rotation = entry.Detail(AuditDetails.Rotation);
+        var name = string.Equals(rotation, AuditRotations.Auto, StringComparison.Ordinal) ? "automatic" : $"{rotation}°";
+        return With(LogCode.CameraRotationChanged, $"{subject}: rotation set to {name}", (Param.Subject, subject), (Param.Rotation, rotation));
     }
 
     private static (LogCode Code, IReadOnlyDictionary<string, string> Params, string Text)? AudioChange(AuditEntry entry, string code)
